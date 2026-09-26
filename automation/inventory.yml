@@ -1,0 +1,15 @@
+# Inventaire du lab. Identifiants surchargeables via les variables LAB_USER / LAB_PASS.
+defaults:
+  device_type: linux      # Netmiko se connecte au shell Alpine, puis lance vtysh
+  username: netops
+  password: netops
+  vtysh: vtysh
+
+# ospf_neighbors : nombre de voisins OSPF attendus en état Full
+# bgp_peers      : voisin BGP -> nombre minimal de préfixes reçus attendus
+routers:
+  r1: {host: 172.20.20.11, ospf_neighbors: 2}
+  r2: {host: 172.20.20.12, ospf_neighbors: 2}
+  r3: {host: 172.20.20.13, ospf_neighbors: 2, bgp_peers: {172.16.34.2: 2}}
+  r4: {host: 172.20.20.14, ospf_neighbors: 1, bgp_peers: {172.16.34.1: 2}}
+  r5: {host: 172.20.20.15, ospf_neighbors: 1}
