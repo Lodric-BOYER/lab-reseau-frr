@@ -187,6 +187,24 @@ Sortie de `drift.py` :
 
 ---
 
+## Tester tout le lab en une commande
+
+```bash
+bash test_lab.sh            # teste tout et laisse le lab démarré
+bash test_lab.sh --destroy  # teste tout puis détruit le lab
+```
+
+Le script enchaîne 28 contrôles automatiques et renvoie le code 0 si tout passe :
+
+| Étape | Ce qui est vérifié |
+|---|---|
+| Prérequis | Docker sans sudo, containerlab, module venv de Python |
+| Déploiement | construction de l'image, 7 conteneurs en état running |
+| Routage | voisins OSPF Full sur chaque routeur, eBGP Established avec 2 préfixes dans chaque sens, route vers le LAN distant, ping et chemin exact pc1 → pc2 |
+| Automatisation | environnement Python créé si besoin, `health.py`, `backup.py --baseline` et `drift.py` au vert |
+| Pannes simulées | coût OSPF modifié sur r2 et session BGP coupée sur r4 : `health.py` et `drift.py` doivent les détecter, pc2 doit devenir injoignable |
+| Retour à la normale | pannes annulées, session BGP rétablie, tous les contrôles de nouveau au vert |
+
 ## Dépannage
 
 | Symptôme | Cause probable | Solution |
