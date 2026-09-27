@@ -11,7 +11,7 @@ Il tourne sur un simple PC portable sous WSL2, sans aucun matériel réseau.
 | **Stack** | WSL2 (Ubuntu) · Docker 29 · containerlab 0.79 · FRRouting 10.2.1 · Python 3 · Netmiko 4.8 |
 | **Routage** | OSPF (point-to-point, interfaces passives) dans chaque AS · eBGP filtré (prefix-list + route-map) entre AS65001 et AS65002 |
 | **Automatisation** | `health.py` (état OSPF/BGP) · `backup.py` (sauvegardes + baseline) · `drift.py` (diff vs baseline, rapport Markdown) |
-| **Rapport complet** | [docs/Rapport_Lab_Reseau_FRR.pdf](docs/Rapport_Lab_Reseau_FRR.pdf) : 28 pages, accessible aux non-spécialistes |
+
 
 ## Topologie
 
