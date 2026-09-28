@@ -1,14 +1,14 @@
 """Interface en ligne de commande : `python -m netcheck <sous-commande> ...`.
 
-Phase 1 : seules `snapshot` et `list` sont actives. `diff`, `check` et `guard` seront ajoutées
-aux phases suivantes.
+Phase 2 : `snapshot`, `list` et `diff` sont actives. `check` et `guard` seront ajoutées aux
+phases suivantes.
 """
 from __future__ import annotations
 
 import argparse
 import sys
 
-from netcheck import collector, inventory, snapshot
+from netcheck import collector, diff, inventory, report, snapshot
 from netcheck.drivers.frr import FrrDriver
 
 
@@ -34,6 +34,25 @@ def cmd_snapshot(args: argparse.Namespace) -> int:
     return 1 if failed else 0
 
 
+def cmd_diff(args: argparse.Namespace) -> int:
+    try:
+        before = snapshot.load(args.before)
+        after = snapshot.load(args.after)
+    except FileNotFoundError as e:
+        print(f"Erreur : {e}", file=sys.stderr)
+        return 3
+
+    inv = inventory.load()
+    findings = diff.compare(before, after, management_interfaces=set(inv.management_interfaces))
+    verdict_label, code = diff.verdict(findings)
+
+    report.print_terminal(findings, verdict_label)
+    if args.json:
+        report.write_json(findings, verdict_label, args.json)
+        print(f"Constats écrits (JSON) : {args.json}")
+    return code
+
+
 def cmd_list(_args: argparse.Namespace) -> int:
     snaps = snapshot.list_snapshots()
     if not snaps:
@@ -57,6 +76,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_list = sub.add_parser("list", help="liste les snapshots existants")
     p_list.set_defaults(func=cmd_list)
+
+    p_diff = sub.add_parser("diff", help="compare deux snapshots")
+    p_diff.add_argument("before", help="nom du snapshot avant")
+    p_diff.add_argument("after", help="nom du snapshot après")
+    p_diff.add_argument("--json", help="écrire les constats au format JSON dans ce fichier")
+    p_diff.set_defaults(func=cmd_diff)
 
     return p
 
