@@ -1,0 +1,97 @@
+# Lab multi-constructeurs (v2, Phase C, O4) : meme topologie et adressage que lab.clab.yml,
+# mais r5 = Nokia SR Linix au lieu de FRR. r1 a r4 reutilisent configs/ SANS MODIFICATION
+# (C9) ; seul r5 a sa propre config, dans configs-multivendor/r5/.
+# Nom de lab et reseau de management distincts de lab.clab.yml (C10) : les deux labs ne
+# tournent jamais en meme temps, mais leurs noms de conteneurs ne doivent jamais se melanger.
+#
+# Identifiants SR Linux : ceux par defaut de l'image containerlab (admin / NokiaSrl1!),
+# acceptes pour ce lab uniquement (C11) -- jamais ecrits ailleurs que dans l'inventaire et
+# les variables d'environnement NETCHECK_USER / NETCHECK_PASS le moment venu (phase D).
+name: frr-lab-multivendor
+
+mgmt:
+  network: clab-mgmt-multivendor
+  ipv4-subnet: 172.20.21.0/24
+
+topology:
+  nodes:
+    # --- Routeurs AS65001 (inchanges, configs/ existant, C9) ---
+    r1:
+      kind: linux
+      image: frr-ssh:10.2.1
+      mgmt-ipv4: 172.20.21.11
+      binds:
+        - configs/daemons:/etc/frr/daemons
+        - configs/r1/frr.conf:/etc/frr/frr.conf
+      exec:
+        - sysctl -w net.ipv4.ip_forward=1
+        - /usr/sbin/sshd
+    r2:
+      kind: linux
+      image: frr-ssh:10.2.1
+      mgmt-ipv4: 172.20.21.12
+      binds:
+        - configs/daemons:/etc/frr/daemons
+        - configs/r2/frr.conf:/etc/frr/frr.conf
+      exec:
+        - sysctl -w net.ipv4.ip_forward=1
+        - /usr/sbin/sshd
+    r3:
+      kind: linux
+      image: frr-ssh:10.2.1
+      mgmt-ipv4: 172.20.21.13
+      binds:
+        - configs/daemons:/etc/frr/daemons
+        - configs/r3/frr.conf:/etc/frr/frr.conf
+      exec:
+        - sysctl -w net.ipv4.ip_forward=1
+        - /usr/sbin/sshd
+
+    # --- Routeurs AS65002 : r4 = FRR inchange, r5 = Nokia SR Linux (O4) ---
+    r4:
+      kind: linux
+      image: frr-ssh:10.2.1
+      mgmt-ipv4: 172.20.21.14
+      binds:
+        - configs/daemons:/etc/frr/daemons
+        - configs/r4/frr.conf:/etc/frr/frr.conf
+      exec:
+        - sysctl -w net.ipv4.ip_forward=1
+        - /usr/sbin/sshd
+    r5:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux:26.7.2-519
+      mgmt-ipv4: 172.20.21.15
+      startup-config: configs-multivendor/r5/config.cli
+
+    # --- Postes clients ---
+    pc1:
+      kind: linux
+      image: ghcr.io/hellt/network-multitool
+      mgmt-ipv4: 172.20.21.21
+      exec:
+        - ip addr add 192.168.1.10/24 dev eth1
+        - ip route add 10.0.0.0/8 via 192.168.1.1
+        - ip route add 172.16.34.0/30 via 192.168.1.1
+        - ip route add 192.168.2.0/24 via 192.168.1.1
+    pc2:
+      kind: linux
+      image: ghcr.io/hellt/network-multitool
+      mgmt-ipv4: 172.20.21.22
+      exec:
+        - ip addr add 192.168.2.10/24 dev eth1
+        - ip route add 10.0.0.0/8 via 192.168.2.1
+        - ip route add 172.16.34.0/30 via 192.168.2.1
+        - ip route add 192.168.1.0/24 via 192.168.2.1
+
+  links:
+    - endpoints: ["r1:eth1", "r2:eth1"]              # 10.1.12.0/30
+    - endpoints: ["r1:eth2", "r3:eth1"]              # 10.1.13.0/30
+    - endpoints: ["r2:eth2", "r3:eth2"]              # 10.1.23.0/30
+    - endpoints: ["r3:eth3", "r4:eth1"]              # 172.16.34.0/30 (eBGP, inchange)
+    - endpoints: ["r4:eth2", "r5:ethernet-1/1"]      # 10.2.45.0/30 (FRR <-> SR Linux)
+      mtu: 1500                                      # MTU standard Ethernet (O4, decision utilisateur) :
+      # aligne les deux cotes sans depender du plafond du chassis SR Linux (9398 en ip-mtu),
+      # au lieu de forcer du jumbo pres de sa limite haute.
+    - endpoints: ["r1:eth3", "pc1:eth1"]             # 192.168.1.0/24
+    - endpoints: ["r5:ethernet-1/2", "pc2:eth1"]     # 192.168.2.0/24
