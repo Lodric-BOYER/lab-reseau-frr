@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2015
+# Justification du disable ci-dessus : ok()/ko() (définis plus bas) ne font qu'un echo et un
+# incrément d'entier, ils ne peuvent pas échouer. Le motif "cond && ok ... || ko ..." utilisé
+# partout dans ce fichier est donc sûr, même si ce n'est pas un vrai if/then/else.
 # Test de bout en bout du lab : prérequis, déploiement, routage, automatisation, détection de pannes.
 #   bash test_lab.sh            -> teste tout, laisse le lab démarré à la fin
 #   bash test_lab.sh --destroy  -> teste tout puis détruit le lab

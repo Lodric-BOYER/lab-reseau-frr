@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2015
+# Justification du disable ci-dessus : ok()/ko() (définis plus bas) ne font qu'un echo et un
+# incrément d'entier, ils ne peuvent pas échouer. Le motif "cond && ok ... || ko ..." utilisé
+# partout dans ce fichier est donc sûr, même si ce n'est pas un vrai if/then/else.
 # Scénarios d'intégration netcheck (S1 à S5, §6 du cahier des charges) sur le lab déployé.
 #   bash tests/integration.sh
 # Code retour : 0 si tous les scénarios passent, 1 sinon. Le lab est laissé démarré et dans

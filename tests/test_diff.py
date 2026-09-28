@@ -123,7 +123,9 @@ def test_route_next_hop_changed_is_attention():
     before = state(routes=[route("192.168.2.0/24", nexthop_ip="10.1.13.2", nexthop_if="eth2")])
     after = state(routes=[route("192.168.2.0/24", nexthop_ip="10.1.12.2", nexthop_if="eth1")])
     findings = diff.compare({"r1": before}, {"r1": after})
-    assert len(findings) == 1 and findings[0].severity == Severity.ATTENTION and findings[0].category == "next_hop"
+    assert len(findings) == 1
+    assert findings[0].severity == Severity.ATTENTION
+    assert findings[0].category == "next_hop"
 
 
 def test_route_metric_changed_is_attention():
@@ -173,7 +175,10 @@ def test_config_diff_is_info():
     ([Finding(Severity.INFO, "route", "r1", "x")], ("OK", 0)),
     ([Finding(Severity.ATTENTION, "metric", "r1", "x")], ("ATTENTION", 1)),
     ([Finding(Severity.CRITIQUE, "route", "r1", "x")], ("ÉCHEC", 2)),
-    ([Finding(Severity.INFO, "route", "r1", "x"), Finding(Severity.CRITIQUE, "route", "r1", "y")], ("ÉCHEC", 2)),
+    (
+        [Finding(Severity.INFO, "route", "r1", "x"), Finding(Severity.CRITIQUE, "route", "r1", "y")],
+        ("ÉCHEC", 2),
+    ),
 ])
 def test_verdict(findings, expected):
     assert diff.verdict(findings) == expected

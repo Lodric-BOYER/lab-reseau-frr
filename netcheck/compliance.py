@@ -175,7 +175,7 @@ def _interface_blocks(running_config: str) -> dict[str, str]:
 def _bgp_block(running_config: str) -> tuple[str, str] | None:
     """(AS_local, texte_du_bloc 'router bgp ... exit') ou None si pas de BGP configuré."""
     lines = running_config.splitlines()
-    start = next((i for i, l in enumerate(lines) if l.startswith("router bgp ")), None)
+    start = next((i for i, line in enumerate(lines) if line.startswith("router bgp ")), None)
     if start is None:
         return None
     local_as = lines[start].split()[2]

@@ -15,13 +15,13 @@ from dataclasses import dataclass
 from enum import IntEnum
 from pathlib import Path
 
+from netcheck import management
+from netcheck.model import DeviceState, Route
+
 AUTOMATION_DIR = Path(__file__).resolve().parent.parent / "automation"
 if str(AUTOMATION_DIR) not in sys.path:
     sys.path.insert(0, str(AUTOMATION_DIR))
 from labtools import clean_config  # noqa: E402  (réutilisé tel quel, cohérent avec drift.py)
-
-from netcheck import management
-from netcheck.model import DeviceState, Route
 
 
 class Severity(IntEnum):

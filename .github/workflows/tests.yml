@@ -1,0 +1,37 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+# Les tests d'integration (test_lab.sh, tests/integration.sh) ne tournent pas ici : ils ont
+# besoin de Docker + containerlab + le lab reellement deploye, absents des runners GitHub
+# heberges, et ce n'est pas dans le perimetre de ce projet de les conteneuriser pour la CI.
+# Seuls les tests unitaires tournent (netcheck/tests/) : ils n'utilisent que des fixtures et
+# des mocks, aucun appel reseau reel, donc aucune dependance au lab.
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev]"
+      - run: pytest tests/
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - name: ruff check
+        run: ruff check netcheck/ tests/
+      - name: shellcheck (preinstalle sur ubuntu-latest)
+        run: shellcheck test_lab.sh tests/*.sh

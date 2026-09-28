@@ -90,7 +90,9 @@ def test_compliance_html_never_uses_innerhtml():
 
 
 def test_compliance_html_is_self_contained_no_external_resources():
-    rule = Rule(id="r", description="d", severity="haute", applies_to="all", kind="bgp_neighbor_inbound_policy")
+    rule = Rule(
+        id="r", description="d", severity="haute", applies_to="all", kind="bgp_neighbor_inbound_policy",
+    )
     violations = [Violation(rule=rule, device="r3", detail="voisin eBGP 172.16.34.2 sans politique")]
     html = report.render_compliance_html(violations, compliant=False, rules_path="rules/default.yml")
     assert "http://" not in html

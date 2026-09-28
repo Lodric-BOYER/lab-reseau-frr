@@ -63,7 +63,9 @@ def test_default_rules_file_loads_and_is_non_empty():
 
 
 def test_missing_required_field_is_rejected(tmp_path):
-    path = _write(tmp_path, "rules:\n  - id: x\n    description: y\n    severity: haute\n    kind: line_present\n")
+    path = _write(
+        tmp_path, "rules:\n  - id: x\n    description: y\n    severity: haute\n    kind: line_present\n",
+    )
     with pytest.raises(ValueError, match="applies_to"):
         load_rules(path)
 
@@ -184,7 +186,8 @@ def test_ospf_passive_violation_when_removed():
     r1_config = (FIXTURES / "r1" / "running_config.txt").read_text(encoding="utf-8")
     # Retire le "ip ospf passive" du bloc LAN-pc1 (eth3) précisément.
     broken = r1_config.replace(
-        "interface eth3\n description LAN-pc1\n ip address 192.168.1.1/24\n ip ospf area 0\n ip ospf passive\nexit",
+        "interface eth3\n description LAN-pc1\n ip address 192.168.1.1/24\n ip ospf area 0\n"
+        " ip ospf passive\nexit",
         "interface eth3\n description LAN-pc1\n ip address 192.168.1.1/24\n ip ospf area 0\nexit",
     )
     assert broken != r1_config  # la substitution a bien eu lieu, sinon le test ne teste rien

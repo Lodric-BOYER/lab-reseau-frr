@@ -187,9 +187,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_check.set_defaults(func=cmd_check)
 
     p_guard = sub.add_parser("guard", help="encadre une intervention (snapshot avant/après + diff)")
-    p_guard.add_argument("--change", required=True, help="script exécuté par guard (lui seul modifie, pas netcheck)")
-    p_guard.add_argument("--wait", type=int, default=30, help="délai maximum de convergence, en secondes (défaut : 30)")
-    p_guard.add_argument("--yes", action="store_true", help="ne pas demander de confirmation avant d'exécuter le script")
+    p_guard.add_argument(
+        "--change", required=True,
+        help="script exécuté par guard (lui seul modifie, pas netcheck)",
+    )
+    p_guard.add_argument(
+        "--wait", type=int, default=30,
+        help="délai maximum de convergence, en secondes (défaut : 30)",
+    )
+    p_guard.add_argument(
+        "--yes", action="store_true",
+        help="ne pas demander de confirmation avant d'exécuter le script",
+    )
     p_guard.add_argument("--json", help="écrire les constats au format JSON dans ce fichier")
     p_guard.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
     p_guard.set_defaults(func=cmd_guard)

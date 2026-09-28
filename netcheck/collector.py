@@ -12,15 +12,15 @@ from pathlib import Path
 
 from netmiko import ConnectHandler
 
+from netcheck.drivers.base import Driver
+from netcheck.model import DeviceState
+
 # automation/ n'est pas un paquet Python (pas de __init__.py) : on réutilise run_parallel tel
 # quel en ajoutant son dossier à sys.path, sans dupliquer sa logique (C2 : rien n'y est modifié).
 AUTOMATION_DIR = Path(__file__).resolve().parent.parent / "automation"
 if str(AUTOMATION_DIR) not in sys.path:
     sys.path.insert(0, str(AUTOMATION_DIR))
 from labtools import run_parallel  # noqa: E402  (import après modification de sys.path)
-
-from netcheck.drivers.base import Driver
-from netcheck.model import DeviceState
 
 # Commandes logiques autorisées (tableau §4 du cahier des charges). Un driver ne peut pas en
 # demander d'autres : toute commande de configuration est refusée avant même la connexion SSH.

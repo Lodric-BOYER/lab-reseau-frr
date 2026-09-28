@@ -90,7 +90,9 @@ def render_html(findings: list[Finding], verdict_label: str, before_name: str, a
     )
 
 
-def write_html(findings: list[Finding], verdict_label: str, before_name: str, after_name: str, path: str) -> None:
+def write_html(
+    findings: list[Finding], verdict_label: str, before_name: str, after_name: str, path: str,
+) -> None:
     Path(path).write_text(render_html(findings, verdict_label, before_name, after_name), encoding="utf-8")
 
 
@@ -98,7 +100,9 @@ def write_html(findings: list[Finding], verdict_label: str, before_name: str, af
 # Conformité (netcheck check) : mêmes principes, vocabulaire de gravité différent (§5.4)
 # ------------------------------------------------------------------------------------------
 
-def print_compliance_terminal(violations: list[Violation], compliant: bool, console: Console | None = None) -> None:
+def print_compliance_terminal(
+    violations: list[Violation], compliant: bool, console: Console | None = None,
+) -> None:
     console = console or Console()
 
     if violations:
