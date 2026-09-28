@@ -109,6 +109,25 @@ grep -q "ebgp-politique-entrante" "$JSON_DIR/c2.json" && ok "règle 'ebgp-politi
 grep -q '"device": "r3"' "$JSON_DIR/c2.json" && ok "non-conformité localisée sur r3" \
   || ko "équipement r3 absent du rapport"
 
+# ---------------------------------------------------------------- Guard : encadre S2 via --change
+title "Guard : encadre S2 (coût OSPF) via --change --yes"
+cat > "$JSON_DIR/guard_change.sh" <<'EOF'
+#!/bin/bash
+docker exec clab-frr-lab-r1 vtysh -c 'conf t' -c 'interface eth2' -c 'ip ospf cost 100'
+EOF
+out=$($NC guard --change "$JSON_DIR/guard_change.sh" --yes --wait 30 --json "$JSON_DIR/guard.json" 2>&1); code=$?
+docker exec "$LAB-r1" vtysh -c "conf t" -c "interface eth2" -c "no ip ospf cost 100" >/dev/null
+wait_healthy && ok "retour à la normale (health.py)" || ko "health.py toujours KO après restauration"
+
+[[ "$code" == "1" ]] && ok "code retour = 1 (ATTENTION)" || { ko "code retour = $code (attendu 1)"; echo "$out"; }
+echo "$out" | grep -q "Verdict : ATTENTION" && ok "verdict = ATTENTION" || { ko "verdict inattendu"; echo "$out"; }
+# Si --yes n'avait pas sauté la confirmation, input() aurait échoué (EOFError) ou bloqué : le
+# fait d'obtenir un verdict complet et correct prouve que --yes a fonctionné.
+grep -q '"category": "next_hop"' "$JSON_DIR/guard.json" && ok "constat next_hop présent (effet réel de --change)" \
+  || { ko "constat manquant"; cat "$JSON_DIR/guard.json"; }
+$NC list 2>/dev/null | grep -q "guard_" && ok "snapshots avant/après horodatés créés par guard" \
+  || ko "aucun snapshot 'guard_*' trouvé"
+
 # ---------------------------------------------------------------- Bilan
 echo
 echo "=== Bilan : $PASS contrôles réussis, $FAIL échec(s) ==="

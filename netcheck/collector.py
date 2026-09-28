@@ -7,6 +7,7 @@ traduit une commande logique en commande CLI réelle (Driver.translate) et qui l
 from __future__ import annotations
 
 import sys
+import time
 from pathlib import Path
 
 from netmiko import ConnectHandler
@@ -74,3 +75,34 @@ def collect_all(routers: dict, driver: Driver, workers: int = 5) -> dict:
     Un équipement injoignable ne bloque pas les autres (réutilise run_parallel de labtools).
     """
     return run_parallel(lambda r: collect(r, driver), routers, workers=workers)
+
+
+def _converged(results: dict, routers: dict) -> bool:
+    """Vrai si chaque équipement a ses voisins OSPF Full et ses sessions BGP Established
+    attendus (mêmes critères que health.py, portés sur le modèle normalisé de netcheck)."""
+    for name, expected in routers.items():
+        ok, state = results.get(name, (False, None))
+        if not ok:
+            return False
+        full = sum(1 for n in state.ospf_neighbors if n.is_full)
+        if full < expected.get("ospf_neighbors", 0):
+            return False
+        for ip, min_pfx in (expected.get("bgp_peers") or {}).items():
+            peer = next((p for p in state.bgp_peers if p.neighbor == ip), None)
+            if peer is None or peer.state != "Established" or peer.pfx_received < min_pfx:
+                return False
+    return True
+
+
+def wait_for_convergence(routers: dict, driver: Driver, timeout: float, interval: float = 2.0) -> bool:
+    """Interroge l'état OSPF/BGP en boucle jusqu'à convergence ou expiration de `timeout`
+    (jamais une pause fixe) -- utilisé par `guard --wait` (§5.5). Renvoie True si convergé
+    avant l'expiration du délai, False sinon (le delai n'est pas une erreur en soi : le
+    diff qui suit dira ce qui a réellement changé)."""
+    deadline = time.monotonic() + timeout
+    while True:
+        if _converged(collect_all(routers, driver), routers):
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(interval)

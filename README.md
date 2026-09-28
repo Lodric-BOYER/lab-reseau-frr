@@ -12,7 +12,6 @@ Il tourne sur un simple PC portable sous WSL2, sans aucun matériel réseau.
 | **Routage** | OSPF (point-to-point, interfaces passives) dans chaque AS · eBGP filtré (prefix-list + route-map) entre AS65001 et AS65002 |
 | **Automatisation** | `health.py` (état OSPF/BGP) · `backup.py` (sauvegardes + baseline) · `drift.py` (diff vs baseline, rapport Markdown) |
 
-
 ## Topologie
 
 ```
@@ -52,7 +51,10 @@ lab.clab.yml            topologie containerlab
 docker/Dockerfile       image FRR 10.2.1 + SSH (compte netops)
 configs/daemons         démons FRR activés
 configs/rX/frr.conf     configuration de chaque routeur (montée dans le conteneur)
-automation/             phase 2 : scripts Netmiko
+automation/             phase 2 : scripts Netmiko (health, backup, drift)
+netcheck/               validation de changement et conformité (snapshot/diff/check/guard)
+tests/                  fixtures et scénarios de bout en bout de netcheck (integration.sh)
+test_lab.sh             scénario de bout en bout du lab (phases 1 et 2), 28 contrôles
 ```
 
 ---
@@ -187,6 +189,160 @@ Sortie de `drift.py` :
 
 ---
 
+## netcheck : validation de changement et conformité
+
+Outil en ligne de commande (`netcheck/`) qui répond à deux questions : **« mon intervention
+a-t-elle cassé quelque chose ? »** (snapshot avant/après + diff) et **« mes équipements
+respectent-ils les règles de conception ? »** (audit de conformité contre des règles YAML).
+Développé et testé sur ce lab, mais pensé pour s'étendre à d'autres constructeurs : voir
+[netcheck/README.md](netcheck/README.md) pour l'architecture et le détail de sécurité.
+
+> ⚠️ **N'utilisez netcheck sur un réseau réel qu'avec une autorisation écrite.** Même
+> strictement en lecture seule (liste blanche de commandes, jamais de configuration), une
+> découverte non autorisée d'un réseau qui ne vous appartient pas peut être illégale.
+
+### Installation
+
+```bash
+cd ~/lab-reseau-frr/netcheck
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt   # ajoute pytest ; requirements.txt suffit en usage normal
+```
+
+Toutes les commandes s'utilisent avec `python -m netcheck`, lancées **depuis la racine du
+dépôt** (comme les scripts de `automation/`, uniquement joignable depuis WSL).
+
+### Les 5 commandes
+
+#### `snapshot <nom> [-d r1 r3] [--force]`
+
+Interroge tous les équipements en parallèle, écrit `snapshots/<nom>/<équipement>.json`.
+
+```
+$ python -m netcheck snapshot avant
+Snapshot 'avant' écrit dans snapshots/avant
+  r1       OK
+  r2       OK
+  r3       OK
+  r4       OK
+  r5       OK
+```
+
+#### `list`
+
+```
+$ python -m netcheck list
+Nom                  Horodatage             Équipements
+avant                2026-09-28T16:49:25+00:00 5
+```
+
+#### `diff <avant> <après> [--json f.json] [--html f.html]`
+
+Compare deux snapshots, classe les constats par gravité (CRITIQUE / ATTENTION / INFO).
+Exemple réel, après un `ip ospf cost 100` sur l'interface de r1 vers r3 :
+
+```
+$ python -m netcheck diff avant apres
+┏━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Gravité   ┃ Équipement ┃ Catégorie ┃ Message                                 ┃
+┡━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ ATTENTION │ r1         │ next_hop  │ next-hop modifié pour 10.1.23.0/30 :    │
+│           │            │           │ [('10.1.12.2', 'eth1'), ('10.1.13.2',   │
+│           │            │           │ 'eth2')] -> [('10.1.12.2', 'eth1')]     │
+│ ATTENTION │ r1         │ metric    │ métrique modifiée pour 10.1.255.3/32 :  │
+│           │            │           │ 10 -> 20                                │
+│ INFO      │ r1         │ config    │ --- avant                               │
+│           │            │           │ +++ après                               │
+│           │            │           │ @@ -14,4 +14,5 @@                       │
+│           │            │           │   ip address 10.1.13.1/30               │
+│           │            │           │   ip ospf area 0                        │
+│           │            │           │ + ip ospf cost 100                      │
+│           │            │           │   ip ospf network point-to-point        │
+│           │            │           │  exit                                   │
+└───────────┴────────────┴───────────┴─────────────────────────────────────────┘
+Verdict : ATTENTION  (0 critique(s), 8 attention, 1 info)
+```
+
+(sortie réelle tronquée à 3 des 9 constats pour la lisibilité ici — les 6 autres sont des
+`next_hop`/`metric` du même type, sur les préfixes qui empruntent désormais le chemin via r2).
+
+Sans rien changer entre les deux snapshots :
+
+```
+$ python -m netcheck diff avant avant
+Aucun constat.
+Verdict : OK  (0 critique(s), 0 attention, 0 info)
+```
+
+#### `check [--snapshot nom] [--rules f.yml] [--json f.json] [--html f.html]`
+
+Audite les configurations contre `netcheck/rules/default.yml` (8 règles), en direct ou hors
+ligne (`--snapshot`, aucune connexion). Sur le lab dans son état nominal :
+
+```
+$ python -m netcheck check
+Aucune non-conformité.
+Conformité : CONFORME  (0 non-conformité(s))
+```
+
+Après avoir retiré `neighbor 172.16.34.2 route-map RM-EBGP-IN in` sur r3 :
+
+```
+$ python -m netcheck check
+┏━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Gravité ┃ Équipement ┃ Règle                   ┃ Détail                      ┃
+┡━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ HAUTE   │ r3         │ ebgp-politique-entrante │ voisin eBGP 172.16.34.2     │
+│         │            │                         │ sans route-map/prefix-list  │
+│         │            │                         │ en entrée                   │
+└─────────┴────────────┴─────────────────────────┴─────────────────────────────┘
+Conformité : NON CONFORME  (1 non-conformité(s))
+```
+
+#### `guard --change script.sh [--wait 30] [--yes]`
+
+Encadre automatiquement une intervention : snapshot avant, exécution de `script.sh` (c'est
+**lui** qui modifie, jamais netcheck), attente de convergence (sondée en boucle, jamais une
+pause fixe — délai maximum `--wait`), snapshot après, puis diff. `--yes` saute la confirmation
+interactive (utile en script ou en CI). Les deux snapshots sont horodatés automatiquement.
+
+### Codes retour
+
+| Commande | 0 | 1 | 2 | 3 |
+|---|---|---|---|---|
+| `diff` / `guard` | OK | ATTENTION | ÉCHEC (≥ 1 CRITIQUE) | erreur d'utilisation / snapshot manquant |
+| `check` | conforme | non-conformité(s) moyenne/basse | non-conformité critique/haute | règles ou équipement introuvable |
+| `snapshot` | tout OK | au moins un équipement injoignable | — | snapshot existant sans `--force` |
+
+### Écrire une règle de conformité
+
+Une règle est une entrée YAML dans `netcheck/rules/default.yml` (ou un fichier passé à
+`--rules`) :
+
+```yaml
+- id: identifiant-court-unique
+  description: "Phrase humaine expliquant la règle."
+  severity: critique | haute | moyenne | basse
+  applies_to: all              # ou une liste explicite : [r3, r4]
+  kind: line_present           # un des 6 types, voir le tableau ci-dessous
+  pattern: "..."               # paramètre propre au kind
+```
+
+| `kind` | Paramètre(s) | Vérifie |
+|---|---|---|
+| `line_present` | `pattern` (regex) | la ligne doit exister dans la running-config |
+| `line_absent` | `pattern` (regex) | la ligne ne doit apparaître nulle part |
+| `bgp_neighbor_inbound_policy` | — | chaque voisin eBGP a une route-map/prefix-list en entrée |
+| `bgp_neighbor_outbound_policy` | — | idem, en sortie |
+| `ospf_passive_on_interfaces` | `pattern` (regex sur la description) | les interfaces concernées sont en `ip ospf passive` |
+| `interface_description_required` | `exclude` (liste, optionnel) | toute interface avec IP, hors loopback, a une description |
+
+Le fichier complet en tête de `netcheck/rules/default.yml` documente le format en détail. Les
+règles sont chargées avec `yaml.safe_load` exclusivement : un fichier de règles malformé ou
+contenant un tag Python (`!!python/...`) est refusé au chargement, jamais exécuté.
+
+---
+
 ## Tester tout le lab en une commande
 
 ```bash
@@ -204,6 +360,9 @@ Le script enchaîne 28 contrôles automatiques et renvoie le code 0 si tout pass
 | Automatisation | environnement Python créé si besoin, `health.py`, `backup.py --baseline` et `drift.py` au vert |
 | Pannes simulées | coût OSPF modifié sur r2 et session BGP coupée sur r4 : `health.py` et `drift.py` doivent les détecter, pc2 doit devenir injoignable |
 | Retour à la normale | pannes annulées, session BGP rétablie, tous les contrôles de nouveau au vert |
+
+`bash tests/integration.sh` fait de même pour netcheck : les scénarios S1 à S5 (diff), C1/C2
+(conformité) et un `guard --change` de bout en bout, 30 contrôles, sur le lab déjà déployé.
 
 ## Dépannage
 
@@ -225,6 +384,6 @@ sudo containerlab destroy -t lab.clab.yml --cleanup
 
 ---
 
-*Validation : lab déployé et testé sur un PC portable Windows (WSL2, Docker 29.8, containerlab 0.79, FRR 10.2.1). Résultats vérifiés : convergence OSPF/BGP, ping et traceroute pc1 → pc2, scripts health/backup/drift en SSH non-root, détection d'une panne BGP et d'une dérive de configuration simulées.*
+*Validation : lab déployé et testé sur un PC portable Windows (WSL2, Docker 29.8, containerlab 0.79, FRR 10.2.1). Résultats vérifiés : convergence OSPF/BGP, ping et traceroute pc1 → pc2, scripts health/backup/drift en SSH non-root, détection d'une panne BGP et d'une dérive de configuration simulées. netcheck : `pytest` au vert, `tests/integration.sh` (S1-S5, C1/C2, `guard`) 30/30 en conditions réelles sur ce même lab.*
 
 *Réalisé avec l'assistance de Claude (Anthropic) pour la conception, le code et la documentation. Le déploiement, les tests et la validation ont été faits sur ma machine. Le détail de la démarche est dans le rapport, section 2.4.*

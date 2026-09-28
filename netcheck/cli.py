@@ -1,11 +1,13 @@
 """Interface en ligne de commande : `python -m netcheck <sous-commande> ...`.
 
-Phase 4 : `snapshot`, `list`, `diff` et `check` sont actives. `guard` arrive en phase 5.
+Cinq sous-commandes : snapshot, list, diff, check, guard.
 """
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from netcheck import collector, compliance, diff, inventory, report, snapshot
@@ -95,6 +97,57 @@ def cmd_check(args: argparse.Namespace) -> int:
     return code
 
 
+def cmd_guard(args: argparse.Namespace) -> int:
+    """Encadre une intervention : c'est le script --change qui modifie, jamais netcheck (§5.5)."""
+    change_script = Path(args.change)
+    if not change_script.is_file():
+        print(f"Erreur : script introuvable : {change_script}", file=sys.stderr)
+        return 3
+
+    print(f"Ce script va être exécuté : {change_script}")
+    print("--- contenu ---")
+    print(change_script.read_text(encoding="utf-8").rstrip())
+    print("---------------")
+    if not args.yes:
+        reply = input("Confirmer l'exécution ? [o/N] ").strip().lower()
+        if reply not in ("o", "oui", "y", "yes"):
+            print("Annulé.")
+            return 3
+
+    inv = inventory.load()
+    driver = FrrDriver()
+    stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    name_before, name_after = f"guard_{stamp}_avant", f"guard_{stamp}_apres"
+
+    print(f"\nSnapshot avant : {name_before}")
+    snapshot.save(name_before, collector.collect_all(inv.routers, driver))
+
+    print(f"Exécution de {change_script}...")
+    result = subprocess.run(["bash", str(change_script)])
+    if result.returncode != 0:
+        print(f"Attention : le script de changement a rendu le code {result.returncode}", file=sys.stderr)
+
+    print(f"Attente de convergence (max {args.wait}s)...")
+    if not collector.wait_for_convergence(inv.routers, driver, timeout=args.wait):
+        print("Attention : convergence non confirmée dans le délai imparti", file=sys.stderr)
+
+    print(f"Snapshot après : {name_after}")
+    snapshot.save(name_after, collector.collect_all(inv.routers, driver))
+
+    before, after = snapshot.load(name_before), snapshot.load(name_after)
+    findings = diff.compare(before, after, management_interfaces=set(inv.management_interfaces))
+    verdict_label, code = diff.verdict(findings)
+
+    report.print_terminal(findings, verdict_label)
+    if args.json:
+        report.write_json(findings, verdict_label, args.json)
+        print(f"Constats écrits (JSON) : {args.json}")
+    if args.html:
+        report.write_html(findings, verdict_label, name_before, name_after, args.html)
+        print(f"Rapport HTML écrit : {args.html}")
+    return code
+
+
 def cmd_list(_args: argparse.Namespace) -> int:
     snaps = snapshot.list_snapshots()
     if not snaps:
@@ -132,6 +185,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_check.add_argument("--json", help="écrire les non-conformités au format JSON dans ce fichier")
     p_check.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
     p_check.set_defaults(func=cmd_check)
+
+    p_guard = sub.add_parser("guard", help="encadre une intervention (snapshot avant/après + diff)")
+    p_guard.add_argument("--change", required=True, help="script exécuté par guard (lui seul modifie, pas netcheck)")
+    p_guard.add_argument("--wait", type=int, default=30, help="délai maximum de convergence, en secondes (défaut : 30)")
+    p_guard.add_argument("--yes", action="store_true", help="ne pas demander de confirmation avant d'exécuter le script")
+    p_guard.add_argument("--json", help="écrire les constats au format JSON dans ce fichier")
+    p_guard.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
+    p_guard.set_defaults(func=cmd_guard)
 
     return p
 
