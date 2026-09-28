@@ -5,6 +5,7 @@ de config, noms d'interface...), jamais de confiance. Une description d'interfac
 du type '<script>alert(1)</script>' doit ressortir échappée, jamais exécutable.
 """
 from netcheck import report
+from netcheck.compliance import Rule, Violation
 from netcheck.diff import Finding, Severity
 
 
@@ -66,3 +67,38 @@ def test_html_report_empty_findings_still_renders():
     html = report.render_html([], "OK", "avant", "apres")
     assert "Verdict : OK" in html
     assert "Aucun constat." in html
+
+
+# -- Rapport de conformité (netcheck check) : même rigueur de sécurité que le rapport diff --
+
+def test_compliance_html_escapes_xss_payload():
+    payload = "<script>alert(1)</script>"
+    rule = Rule(id="r", description=payload, severity="critique", applies_to="all", kind="line_present")
+    violations = [Violation(rule=rule, device="r1", detail=f"ligne interdite : {payload}")]
+
+    html = report.render_compliance_html(violations, compliant=False, rules_path="rules/default.yml")
+
+    assert payload not in html
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+
+
+def test_compliance_html_never_uses_innerhtml():
+    rule = Rule(id="r", description="d", severity="basse", applies_to="all", kind="line_present")
+    violations = [Violation(rule=rule, device="r1", detail="x")]
+    html = report.render_compliance_html(violations, compliant=False, rules_path="rules/default.yml")
+    assert "innerHTML" not in html
+
+
+def test_compliance_html_is_self_contained_no_external_resources():
+    rule = Rule(id="r", description="d", severity="haute", applies_to="all", kind="bgp_neighbor_inbound_policy")
+    violations = [Violation(rule=rule, device="r3", detail="voisin eBGP 172.16.34.2 sans politique")]
+    html = report.render_compliance_html(violations, compliant=False, rules_path="rules/default.yml")
+    assert "http://" not in html
+    assert "https://" not in html
+    assert "src=" not in html
+
+
+def test_compliance_html_conforme_still_renders():
+    html = report.render_compliance_html([], compliant=True, rules_path="rules/default.yml")
+    assert "CONFORME" in html
+    assert "Aucune non-conformité." in html

@@ -1,15 +1,17 @@
 """Interface en ligne de commande : `python -m netcheck <sous-commande> ...`.
 
-Phase 2 : `snapshot`, `list` et `diff` sont actives. `check` et `guard` seront ajoutées aux
-phases suivantes.
+Phase 4 : `snapshot`, `list`, `diff` et `check` sont actives. `guard` arrive en phase 5.
 """
 from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
-from netcheck import collector, diff, inventory, report, snapshot
+from netcheck import collector, compliance, diff, inventory, report, snapshot
 from netcheck.drivers.frr import FrrDriver
+
+DEFAULT_RULES_PATH = Path(__file__).resolve().parent / "rules" / "default.yml"
 
 
 def cmd_snapshot(args: argparse.Namespace) -> int:
@@ -56,6 +58,43 @@ def cmd_diff(args: argparse.Namespace) -> int:
     return code
 
 
+def cmd_check(args: argparse.Namespace) -> int:
+    rules_path = Path(args.rules) if args.rules else DEFAULT_RULES_PATH
+    try:
+        rules = compliance.load_rules(rules_path)
+    except ValueError as e:
+        print(f"Erreur : {e}", file=sys.stderr)
+        return 3
+
+    inv = inventory.load()
+    if args.snapshot:
+        try:
+            devices = snapshot.load(args.snapshot)
+        except FileNotFoundError as e:
+            print(f"Erreur : {e}", file=sys.stderr)
+            return 3
+    else:
+        results = collector.collect_all(inv.routers, FrrDriver())
+        devices = {}
+        for name, (ok, value) in results.items():
+            if ok:
+                devices[name] = value
+            else:
+                print(f"  {name:<8} INJOIGNABLE : {value}", file=sys.stderr)
+
+    violations = compliance.evaluate(rules, devices, management_interfaces=set(inv.management_interfaces))
+    compliant, code = compliance.verdict(violations)
+
+    report.print_compliance_terminal(violations, compliant)
+    if args.json:
+        report.write_compliance_json(violations, compliant, args.json)
+        print(f"Constats écrits (JSON) : {args.json}")
+    if args.html:
+        report.write_compliance_html(violations, compliant, rules_path, args.html)
+        print(f"Rapport HTML écrit : {args.html}")
+    return code
+
+
 def cmd_list(_args: argparse.Namespace) -> int:
     snaps = snapshot.list_snapshots()
     if not snaps:
@@ -86,6 +125,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_diff.add_argument("--json", help="écrire les constats au format JSON dans ce fichier")
     p_diff.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
     p_diff.set_defaults(func=cmd_diff)
+
+    p_check = sub.add_parser("check", help="audite la conformité des configurations")
+    p_check.add_argument("--snapshot", help="auditer un snapshot existant (hors ligne, sans connexion)")
+    p_check.add_argument("--rules", help=f"fichier de règles YAML (défaut : {DEFAULT_RULES_PATH.name})")
+    p_check.add_argument("--json", help="écrire les non-conformités au format JSON dans ce fichier")
+    p_check.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
+    p_check.set_defaults(func=cmd_check)
 
     return p
 

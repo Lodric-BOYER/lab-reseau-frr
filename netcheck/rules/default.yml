@@ -1,0 +1,74 @@
+# rules/default.yml — règles de conformité par défaut (§5.4 du cahier des charges).
+#
+# Format d'une règle :
+#   - id: identifiant-court-unique
+#     description: "phrase humaine expliquant la règle"
+#     severity: critique | haute | moyenne | basse
+#     applies_to: all                      # ou une liste explicite : [r3, r4]
+#     kind: <un des 6 types ci-dessous>
+#     ...                                  # paramètres propres au kind
+#
+# Types (kind) disponibles et leurs paramètres :
+#   line_present                     pattern: <regex recherchée dans la running-config>
+#   line_absent                      pattern: <regex qui ne doit apparaître nulle part>
+#   bgp_neighbor_inbound_policy      (aucun paramètre) : chaque voisin eBGP doit avoir une
+#                                    route-map ou une prefix-list appliquée en entrée ("in")
+#   bgp_neighbor_outbound_policy     idem, appliquée en sortie ("out")
+#   ospf_passive_on_interfaces       pattern: <regex sur la description de l'interface> :
+#                                    les interfaces dont la description correspond doivent
+#                                    être en "ip ospf passive"
+#   interface_description_required  exclude: [liste optionnelle d'interfaces à ignorer, en
+#                                    plus des interfaces de management déjà filtrées] :
+#                                    toute interface avec une adresse IP, hors loopback,
+#                                    doit avoir une description
+#
+# Chaque règle est évaluée sur chaque équipement listé dans applies_to (ou tous les
+# équipements joignables, si applies_to vaut "all"). Toujours chargé avec yaml.safe_load :
+# aucun tag Python (!!python/...) n'est accepté, un tel fichier est refusé au chargement.
+
+rules:
+  - id: syslog-actif
+    description: "Le journal système (syslog) doit être actif sur tous les routeurs."
+    severity: basse
+    applies_to: all
+    kind: line_present
+    pattern: "^log syslog informational$"
+
+  - id: pas-de-mot-de-passe-en-clair
+    description: "Aucun mot de passe local en clair dans la configuration (password / enable password)."
+    severity: critique
+    applies_to: all
+    kind: line_absent
+    pattern: "^\\s*(enable )?password\\s"
+
+  - id: ebgp-politique-entrante
+    description: "Chaque voisin eBGP doit avoir une route-map ou une prefix-list appliquée en entrée."
+    severity: haute
+    applies_to: [r3, r4]
+    kind: bgp_neighbor_inbound_policy
+
+  - id: ebgp-politique-sortante
+    description: "Chaque voisin eBGP doit avoir une route-map ou une prefix-list appliquée en sortie."
+    severity: haute
+    applies_to: [r3, r4]
+    kind: bgp_neighbor_outbound_policy
+
+  - id: lan-en-ospf-passif
+    description: "Les interfaces LAN (description contenant 'LAN') doivent être en ip ospf passive."
+    severity: moyenne
+    applies_to: all
+    kind: ospf_passive_on_interfaces
+    pattern: "LAN"
+
+  # --- Règles à ajouter par Lodric (kind: interface_description_required) -------------------
+  # _check_interface_description_required (netcheck/compliance.py) est à implémenter avant
+  # que ces règles puissent être évaluées. Format attendu, par exemple :
+  #
+  #   - id: description-obligatoire-wan
+  #     description: "..."
+  #     severity: ...
+  #     applies_to: all
+  #     kind: interface_description_required
+  #     exclude: []   # optionnel : interfaces à ignorer en plus du management
+  #
+  # Trois règles de ce kind à écrire ici.

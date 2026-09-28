@@ -87,6 +87,28 @@ vt r3 "clear bgp ipv4 * soft out"
 wait_healthy && ok "retour à la normale (health.py)" || ko "health.py toujours KO après restauration"
 run_diff s5 2 ÉCHEC 'préfixe BGP perdu : 192.168.1.0/24'
 
+# ---------------------------------------------------------------- C1 : conformité nominale
+title "C1 : aucun changement -> conforme"
+out=$($NC check --json "$JSON_DIR/c1.json" 2>&1); code=$?
+[[ "$code" == "0" ]] && ok "code retour = 0" || { ko "code retour = $code (attendu 0)"; echo "$out"; }
+echo "$out" | grep -q "Conformité : CONFORME" && ok "conformité = CONFORME" \
+  || { ko "conformité inattendue"; echo "$out"; }
+
+# ---------------------------------------------------------------- C2 : politique BGP retirée
+title "C2 : suppression de route-map RM-EBGP-IN in sur r3 -> non conforme"
+vtconf r3 "conf t" "router bgp 65001" "no neighbor 172.16.34.2 route-map RM-EBGP-IN in"
+out=$($NC check --json "$JSON_DIR/c2.json" 2>&1); code=$?
+vtconf r3 "conf t" "router bgp 65001" "neighbor 172.16.34.2 route-map RM-EBGP-IN in"
+wait_healthy && ok "retour à la normale (health.py)" || ko "health.py toujours KO après restauration"
+
+[[ "$code" == "2" ]] && ok "code retour = 2" || { ko "code retour = $code (attendu 2)"; echo "$out"; }
+echo "$out" | grep -q "Conformité : NON CONFORME" && ok "conformité = NON CONFORME" \
+  || { ko "conformité inattendue"; echo "$out"; }
+grep -q "ebgp-politique-entrante" "$JSON_DIR/c2.json" && ok "règle 'ebgp-politique-entrante' signalée" \
+  || { ko "règle attendue absente du rapport"; cat "$JSON_DIR/c2.json"; }
+grep -q '"device": "r3"' "$JSON_DIR/c2.json" && ok "non-conformité localisée sur r3" \
+  || ko "équipement r3 absent du rapport"
+
 # ---------------------------------------------------------------- Bilan
 echo
 echo "=== Bilan : $PASS contrôles réussis, $FAIL échec(s) ==="

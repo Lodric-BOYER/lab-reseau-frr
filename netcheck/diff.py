@@ -10,9 +10,8 @@ Douze types de constats, exactement ceux du tableau du cahier des charges :
 from __future__ import annotations
 
 import difflib
-import ipaddress
 import sys
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from enum import IntEnum
 from pathlib import Path
 
@@ -21,6 +20,7 @@ if str(AUTOMATION_DIR) not in sys.path:
     sys.path.insert(0, str(AUTOMATION_DIR))
 from labtools import clean_config  # noqa: E402  (réutilisé tel quel, cohérent avec drift.py)
 
+from netcheck import management
 from netcheck.model import DeviceState, Route
 
 
@@ -36,40 +36,6 @@ class Finding:
     category: str
     device: str
     message: str
-
-
-# ------------------------------------------------------------------------------------------
-# Filtrage des interfaces de management (validé avec l'utilisateur : ajustement du plan)
-# ------------------------------------------------------------------------------------------
-
-def _management_subnets(state: DeviceState, mgmt_names: set[str]) -> set[str]:
-    subnets = set()
-    for iface in state.interfaces:
-        if iface.name in mgmt_names:
-            for addr in iface.addresses:
-                try:
-                    subnets.add(str(ipaddress.ip_interface(addr).network))
-                except ValueError:
-                    continue
-    return subnets
-
-
-def _filter_management(state: DeviceState, mgmt_names: set[str]) -> DeviceState:
-    """Retire les interfaces de management, leurs routes et leurs sous-réseaux connectés."""
-    if not mgmt_names:
-        return state
-    subnets = _management_subnets(state, mgmt_names)
-
-    def route_is_management(r: Route) -> bool:
-        if r.prefix in subnets:
-            return True
-        return bool(r.nexthops) and all(nh.interface in mgmt_names for nh in r.nexthops)
-
-    return replace(
-        state,
-        interfaces=[i for i in state.interfaces if i.name not in mgmt_names],
-        routes=[r for r in state.routes if not route_is_management(r)],
-    )
 
 
 # ------------------------------------------------------------------------------------------
@@ -97,7 +63,7 @@ def compare(
                                      f"équipement injoignable : {a.error}"))
             continue
 
-        b, a = _filter_management(b, mgmt), _filter_management(a, mgmt)
+        b, a = management.filtered(b, mgmt), management.filtered(a, mgmt)
         findings += _diff_ospf(name, b.ospf_neighbors, a.ospf_neighbors)
         findings += _diff_bgp_peers(name, b.bgp_peers, a.bgp_peers)
         findings += _diff_bgp_prefixes(name, b.bgp_prefixes, a.bgp_prefixes)
