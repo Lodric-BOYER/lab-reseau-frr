@@ -50,6 +50,9 @@ def cmd_diff(args: argparse.Namespace) -> int:
     if args.json:
         report.write_json(findings, verdict_label, args.json)
         print(f"Constats écrits (JSON) : {args.json}")
+    if args.html:
+        report.write_html(findings, verdict_label, args.before, args.after, args.html)
+        print(f"Rapport HTML écrit : {args.html}")
     return code
 
 
@@ -81,6 +84,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_diff.add_argument("before", help="nom du snapshot avant")
     p_diff.add_argument("after", help="nom du snapshot après")
     p_diff.add_argument("--json", help="écrire les constats au format JSON dans ce fichier")
+    p_diff.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
     p_diff.set_defaults(func=cmd_diff)
 
     return p
