@@ -5,6 +5,10 @@ defaults:
   password: netops
   vtysh: vtysh
 
+# Interfaces de management : ignorées par netcheck (diff et conformité), pas de sens fonctionnel
+# pour le routage étudié. Clé lue uniquement par netcheck/, sans effet sur automation/*.py.
+management_interfaces: [eth0]
+
 # ospf_neighbors : nombre de voisins OSPF attendus en état Full
 # bgp_peers      : voisin BGP -> nombre minimal de préfixes reçus attendus
 routers:
