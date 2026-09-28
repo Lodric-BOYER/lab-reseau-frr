@@ -1,0 +1,9 @@
+{
+  "instances": [
+    {
+      "netinst": "default",
+      "name": "main",
+      "version": "ospf-v2"
+    }
+  ]
+}

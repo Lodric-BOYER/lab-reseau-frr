@@ -1,0 +1,527 @@
+{
+  "ipv4-unicast": {
+    "route": [
+      {
+        "ipv4-prefix": "10.1.0.0/16",
+        "id": 0,
+        "route-type": "ospfv2",
+        "route-owner": "ospf_mgr",
+        "origin-network-instance": "default",
+        "leakable": false,
+        "leaked": false,
+        "metric": 20,
+        "preference": 150,
+        "active": true,
+        "route-limit-exceeded": false,
+        "last-app-update": "2026-09-28T20:52:42.661Z (7 minutes ago)",
+        "next-hop-group": "2325983324",
+        "next-hop-group-network-instance": "default",
+        "resilient-hash": false,
+        "dynamic-load-balancing": false,
+        "internal-tags": [
+          "ospf-route-type = 0x2"
+        ],
+        "fib-programming": {
+          "suppressed": false,
+          "last-successful-operation-type": "add",
+          "last-successful-operation-timestamp": "2026-09-28T20:52:42.662Z (7 minutes ago)",
+          "pending-operation-type": "none",
+          "last-failed-operation-type": "none"
+        }
+      },
+      {
+        "ipv4-prefix": "10.2.45.0/30",
+        "id": 2,
+        "route-type": "local",
+        "route-owner": "net_inst_mgr",
+        "origin-network-instance": "default",
+        "leakable": false,
+        "leaked": false,
+        "metric": 0,
+        "preference": 0,
+        "active": true,
+        "route-limit-exceeded": false,
+        "last-app-update": "2026-09-28T20:52:37.296Z (7 minutes ago)",
+        "next-hop-group": "2325983323",
+        "next-hop-group-network-instance": "default",
+        "resilient-hash": false,
+        "dynamic-load-balancing": false,
+        "fib-programming": {
+          "suppressed": false,
+          "last-successful-operation-type": "add",
+          "last-successful-operation-timestamp": "2026-09-28T20:52:37.297Z (7 minutes ago)",
+          "pending-operation-type": "none",
+          "last-failed-operation-type": "none"
+        }
+      },
+      {
+        "ipv4-prefix": "10.2.45.2/32",
+        "id": 2,
+        "route-type": "host",
+        "route-owner": "net_inst_mgr",
+        "origin-network-instance": "default",
+        "leakable": false,
+        "leaked": false,
+        "metric": 0,
+        "preference": 0,
+        "active": true,
+        "route-limit-exceeded": false,
+        "last-app-update": "2026-09-28T20:52:37.296Z (7 minutes ago)",
+        "next-hop-group": "2325983322",
+        "next-hop-group-network-instance": "default",
+        "resilient-hash": false,
+        "dynamic-load-balancing": false,
+        "fib-programming": {
+          "suppressed": false,
+          "last-successful-operation-type": "add",
+          "last-successful-operation-timestamp": "2026-09-28T20:52:37.297Z (7 minutes ago)",
+          "pending-operation-type": "none",
+          "last-failed-operation-type": "none"
+        }
+      },
+      {
+        "ipv4-prefix": "10.2.45.3/32",
+        "id": 2,
+        "route-type": "host",
+        "route-owner": "net_inst_mgr",
+        "origin-network-instance": "default",
+        "leakable": false,
+        "leaked": false,
+        "metric": 0,
+        "preference": 0,
+        "active": true,
+        "route-limit-exceeded": false,
+        "last-app-update": "2026-09-28T20:52:37.296Z (7 minutes ago)",
+        "next-hop-group": "2325983316",
+        "next-hop-group-network-instance": "default",
+        "resilient-hash": false,
+        "dynamic-load-balancing": false,
+        "fib-programming": {
+          "suppressed": false,
+          "last-successful-operation-type": "add",
+          "last-successful-operation-timestamp": "2026-09-28T20:52:37.297Z (7 minutes ago)",
+          "pending-operation-type": "none",
+          "last-failed-operation-type": "none"
+        }
+      },
+      {
+        "ipv4-prefix": "10.2.255.4/32",
+        "id": 0,
+        "route-type": "ospfv2",
+        "route-owner": "ospf_mgr",
+        "origin-network-instance": "default",
+        "leakable": false,
+        "leaked": false,
+        "metric": 16,
+        "preference": 10,
+        "active": true,
+        "route-limit-exceeded": false,
+        "last-app-update": "2026-09-28T20:52:42.661Z (7 minutes ago)",
+        "next-hop-group": "2325983324",
+        "next-hop-group-network-instance": "default",
+        "resilient-hash": false,
+        "dynamic-load-balancing": false,
+        "fib-programming": {
+          "suppressed": false,
+          "last-successful-operation-type": "add",
+          "last-successful-operation-timestamp": "2026-09-28T20:52:42.662Z (7 minutes ago)",
+          "pending-operation-type": "none",
+          "last-failed-operation-type": "none"
+        }
+      },
+      {
+        "ipv4-prefix": "10.2.255.5/32",
+        "id": 4,
+        "route-type": "host",
+        "route-owner": "net_inst_mgr",
+        "origin-network-instance": "default",
+        "leakable": false,
+        "leaked": false,
+        "metric": 0,
+        "preference": 0,
+        "active": true,
+        "route-limit-exceeded": false,
+        "last-app-update": "2026-09-28T20:26:09.279Z (34 minutes ago)",
+        "next-hop-group": "2325983309",
+        "next-hop-group-network-instance": "default",
+        "resilient-hash": false,
+        "dynamic-load-balancing": false,
+        "fib-programming": {
+          "suppressed": false,
+          "last-successful-operation-type": "add",
+          "last-successful-operation-timestamp": "2026-09-28T20:26:09.280Z (34 minutes ago)",
+          "pending-operation-type": "none",
+          "last-failed-operation-type": "none"
+        }
+      },
+      {
+        "ipv4-prefix": "172.16.34.0/30",
+        "id": 0,
+        "route-type": "ospfv2",
+        "route-owner": "ospf_mgr",
+        "origin-network-instance": "default",
+        "leakable": false,
+        "leaked": false,
+        "metric": 26,
+        "preference": 10,
+        "active": true,
+        "route-limit-exceeded": false,
+        "last-app-update": "2026-09-28T20:52:42.661Z (7 minutes ago)",
+        "next-hop-group": "2325983324",
+        "next-hop-group-network-instance": "default",
+        "resilient-hash": false,
+        "dynamic-load-balancing": false,
+        "fib-programming": {
+          "suppressed": false,
+          "last-successful-operation-type": "add",
+          "last-successful-operation-timestamp": "2026-09-28T20:52:42.662Z (7 minutes ago)",
+          "pending-operation-type": "none",
+          "last-failed-operation-type": "none"
+        }
+      },
+      {
+        "ipv4-prefix": "192.168.1.0/24",
+        "id": 0,
+        "route-type": "ospfv2",
+        "route-owner": "ospf_mgr",
+        "origin-network-instance": "default",
+        "leakable": false,
+        "leaked": false,
+        "metric": 20,
+        "preference": 150,
+        "active": true,
+        "route-limit-exceeded": false,
+        "last-app-update": "2026-09-28T20:52:42.661Z (7 minutes ago)",
+        "next-hop-group": "2325983324",
+        "next-hop-group-network-instance": "default",
+        "resilient-hash": false,
+        "dynamic-load-balancing": false,
+        "internal-tags": [
+          "ospf-route-type = 0x2"
+        ],
+        "fib-programming": {
+          "suppressed": false,
+          "last-successful-operation-type": "add",
+          "last-successful-operation-timestamp": "2026-09-28T20:52:42.662Z (7 minutes ago)",
+          "pending-operation-type": "none",
+          "last-failed-operation-type": "none"
+        }
+      },
+      {
+        "ipv4-prefix": "192.168.2.0/24",
+        "id": 3,
+        "route-type": "local",
+        "route-owner": "net_inst_mgr",
+        "origin-network-instance": "default",
+        "leakable": false,
+        "leaked": false,
+        "metric": 0,
+        "preference": 0,
+        "active": true,
+        "route-limit-exceeded": false,
+        "last-app-update": "2026-09-28T20:36:05.754Z (24 minutes ago)",
+        "next-hop-group": "2325983321",
+        "next-hop-group-network-instance": "default",
+        "resilient-hash": false,
+        "dynamic-load-balancing": false,
+        "fib-programming": {
+          "suppressed": false,
+          "last-successful-operation-type": "add",
+          "last-successful-operation-timestamp": "2026-09-28T20:36:05.755Z (24 minutes ago)",
+          "pending-operation-type": "none",
+          "last-failed-operation-type": "none"
+        }
+      },
+      {
+        "ipv4-prefix": "192.168.2.1/32",
+        "id": 3,
+        "route-type": "host",
+        "route-owner": "net_inst_mgr",
+        "origin-network-instance": "default",
+        "leakable": false,
+        "leaked": false,
+        "metric": 0,
+        "preference": 0,
+        "active": true,
+        "route-limit-exceeded": false,
+        "last-app-update": "2026-09-28T20:36:05.754Z (24 minutes ago)",
+        "next-hop-group": "2325983320",
+        "next-hop-group-network-instance": "default",
+        "resilient-hash": false,
+        "dynamic-load-balancing": false,
+        "fib-programming": {
+          "suppressed": false,
+          "last-successful-operation-type": "add",
+          "last-successful-operation-timestamp": "2026-09-28T20:36:05.755Z (24 minutes ago)",
+          "pending-operation-type": "none",
+          "last-failed-operation-type": "none"
+        }
+      },
+      {
+        "ipv4-prefix": "192.168.2.255/32",
+        "id": 3,
+        "route-type": "host",
+        "route-owner": "net_inst_mgr",
+        "origin-network-instance": "default",
+        "leakable": false,
+        "leaked": false,
+        "metric": 0,
+        "preference": 0,
+        "active": true,
+        "route-limit-exceeded": false,
+        "last-app-update": "2026-09-28T20:36:05.754Z (24 minutes ago)",
+        "next-hop-group": "2325983316",
+        "next-hop-group-network-instance": "default",
+        "resilient-hash": false,
+        "dynamic-load-balancing": false,
+        "fib-programming": {
+          "suppressed": false,
+          "last-successful-operation-type": "add",
+          "last-successful-operation-timestamp": "2026-09-28T20:36:05.755Z (24 minutes ago)",
+          "pending-operation-type": "none",
+          "last-failed-operation-type": "none"
+        }
+      }
+    ],
+    "statistics": {
+      "active-routes": 11,
+      "active-routes-with-ecmp": 0,
+      "leaked-routes": 0,
+      "resilient-hash-routes": 0,
+      "dynamic-load-balancing-routes": 0,
+      "fib-failed-routes": 0,
+      "fib-suppressed-routes": 0,
+      "routes-with-per-prefix-statistics": 0,
+      "total-routes": "11"
+    },
+    "route-summary": {
+      "route-type": [
+        {
+          "ip-route-type-name": "host",
+          "active-routes": 5
+        },
+        {
+          "ip-route-type-name": "local",
+          "active-routes": 2
+        },
+        {
+          "ip-route-type-name": "ospfv2",
+          "active-routes": 4
+        }
+      ]
+    },
+    "prefix-length-distribution": {
+      "length": [
+        {
+          "prefix-length": 16,
+          "active-routes": 1
+        },
+        {
+          "prefix-length": 24,
+          "active-routes": 1
+        },
+        {
+          "prefix-length": 30,
+          "active-routes": 2
+        },
+        {
+          "prefix-length": 32,
+          "active-routes": 3
+        }
+      ]
+    }
+  },
+  "ipv6-unicast": {
+    "route-summary": {
+      "route-type": [
+        {
+          "ip-route-type-name": "host"
+        },
+        {
+          "ip-route-type-name": "local"
+        },
+        {
+          "ip-route-type-name": "ospfv2"
+        }
+      ]
+    }
+  },
+  "next-hop-group": [
+    {
+      "index": "2325983309",
+      "backup-next-hop-group": "0",
+      "backup-active": false,
+      "fib-programming": {
+        "last-successful-operation-type": "add",
+        "last-successful-operation-timestamp": "2026-09-28T20:26:09.280Z (34 minutes ago)",
+        "pending-operation-type": "none",
+        "last-failed-operation-type": "none"
+      },
+      "next-hop": [
+        {
+          "id": 0,
+          "next-hop": "2325983309",
+          "resolved": "not-applicable",
+          "resource-allocation-failed": false
+        }
+      ]
+    },
+    {
+      "index": "2325983316",
+      "backup-next-hop-group": "0",
+      "backup-active": false,
+      "fib-programming": {
+        "last-successful-operation-type": "add",
+        "last-successful-operation-timestamp": "2026-09-28T20:26:14.370Z (34 minutes ago)",
+        "pending-operation-type": "none",
+        "last-failed-operation-type": "none"
+      },
+      "next-hop": [
+        {
+          "id": 0,
+          "next-hop": "3",
+          "resolved": "not-applicable",
+          "resource-allocation-failed": false
+        }
+      ]
+    },
+    {
+      "index": "2325983320",
+      "backup-next-hop-group": "0",
+      "backup-active": false,
+      "fib-programming": {
+        "last-successful-operation-type": "add",
+        "last-successful-operation-timestamp": "2026-09-28T20:36:05.755Z (24 minutes ago)",
+        "pending-operation-type": "none",
+        "last-failed-operation-type": "none"
+      },
+      "next-hop": [
+        {
+          "id": 0,
+          "next-hop": "2325983318",
+          "resolved": "not-applicable",
+          "resource-allocation-failed": false
+        }
+      ]
+    },
+    {
+      "index": "2325983321",
+      "backup-next-hop-group": "0",
+      "backup-active": false,
+      "fib-programming": {
+        "last-successful-operation-type": "add",
+        "last-successful-operation-timestamp": "2026-09-28T20:36:05.755Z (24 minutes ago)",
+        "pending-operation-type": "none",
+        "last-failed-operation-type": "none"
+      },
+      "next-hop": [
+        {
+          "id": 0,
+          "next-hop": "2325983319",
+          "resolved": "not-applicable",
+          "resource-allocation-failed": false
+        }
+      ]
+    },
+    {
+      "index": "2325983322",
+      "backup-next-hop-group": "0",
+      "backup-active": false,
+      "fib-programming": {
+        "last-successful-operation-type": "add",
+        "last-successful-operation-timestamp": "2026-09-28T20:52:37.297Z (7 minutes ago)",
+        "pending-operation-type": "none",
+        "last-failed-operation-type": "none"
+      },
+      "next-hop": [
+        {
+          "id": 0,
+          "next-hop": "2325983320",
+          "resolved": "not-applicable",
+          "resource-allocation-failed": false
+        }
+      ]
+    },
+    {
+      "index": "2325983323",
+      "backup-next-hop-group": "0",
+      "backup-active": false,
+      "fib-programming": {
+        "last-successful-operation-type": "add",
+        "last-successful-operation-timestamp": "2026-09-28T20:52:37.297Z (7 minutes ago)",
+        "pending-operation-type": "none",
+        "last-failed-operation-type": "none"
+      },
+      "next-hop": [
+        {
+          "id": 0,
+          "next-hop": "2325983321",
+          "resolved": "not-applicable",
+          "resource-allocation-failed": false
+        }
+      ]
+    },
+    {
+      "index": "2325983324",
+      "backup-next-hop-group": "0",
+      "backup-active": false,
+      "fib-programming": {
+        "last-successful-operation-type": "add",
+        "last-successful-operation-timestamp": "2026-09-28T20:52:42.662Z (7 minutes ago)",
+        "pending-operation-type": "none",
+        "last-failed-operation-type": "none"
+      },
+      "next-hop": [
+        {
+          "id": 0,
+          "next-hop": "2325983322",
+          "resolved": "not-applicable",
+          "resource-allocation-failed": false
+        }
+      ]
+    }
+  ],
+  "next-hop": [
+    {
+      "index": "3",
+      "resource-allocation-failed": false,
+      "type": "broadcast"
+    },
+    {
+      "index": "2325983309",
+      "resource-allocation-failed": false,
+      "type": "extract"
+    },
+    {
+      "index": "2325983318",
+      "resource-allocation-failed": false,
+      "type": "extract"
+    },
+    {
+      "index": "2325983319",
+      "resource-allocation-failed": false,
+      "type": "direct",
+      "ip-address": "192.168.2.1",
+      "subinterface": "ethernet-1/2.0"
+    },
+    {
+      "index": "2325983320",
+      "resource-allocation-failed": false,
+      "type": "extract"
+    },
+    {
+      "index": "2325983321",
+      "resource-allocation-failed": false,
+      "type": "direct",
+      "ip-address": "10.2.45.2",
+      "subinterface": "ethernet-1/1.0"
+    },
+    {
+      "index": "2325983322",
+      "resource-allocation-failed": false,
+      "type": "direct",
+      "ip-address": "10.2.45.1",
+      "subinterface": "ethernet-1/1.0"
+    }
+  ]
+}

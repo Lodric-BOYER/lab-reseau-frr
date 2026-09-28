@@ -6,6 +6,8 @@ import pytest
 
 from netcheck import collector
 from netcheck.drivers.base import Driver
+from netcheck.drivers.frr import FrrDriver
+from netcheck.drivers.srlinux import SrlinuxDriver
 from netcheck.model import BgpPeer, DeviceState, OspfNeighbor
 
 
@@ -39,6 +41,43 @@ def test_ensure_allowed_accepts_known_commands():
 def test_ensure_allowed_rejects_unknown_command():
     with pytest.raises(PermissionError, match="configure terminal"):
         collector._ensure_allowed(["configure terminal"])
+
+
+# -- Registre de drivers (Phase D1) ----------------------------------------------------------
+
+@pytest.mark.parametrize("driver_cls", [FrrDriver, SrlinuxDriver])
+def test_whitelist_covers_every_registered_driver(driver_cls):
+    """Liste blanche vérifiée pour CHAQUE driver du registre, pas seulement FRR : un driver
+    mal écrit qui demanderait une commande hors liste doit être détectable statiquement."""
+    assert set(driver_cls().REQUIRED_COMMANDS) <= collector.ALLOWED_COMMANDS
+
+
+def test_resolve_driver_defaults_to_frr_when_field_absent():
+    router = {"name": "r1"}  # pas de champ "driver" : comportement historique inchangé
+    assert isinstance(collector._resolve_driver(router), FrrDriver)
+
+
+def test_resolve_driver_uses_srlinux_when_specified():
+    router = {"name": "r5", "driver": "srlinux"}
+    assert isinstance(collector._resolve_driver(router), SrlinuxDriver)
+
+
+def test_resolve_driver_raises_clear_error_on_unknown_driver():
+    router = {"name": "r9", "driver": "cisco_ios"}
+    with pytest.raises(ValueError, match="r9.*cisco_ios"):
+        collector._resolve_driver(router)
+
+
+def test_collect_resolves_driver_automatically_per_router(monkeypatch):
+    """collect() sans driver explicite : résout via le registre, applique quand même la liste
+    blanche avant toute connexion (même garantie que pour un driver passé explicitement)."""
+    connect = MagicMock(side_effect=AssertionError("ConnectHandler ne doit jamais être appelé"))
+    monkeypatch.setattr(collector, "ConnectHandler", connect)
+    monkeypatch.setattr(collector, "DRIVER_REGISTRY", {"rogue": _RogueDriver})
+
+    with pytest.raises(PermissionError):
+        collector.collect({**_router(), "driver": "rogue"})
+    connect.assert_not_called()
 
 
 # -- Convergence (guard --wait) -------------------------------------------------------------

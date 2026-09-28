@@ -1,0 +1,19 @@
+{
+  "instances": [
+    {
+      "netinst": "default",
+      "name": "main",
+      "version": "ospf-v2",
+      "neighbors_brief": [
+        {
+          "Interface-Name": "ethernet-1/1.0",
+          "Rtr Id": "10.2.255.4",
+          "State": "full",
+          "Pri": 1,
+          "RetxQ": 0,
+          "Time Before Dead": 35
+        }
+      ]
+    }
+  ]
+}

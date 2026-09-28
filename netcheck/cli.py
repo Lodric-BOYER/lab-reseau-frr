@@ -11,15 +11,13 @@ from datetime import datetime
 from pathlib import Path
 
 from netcheck import collector, compliance, diff, inventory, report, snapshot
-from netcheck.drivers.frr import FrrDriver
 
 DEFAULT_RULES_PATH = Path(__file__).resolve().parent / "rules" / "default.yml"
 
 
 def cmd_snapshot(args: argparse.Namespace) -> int:
-    inv = inventory.load(args.devices)
-    driver = FrrDriver()
-    results = collector.collect_all(inv.routers, driver)
+    inv = inventory.load(args.devices, path=args.inventory)
+    results = collector.collect_all(inv.routers)
 
     try:
         out_dir = snapshot.save(args.name, results, force=args.force)
@@ -46,7 +44,7 @@ def cmd_diff(args: argparse.Namespace) -> int:
         print(f"Erreur : {e}", file=sys.stderr)
         return 3
 
-    inv = inventory.load()
+    inv = inventory.load(path=args.inventory)
     findings = diff.compare(before, after, management_interfaces=set(inv.management_interfaces))
     verdict_label, code = diff.verdict(findings)
 
@@ -68,7 +66,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         print(f"Erreur : {e}", file=sys.stderr)
         return 3
 
-    inv = inventory.load()
+    inv = inventory.load(path=args.inventory)
     if args.snapshot:
         try:
             devices = snapshot.load(args.snapshot)
@@ -76,7 +74,7 @@ def cmd_check(args: argparse.Namespace) -> int:
             print(f"Erreur : {e}", file=sys.stderr)
             return 3
     else:
-        results = collector.collect_all(inv.routers, FrrDriver())
+        results = collector.collect_all(inv.routers)
         devices = {}
         for name, (ok, value) in results.items():
             if ok:
@@ -114,13 +112,12 @@ def cmd_guard(args: argparse.Namespace) -> int:
             print("Annulé.")
             return 3
 
-    inv = inventory.load()
-    driver = FrrDriver()
+    inv = inventory.load(path=args.inventory)
     stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     name_before, name_after = f"guard_{stamp}_avant", f"guard_{stamp}_apres"
 
     print(f"\nSnapshot avant : {name_before}")
-    snapshot.save(name_before, collector.collect_all(inv.routers, driver))
+    snapshot.save(name_before, collector.collect_all(inv.routers))
 
     print(f"Exécution de {change_script}...")
     result = subprocess.run(["bash", str(change_script)])
@@ -128,11 +125,11 @@ def cmd_guard(args: argparse.Namespace) -> int:
         print(f"Attention : le script de changement a rendu le code {result.returncode}", file=sys.stderr)
 
     print(f"Attente de convergence (max {args.wait}s)...")
-    if not collector.wait_for_convergence(inv.routers, driver, timeout=args.wait):
+    if not collector.wait_for_convergence(inv.routers, timeout=args.wait):
         print("Attention : convergence non confirmée dans le délai imparti", file=sys.stderr)
 
     print(f"Snapshot après : {name_after}")
-    snapshot.save(name_after, collector.collect_all(inv.routers, driver))
+    snapshot.save(name_after, collector.collect_all(inv.routers))
 
     before, after = snapshot.load(name_before), snapshot.load(name_after)
     findings = diff.compare(before, after, management_interfaces=set(inv.management_interfaces))
@@ -159,6 +156,16 @@ def cmd_list(_args: argparse.Namespace) -> int:
     return 0
 
 
+def _add_inventory_arg(sub_parser: argparse.ArgumentParser) -> None:
+    """-i/--inventory : fichier d'inventaire (défaut : automation/inventory.yml). Ajouté à
+    toute sous-commande qui contacte les équipements ou lit management_interfaces (Phase D1,
+    nécessaire pour cibler automation/inventory-multivendor.yml sur le lab mixte)."""
+    sub_parser.add_argument(
+        "-i", "--inventory",
+        help="fichier d'inventaire YAML (défaut : automation/inventory.yml)",
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="python -m netcheck", description=__doc__)
     sub = p.add_subparsers(dest="command", required=True)
@@ -167,6 +174,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_snap.add_argument("name", help="nom du snapshot (dossier snapshots/<name>/)")
     p_snap.add_argument("-d", "--devices", nargs="+", help="équipements ciblés (défaut : tous)")
     p_snap.add_argument("--force", action="store_true", help="écraser un snapshot existant")
+    _add_inventory_arg(p_snap)
     p_snap.set_defaults(func=cmd_snapshot)
 
     p_list = sub.add_parser("list", help="liste les snapshots existants")
@@ -177,6 +185,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_diff.add_argument("after", help="nom du snapshot après")
     p_diff.add_argument("--json", help="écrire les constats au format JSON dans ce fichier")
     p_diff.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
+    _add_inventory_arg(p_diff)
     p_diff.set_defaults(func=cmd_diff)
 
     p_check = sub.add_parser("check", help="audite la conformité des configurations")
@@ -184,6 +193,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_check.add_argument("--rules", help=f"fichier de règles YAML (défaut : {DEFAULT_RULES_PATH.name})")
     p_check.add_argument("--json", help="écrire les non-conformités au format JSON dans ce fichier")
     p_check.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
+    _add_inventory_arg(p_check)
     p_check.set_defaults(func=cmd_check)
 
     p_guard = sub.add_parser("guard", help="encadre une intervention (snapshot avant/après + diff)")
@@ -201,6 +211,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_guard.add_argument("--json", help="écrire les constats au format JSON dans ce fichier")
     p_guard.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
+    _add_inventory_arg(p_guard)
     p_guard.set_defaults(func=cmd_guard)
 
     return p

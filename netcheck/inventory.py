@@ -20,8 +20,13 @@ class Inventory:
     management_interfaces: list[str] = field(default_factory=list)
 
 
-def load(only: list[str] | None = None, path: Path = INVENTORY_PATH) -> Inventory:
-    """Fusionne defaults + attributs de chaque routeur ; filtre éventuel sur une liste de noms."""
+def load(only: list[str] | None = None, path: Path | str | None = None) -> Inventory:
+    """Fusionne defaults + attributs de chaque routeur ; filtre éventuel sur une liste de noms.
+
+    `path` omis = automation/inventory.yml (lab mono-constructeur). Un autre fichier (ex.
+    automation/inventory-multivendor.yml) peut être passé explicitement -- c'est ce que fait
+    l'option -i/--inventory de la CLI (Phase D1)."""
+    path = Path(path) if path else INVENTORY_PATH
     data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     defaults = data.get("defaults", {})
 

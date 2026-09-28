@@ -1,0 +1,51 @@
+    interface ethernet-1/1 {
+        admin-state enable
+        mtu 1514
+        subinterface 0 {
+            admin-state enable
+            ip-mtu 1500
+            ipv4 {
+                admin-state enable
+                address 10.2.45.2/30 {
+                }
+            }
+        }
+    }
+    interface ethernet-1/2 {
+        admin-state enable
+        subinterface 0 {
+            admin-state enable
+            ipv4 {
+                admin-state enable
+                address 192.168.2.1/24 {
+                }
+            }
+        }
+    }
+    interface lo0 {
+        admin-state enable
+        subinterface 0 {
+            admin-state enable
+            ipv4 {
+                admin-state enable
+                address 10.2.255.5/32 {
+                }
+            }
+        }
+    }
+    interface mgmt0 {
+        admin-state enable
+        subinterface 0 {
+            admin-state enable
+            ipv4 {
+                admin-state enable
+                dhcp-client {
+                }
+            }
+            ipv6 {
+                admin-state enable
+                dhcp-client {
+                }
+            }
+        }
+    }

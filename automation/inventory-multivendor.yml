@@ -1,0 +1,34 @@
+# Inventaire du lab multi-constructeurs (Phase C/D, SPEC_v2.md), utilisé avec
+# `netcheck -i automation/inventory-multivendor.yml ...`. Mêmes adresses de management que
+# lab-multivendor.clab.yml (172.20.21.0/24). r1-r4 = FRR, identiques à inventory.yml (C9) ;
+# r5 = Nokia SR Linux (driver "srlinux", champ lu uniquement par collector.py._resolve_driver).
+#
+# Identifiants r5 : ceux par défaut de l'image containerlab (admin / NokiaSrl1!), acceptés ici
+# uniquement (C11) -- ce fichier et les variables d'environnement sont les deux seuls
+# emplacements autorisés à les contenir. NETCHECK_USER/NETCHECK_PASS (ou LAB_USER/LAB_PASS),
+# s'ils sont positionnés, s'appliquent uniformément à tous les routeurs y compris r5 (même
+# mécanisme que inventory.yml, non modifié pour cette phase).
+defaults:
+  device_type: linux      # Netmiko se connecte au shell Alpine, puis lance vtysh
+  username: netops
+  password: netops
+  vtysh: vtysh
+
+# Interfaces de management ignorées par netcheck (diff et conformité) : eth0 (r1-r4, kind
+# "linux") et mgmt0 (r5, kind "nokia_srlinux" -- nom différent, architecture SR Linux réelle).
+management_interfaces: [eth0, mgmt0]
+
+# ospf_neighbors : nombre de voisins OSPF attendus en état Full
+# bgp_peers      : voisin BGP -> nombre minimal de préfixes reçus attendus
+routers:
+  r1: {host: 172.20.21.11, ospf_neighbors: 2}
+  r2: {host: 172.20.21.12, ospf_neighbors: 2}
+  r3: {host: 172.20.21.13, ospf_neighbors: 2, bgp_peers: {172.16.34.2: 2}}
+  r4: {host: 172.20.21.14, ospf_neighbors: 1, bgp_peers: {172.16.34.1: 2}}
+  r5:
+    host: 172.20.21.15
+    driver: srlinux
+    device_type: nokia_srl
+    username: admin
+    password: NokiaSrl1!
+    ospf_neighbors: 1
