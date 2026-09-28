@@ -33,11 +33,24 @@ ALLOWED_COMMANDS = {
 }
 
 
-def collect(router: dict, driver: Driver) -> DeviceState:
-    """Se connecte à un équipement, exécute les commandes du driver, renvoie l'état normalisé."""
-    unknown = set(driver.REQUIRED_COMMANDS) - ALLOWED_COMMANDS
+def _ensure_allowed(commands) -> None:
+    """Lève PermissionError si une commande n'est pas dans la liste blanche (C1)."""
+    unknown = set(commands) - ALLOWED_COMMANDS
     if unknown:
         raise PermissionError(f"commande(s) hors liste blanche : {sorted(unknown)}")
+
+
+def collect(router: dict, driver: Driver) -> DeviceState:
+    """Se connecte à un équipement, exécute les commandes du driver, renvoie l'état normalisé.
+
+    La liste blanche est vérifiée deux fois : une première fois ici, sur tout
+    REQUIRED_COMMANDS, *avant même d'ouvrir la connexion SSH* (un driver mal écrit ne
+    contacte jamais l'équipement) ; une seconde fois juste avant l'envoi de chaque
+    commande individuelle, au plus près de l'action sensible. La seconde ne peut pas être
+    contournée par un futur appelant qui construirait sa propre liste de commandes sans
+    repasser par ce premier contrôle.
+    """
+    _ensure_allowed(driver.REQUIRED_COMMANDS)
 
     conn = ConnectHandler(
         device_type=router["device_type"], host=router["host"],
@@ -47,6 +60,7 @@ def collect(router: dict, driver: Driver) -> DeviceState:
     try:
         raw = {}
         for command in driver.REQUIRED_COMMANDS:
+            _ensure_allowed([command])
             out = conn.send_command(driver.translate(command), read_timeout=30)
             raw[command] = driver.clean_output(out)
     finally:

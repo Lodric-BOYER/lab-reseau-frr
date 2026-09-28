@@ -51,6 +51,17 @@ def test_parse_ospf_neighbors_full():
     assert all(n.state == "Full/-" for n in neighbors)
 
 
+def test_parse_interface_admin_down_has_no_operational_status_key():
+    # Quand une interface est coupée (admin down), FRR omet complètement la clé
+    # "operationalStatus" au lieu de la mettre à "down" : .get() doit rester sûr.
+    driver = FrrDriver()
+    text = (FIXTURES / "degraded" / "r1_interface_down.json").read_text(encoding="utf-8")
+    interfaces = {i.name: i for i in driver._parse_interfaces(text)}
+    assert interfaces["eth2"].admin_up is False
+    assert interfaces["eth2"].oper_up is False
+    assert interfaces["eth1"].oper_up is True  # les autres interfaces restent up
+
+
 def test_parse_ospf_neighbors_degraded():
     driver = FrrDriver()
     text = (FIXTURES / "degraded" / "r1_ospf_neighbor_down.json").read_text(encoding="utf-8")
@@ -89,6 +100,14 @@ def test_parse_bgp_prefixes_local_vs_received():
     received = by_prefix["10.2.0.0/16"]
     assert received.as_path == "65002"
     assert received.next_hop == "172.16.34.2"
+
+
+def test_parse_bgp_absent_on_router_without_bgp_configured():
+    # r1 n'a pas de "router bgp" configuré : FRR renvoie "{}" (aucune clé "peers") pour le
+    # résumé, et {"warning": "..."} (aucune clé "routes") pour les préfixes. Ne doit pas planter.
+    driver = FrrDriver()
+    assert driver._parse_bgp_summary(read("r1", "bgp_summary.json")) == []
+    assert driver._parse_bgp_prefixes(read("r1", "bgp_prefixes.json")) == []
 
 
 def test_parse_full_device_state():
