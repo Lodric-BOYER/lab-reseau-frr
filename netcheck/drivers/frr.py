@@ -64,6 +64,10 @@ class FrrDriver(Driver):
                 admin_up=attrs.get("administrativeStatus") == "up",
                 oper_up=attrs.get("operationalStatus") == "up",
                 addresses=v4,
+                # FRR expose toujours "type" ("Ethernet"/"Loopback"/...), même interface
+                # coupée (admin down) : jamais None pour ce driver, contrairement au champ
+                # par défaut du modèle qui reste optionnel pour un futur driver moins bavard.
+                is_loopback=attrs.get("type") == "Loopback",
             ))
         return interfaces
 

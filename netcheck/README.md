@@ -89,11 +89,13 @@ normalisé (`model.py`). Pour ajouter un driver :
    champ absent ou mal nommé (voir `tests/fixtures/r1/bgp_summary.json` : `{}`, sans
    aucune clé `peers`, quand aucun BGP n'est configuré — un cas qu'on ne devine pas).
 
-## Limite connue
+## Reconnaissance du loopback (`is_loopback`)
 
-Le modèle (`model.Interface`) ne porte pas de champ "type" d'interface. La règle
-`interface_description_required` reconnaît donc un loopback par son **nom** (`lo` exact,
-ou tout nom commençant par `loopback`, insensible à la casse) plutôt que par un attribut
-dédié. Ça suffit pour FRR ; un driver dont le nommage d'interface ne suit pas cette
-convention devra soit s'y conformer, soit motiver l'ajout d'un champ `interface_type` au
-modèle commun.
+`model.Interface.is_loopback` (`bool | None`, `None` = inconnu) porte l'information plutôt
+qu'un attribut de nom. Chaque driver le renseigne à partir de ce que son équipement expose
+réellement — pour FRR, le champ JSON `"type"` (`"Loopback"` vs `"Ethernet"`), toujours
+présent, donc jamais `None` pour ce driver. La règle `interface_description_required`
+utilise `is_loopback` quand il est connu, et ne retombe sur l'heuristique de nom (`lo` exact,
+ou préfixe `loopback`) que s'il vaut `None` — un driver qui n'expose pas cette info, ou un
+snapshot écrit avant l'ajout du champ (`DeviceState.from_dict` le charge alors à `None` sans
+planter, voir `tests/test_model.py`).

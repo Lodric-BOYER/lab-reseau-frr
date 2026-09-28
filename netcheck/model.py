@@ -18,6 +18,9 @@ class Interface:
     admin_up: bool
     oper_up: bool
     addresses: list[str] = field(default_factory=list)  # CIDR IPv4, ex. "10.1.13.1/30"
+    # None = inconnu (driver qui n'expose pas l'info, ou snapshot pris avant ce champ) :
+    # dans ce cas, compliance._check_interface_description_required retombe sur le nom.
+    is_loopback: bool | None = None
 
 
 @dataclass

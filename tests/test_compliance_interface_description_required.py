@@ -1,8 +1,9 @@
 """Tests pour la règle 'interface_description_required' (§5.4) : toute interface avec une
 adresse IP, hors loopback, doit avoir une description. Écrits avant l'implémentation de
 netcheck.compliance._check_interface_description_required, pour la définir par l'exemple ;
-elle est maintenant implémentée (loopback reconnu par le nom : "lo" exact, ou préfixe
-"loopback") et ces tests passent.
+elle est maintenant implémentée (repose sur Interface.is_loopback quand il est connu --
+v2 phase B, O3 -- avec l'heuristique de nom ["lo" exact, ou préfixe "loopback"] en repli
+uniquement si is_loopback vaut None) et ces tests passent.
 """
 from netcheck.compliance import Rule, _check_interface_description_required
 from netcheck.model import DeviceState, Interface
@@ -46,6 +47,22 @@ def test_exclude_param_ignores_listed_interfaces():
     device = _device([Interface("eth9", None, True, True, ["10.9.9.1/30"])])
     violations = _check_interface_description_required(_rule(exclude=["eth9"]), device)
     assert violations == []
+
+
+def test_is_loopback_true_wins_over_an_unrelated_name():
+    # is_loopback connu et vrai : ignorée, même si son nom ne ressemble à rien de connu
+    # (cas d'un futur driver dont la convention de nommage n'est pas "lo...").
+    device = _device([Interface("system0", None, True, True, ["10.1.255.1/32"], is_loopback=True)])
+    assert _check_interface_description_required(_rule(), device) == []
+
+
+def test_is_loopback_false_overrides_a_lo_like_name():
+    # is_loopback connu et faux : traitée normalement (donc en violation ici), même si le
+    # nom commence par "lo" -- l'info explicite du driver l'emporte sur l'heuristique.
+    device = _device([Interface("lo-mgmt", None, True, True, ["10.9.9.1/30"], is_loopback=False)])
+    violations = _check_interface_description_required(_rule(), device)
+    assert len(violations) == 1
+    assert "lo-mgmt" in violations[0].detail
 
 
 def test_multiple_offending_interfaces_produce_one_violation_each():

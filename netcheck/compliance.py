@@ -261,22 +261,29 @@ def _check_ospf_passive_on_interfaces(rule: Rule, device: DeviceState) -> list[V
     return violations
 
 
+def _is_loopback(iface) -> bool:
+    """Utilise Interface.is_loopback quand le driver le connaît (v2, O3) ; sinon (None --
+    driver qui n'expose pas l'info, ou snapshot pris avant l'ajout du champ), retombe sur
+    l'heuristique de nom : exactement "lo", ou tout nom commençant par "loopback"."""
+    if iface.is_loopback is not None:
+        return iface.is_loopback
+    name = iface.name.lower()
+    return name == "lo" or name.startswith("loopback")
+
+
 def _check_interface_description_required(rule: Rule, device: DeviceState) -> list[Violation]:
     """« Toute interface avec une adresse IP, hors loopback, doit avoir une description » (§5.4).
 
-    Le loopback est reconnu par son nom (pas par un champ dédié du modèle, qui n'en a pas) :
-    exactement "lo", ou tout nom commençant par "loopback" (insensible à la casse, pour
-    rester valable au-delà du seul driver FRR). `rule.params["exclude"]` retire en plus des
-    interfaces explicitement listées, indépendamment des interfaces de management (déjà
-    retirées de `device.interfaces` en amont par `evaluate()`).
+    `rule.params["exclude"]` retire en plus des interfaces explicitement listées,
+    indépendamment des interfaces de management (déjà retirées de `device.interfaces` en
+    amont par `evaluate()`).
     """
     exclude = rule.params.get("exclude", [])
     violations = []
     for iface in device.interfaces:
         if not iface.addresses:
             continue
-        name = iface.name.lower()
-        if name == "lo" or name.startswith("loopback"):
+        if _is_loopback(iface):
             continue
         if iface.name in exclude:
             continue

@@ -29,6 +29,11 @@ def test_parse_interfaces_r1():
     # eth0 (management) n'a pas de description dans FRR : ne doit pas planter, reste à None.
     assert by_name["eth0"].description is None
 
+    # is_loopback (v2, O3) : lu depuis le champ JSON "type" de FRR, jamais None pour ce driver.
+    assert by_name["lo"].is_loopback is True
+    assert by_name["eth0"].is_loopback is False
+    assert by_name["eth1"].is_loopback is False
+
 
 def test_parse_routes_ecmp_and_missing_selected_key():
     driver = FrrDriver()
@@ -60,6 +65,8 @@ def test_parse_interface_admin_down_has_no_operational_status_key():
     assert interfaces["eth2"].admin_up is False
     assert interfaces["eth2"].oper_up is False
     assert interfaces["eth1"].oper_up is True  # les autres interfaces restent up
+    # "type" reste présent même admin down : is_loopback ne doit jamais devenir None ici.
+    assert interfaces["eth2"].is_loopback is False
 
 
 def test_parse_ospf_neighbors_degraded():
