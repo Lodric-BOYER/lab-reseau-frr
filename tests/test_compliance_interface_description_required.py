@@ -1,11 +1,8 @@
-"""Tests pour la règle 'interface_description_required' (§5.4).
-
-L'évaluateur (netcheck.compliance._check_interface_description_required) est un exercice :
-il n'est PAS implémenté (il lève NotImplementedError). Ces tests ÉCHOUENT tant que ce n'est
-pas fait -- c'est normal et attendu, ce sont eux qui définissent le comportement à coder.
-
-Le reste de la suite doit rester vert pendant que tu y travailles :
-  pytest tests/ --ignore=tests/test_compliance_interface_description_required.py
+"""Tests pour la règle 'interface_description_required' (§5.4) : toute interface avec une
+adresse IP, hors loopback, doit avoir une description. Écrits avant l'implémentation de
+netcheck.compliance._check_interface_description_required, pour la définir par l'exemple ;
+elle est maintenant implémentée (loopback reconnu par le nom : "lo" exact, ou préfixe
+"loopback") et ces tests passent.
 """
 from netcheck.compliance import Rule, _check_interface_description_required
 from netcheck.model import DeviceState, Interface

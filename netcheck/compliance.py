@@ -262,27 +262,28 @@ def _check_ospf_passive_on_interfaces(rule: Rule, device: DeviceState) -> list[V
 
 
 def _check_interface_description_required(rule: Rule, device: DeviceState) -> list[Violation]:
-    """À IMPLÉMENTER (exercice, cf. §5.4) : « toute interface avec une adresse IP, hors
-    loopback, doit avoir une description ».
+    """« Toute interface avec une adresse IP, hors loopback, doit avoir une description » (§5.4).
 
-    Reçoit :
-      - rule   : la règle YAML déjà validée. `rule.params` peut contenir "exclude" (liste de
-                 noms d'interfaces à ignorer, EN PLUS des interfaces de management -- déjà
-                 retirées de `device.interfaces` par `evaluate()`, inutile de s'en occuper ici).
-      - device : le DeviceState de l'équipement (déjà filtré du management). `device.interfaces`
-                 est une liste de `netcheck.model.Interface` (name, description, admin_up,
-                 oper_up, addresses : liste de CIDR IPv4 comme "10.1.13.1/30").
-
-    Doit renvoyer :
-      - une liste de `Violation(rule=rule, device=device.name, detail=<message clair,
-        nommant l'interface en cause>)`, une par interface fautive. Liste vide si conforme.
-
-    Volontairement pas résolu : comment reconnaître "le loopback" avec les seules données du
-    modèle actuel (pas de champ "type"). Regarde tests/fixtures/*/interface.json pour voir ce
-    que FRR expose réellement, et décide si le modèle a besoin d'un nouveau champ ou si le
-    nom de l'interface suffit ici.
+    Le loopback est reconnu par son nom (pas par un champ dédié du modèle, qui n'en a pas) :
+    exactement "lo", ou tout nom commençant par "loopback" (insensible à la casse, pour
+    rester valable au-delà du seul driver FRR). `rule.params["exclude"]` retire en plus des
+    interfaces explicitement listées, indépendamment des interfaces de management (déjà
+    retirées de `device.interfaces` en amont par `evaluate()`).
     """
-    raise NotImplementedError("interface_description_required : évaluateur à écrire")
+    exclude = rule.params.get("exclude", [])
+    violations = []
+    for iface in device.interfaces:
+        if not iface.addresses:
+            continue
+        name = iface.name.lower()
+        if name == "lo" or name.startswith("loopback"):
+            continue
+        if iface.name in exclude:
+            continue
+        if not iface.description:
+            violations.append(Violation(rule, device.name,
+                f"interface {iface.name} ({', '.join(iface.addresses)}) sans description"))
+    return violations
 
 
 _EVALUATORS = {

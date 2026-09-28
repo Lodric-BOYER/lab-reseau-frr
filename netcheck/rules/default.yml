@@ -60,15 +60,24 @@ rules:
     kind: ospf_passive_on_interfaces
     pattern: "LAN"
 
-  # --- Règles à ajouter par Lodric (kind: interface_description_required) -------------------
-  # _check_interface_description_required (netcheck/compliance.py) est à implémenter avant
-  # que ces règles puissent être évaluées. Format attendu, par exemple :
-  #
-  #   - id: description-obligatoire-wan
-  #     description: "..."
-  #     severity: ...
-  #     applies_to: all
-  #     kind: interface_description_required
-  #     exclude: []   # optionnel : interfaces à ignorer en plus du management
-  #
-  # Trois règles de ce kind à écrire ici.
+  # --- Règles ajoutées par Lodric --------------------------------------------------------
+  - id: lodric-journalisation-active
+    description: "La journalisation syslog doit être activée (traçabilité des événements)."
+    severity: moyenne
+    applies_to: all
+    kind: line_present
+    pattern: '^log syslog'
+
+  - id: lodric-pas-de-route-defaut-statique
+    description: "Aucune route par défaut statique codée en dur (elle contournerait le routage dynamique)."
+    severity: haute
+    applies_to: all
+    kind: line_absent
+    pattern: '^ip route 0\.0\.0\.0/0'
+
+  - id: lodric-ospf-router-id-explicite
+    description: "Chaque routeur doit fixer son router-id OSPF (identifiant stable et prévisible)."
+    severity: basse
+    applies_to: all
+    kind: line_present
+    pattern: '^\s*ospf router-id \d+\.\d+\.\d+\.\d+'
