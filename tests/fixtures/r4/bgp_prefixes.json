@@ -1,0 +1,12 @@
+{
+ "vrfId": 0,
+ "vrfName": "default",
+ "tableVersion": 4,
+ "routerId": "10.2.255.4",
+ "defaultLocPrf": 100,
+ "localAS": 65002,
+ "routes": { "10.1.0.0/16": [{"valid":true,"bestpath":true,"selectionReason":"First path received","pathFrom":"external","prefix":"10.1.0.0","prefixLen":16,"network":"10.1.0.0/16","version":2,"metric":0,"weight":0,"peerId":"172.16.34.1","path":"65001","origin":"IGP","nexthops":[{"ip":"172.16.34.1","hostname":"r3","afi":"ipv4","used":true}]}]
+,"10.2.0.0/16": [{"valid":true,"bestpath":true,"selectionReason":"First path received","pathFrom":"external","prefix":"10.2.0.0","prefixLen":16,"network":"10.2.0.0/16","version":1,"metric":0,"weight":32768,"peerId":"(unspec)","path":"","origin":"IGP","nexthops":[{"ip":"0.0.0.0","hostname":"r4","afi":"ipv4","used":true}]}]
+,"192.168.1.0/24": [{"valid":true,"bestpath":true,"selectionReason":"First path received","pathFrom":"external","prefix":"192.168.1.0","prefixLen":24,"network":"192.168.1.0/24","version":4,"metric":0,"weight":0,"peerId":"172.16.34.1","path":"65001","origin":"IGP","nexthops":[{"ip":"172.16.34.1","hostname":"r3","afi":"ipv4","used":true}]}]
+,"192.168.2.0/24": [{"valid":true,"bestpath":true,"selectionReason":"First path received","pathFrom":"external","prefix":"192.168.2.0","prefixLen":24,"network":"192.168.2.0/24","version":3,"metric":0,"weight":32768,"peerId":"(unspec)","path":"","origin":"IGP","nexthops":[{"ip":"0.0.0.0","hostname":"r4","afi":"ipv4","used":true}]}]
+ }  } 

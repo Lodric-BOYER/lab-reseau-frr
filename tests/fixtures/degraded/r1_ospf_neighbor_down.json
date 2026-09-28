@@ -1,0 +1,21 @@
+{
+  "neighbors":{
+    "10.1.255.2":[
+      {
+        "nbrState":"Full\/-",
+        "nbrPriority":1,
+        "converged":"Full",
+        "role":"DROther",
+        "upTimeInMsec":1772850,
+        "routerDeadIntervalTimerDueMsec":37294,
+        "upTime":"29m32s",
+        "deadTime":"37.294s",
+        "ifaceAddress":"10.1.12.2",
+        "ifaceName":"eth1:10.1.12.1",
+        "linkStateRetransmissionListCounter":1,
+        "linkStateRequestListCounter":0,
+        "databaseSummaryListCounter":0
+      }
+    ]
+  }
+}

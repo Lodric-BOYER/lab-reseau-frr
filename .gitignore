@@ -12,3 +12,12 @@ automation/backups/
 automation/baseline/
 drift_report.md
 automation/*.md
+
+# netcheck : snapshots et rapports contiennent des configurations (C4)
+snapshots/
+reports/
+netcheck/*.md
+.pytest_cache/
+
+# Métadonnées Windows ("mark of the web") copiées par erreur dans le dépôt
+*:Zone.Identifier

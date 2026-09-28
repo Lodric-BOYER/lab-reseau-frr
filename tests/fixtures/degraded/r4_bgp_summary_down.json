@@ -1,0 +1,44 @@
+{
+  "routerId":"10.2.255.4",
+  "as":65002,
+  "vrfId":0,
+  "vrfName":"default",
+  "tableVersion":6,
+  "ribCount":3,
+  "ribMemory":384,
+  "peerCount":1,
+  "peerMemory":16904,
+  "peers":{
+    "172.16.34.1":{
+      "hostname":"r3",
+      "domainname":"localdomain",
+      "softwareVersion":"n/a",
+      "remoteAs":65001,
+      "localAs":65002,
+      "version":4,
+      "msgRcvd":39,
+      "msgSent":40,
+      "tableVersion":0,
+      "outq":0,
+      "inq":0,
+      "peerUptime":"00:00:01",
+      "peerUptimeMsec":1000,
+      "peerUptimeEstablishedEpoch":1790605956,
+      "pfxRcd":0,
+      "pfxSnt":0,
+      "state":"Idle (Admin)",
+      "peerState":"Admin",
+      "connectionsEstablished":1,
+      "connectionsDropped":1,
+      "desc":"r3-AS65001",
+      "idType":"ipv4"
+    }
+  },
+  "failedPeers":1,
+  "displayedPeers":1,
+  "totalPeers":1,
+  "dynamicPeers":0,
+  "bestPath":{
+    "multiPathRelax":"false"
+  }
+}
