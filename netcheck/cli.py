@@ -1,6 +1,6 @@
 """Interface en ligne de commande : `python -m netcheck <sous-commande> ...`.
 
-Cinq sous-commandes : snapshot, list, diff, check, guard.
+Six sous-commandes : snapshot, list, diff, check, guard, assert.
 """
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from netcheck import collector, compliance, diff, inventory, report, snapshot
+from netcheck import assertions, collector, compliance, diff, inventory, report, snapshot
 
 DEFAULT_RULES_PATH = Path(__file__).resolve().parent / "rules" / "default.yml"
 
@@ -146,6 +146,48 @@ def cmd_guard(args: argparse.Namespace) -> int:
     return code
 
 
+def cmd_assert(args: argparse.Namespace) -> int:
+    """Vérifie l'état attendu (Phase C, SPEC_v3 §6, O2) : en direct ou hors ligne (--snapshot),
+    identique aux autres sous-commandes de collecte/lecture."""
+    try:
+        intent = assertions.load_intent(args.intent)
+    except ValueError as e:
+        print(f"Erreur : {e}", file=sys.stderr)
+        return 3
+
+    inv = inventory.load(path=args.inventory)
+    if args.snapshot:
+        try:
+            devices = snapshot.load(args.snapshot)
+        except FileNotFoundError as e:
+            print(f"Erreur : {e}", file=sys.stderr)
+            return 3
+    else:
+        results = collector.collect_all(inv.routers)
+        devices = {}
+        for name, (ok, value) in results.items():
+            if ok:
+                devices[name] = value
+            else:
+                print(f"  {name:<8} INJOIGNABLE : {value}", file=sys.stderr)
+
+    try:
+        results = assertions.evaluate(intent, devices, management_interfaces=set(inv.management_interfaces))
+    except ValueError as e:
+        print(f"Erreur : {e}", file=sys.stderr)
+        return 3
+    verdict_label, code = assertions.verdict(results)
+
+    report.print_assert_terminal(results, verdict_label)
+    if args.json:
+        report.write_assert_json(results, verdict_label, args.json)
+        print(f"Constats écrits (JSON) : {args.json}")
+    if args.html:
+        report.write_assert_html(results, verdict_label, args.intent, args.html)
+        print(f"Rapport HTML écrit : {args.html}")
+    return code
+
+
 def cmd_list(_args: argparse.Namespace) -> int:
     snaps = snapshot.list_snapshots()
     if not snaps:
@@ -214,6 +256,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_guard.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
     _add_inventory_arg(p_guard)
     p_guard.set_defaults(func=cmd_guard)
+
+    p_assert = sub.add_parser("assert", help="vérifie l'état attendu (Phase C, --intent)")
+    p_assert.add_argument("--intent", required=True, help="fichier d'intent YAML (intents/*.yml)")
+    p_assert.add_argument("--snapshot", help="vérifier un snapshot existant (hors ligne, sans connexion)")
+    p_assert.add_argument("--json", help="écrire les résultats au format JSON dans ce fichier")
+    p_assert.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
+    _add_inventory_arg(p_assert)
+    p_assert.set_defaults(func=cmd_assert)
 
     return p
 

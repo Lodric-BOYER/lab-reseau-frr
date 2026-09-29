@@ -4,8 +4,9 @@
 # incrément d'entier, ils ne peuvent pas échouer. Le motif "cond && ok ... || ko ..." utilisé
 # partout dans ce fichier est donc sûr, même si ce n'est pas un vrai if/then/else.
 #
-# Scénarios d'intégration netcheck sur le lab multi-constructeurs (Phase E, SPEC_v2.md) :
-# S1 (diff, aucun changement), coupure du lien r4 <-> r5 (FRR <-> SR Linux), C1 (conformité).
+# Scénarios d'intégration netcheck sur le lab multi-constructeurs (Phase E, SPEC_v2.md ;
+# A1/A2 ajoutés en Phase C, SPEC_v3.md) : S1 (diff, aucun changement), coupure du lien
+# r4 <-> r5 (FRR <-> SR Linux), C1 (conformité), A1/A2 (assert, état attendu, même coupure).
 # Portée volontairement réduite par rapport à tests/integration.sh (S2-S5, C2, guard) : ce
 # fichier vérifie que netcheck fonctionne bien SUR LES DEUX DRIVERS À LA FOIS, pas de
 # redémontrer tout ce qui l'est déjà côté FRR seul.
@@ -103,6 +104,37 @@ echo "$out" | grep -q "Conformité : CONFORME" && ok "conformité = CONFORME" \
 # en violation pour r5, ce que confirme déjà le verdict CONFORME ci-dessus).
 grep -q 'srlinux-mtu-marge-suffisante' "$JSON_DIR/c1.json" && ok "règle SR Linux présente dans le rapport" \
   || { ko "règle SR Linux absente du rapport"; cat "$JSON_DIR/c1.json"; }
+
+# ---------------------------------------------------------------- A1 : état attendu, nominal
+title "A1 : état attendu (assert) -> OK, en direct et hors ligne (FRR + SR Linux)"
+out=$($NC assert --intent intents/lab-multivendor.yml --json "$JSON_DIR/a1_direct.json" "${INV[@]}" 2>&1); code=$?
+[[ "$code" == "0" ]] && ok "en direct : code retour = 0" || { ko "en direct : code retour = $code (attendu 0)"; echo "$out"; }
+echo "$out" | grep -q "Verdict : OK" && ok "en direct : verdict = OK" || { ko "verdict inattendu"; echo "$out"; }
+
+$NC snapshot a1_hors_ligne --force "${INV[@]}" >/dev/null
+out=$($NC assert --intent intents/lab-multivendor.yml --snapshot a1_hors_ligne --json "$JSON_DIR/a1_snapshot.json" "${INV[@]}" 2>&1); code=$?
+[[ "$code" == "0" ]] && ok "hors ligne : code retour = 0" || { ko "hors ligne : code retour = $code (attendu 0)"; echo "$out"; }
+echo "$out" | grep -q "Verdict : OK" && ok "hors ligne : verdict = OK" || { ko "verdict inattendu (hors ligne)"; echo "$out"; }
+
+# ---------------------------------------------------------------- A2 : coupure du lien r4<->r5
+title "A2 : ip link set eth2 down sur r4 (lien FRR <-> SR Linux) -> ÉCHEC (assert)"
+docker exec "$LAB-r4" ip link set eth2 down
+wait_link_down && ok "voisin OSPF perdu des deux côtés (poll actif)" \
+  || ko "voisin OSPF encore présent d'au moins un côté après 60s"
+
+out=$($NC assert --intent intents/lab-multivendor.yml --json "$JSON_DIR/a2.json" "${INV[@]}" 2>&1); code=$?
+
+docker exec "$LAB-r4" ip link set eth2 up
+wait_converged && ok "retour à la normale : OSPF Full des deux côtés" \
+  || ko "OSPF non reconvergé après restauration du lien"
+
+[[ "$code" == "2" ]] && ok "code retour = 2" || { ko "code retour = $code (attendu 2)"; echo "$out"; }
+echo "$out" | grep -q "Verdict : ÉCHEC" && ok "verdict = ÉCHEC" || { ko "verdict inattendu"; echo "$out"; }
+grep -q '"id": "chemin-r1-vers-lan-r5"' "$JSON_DIR/a2.json" && grep -q "trou noir" "$JSON_DIR/a2.json" \
+  && ok "assertion 'path' (traverse FRR et SR Linux) en ÉCHEC avec la raison 'trou noir'" \
+  || { ko "constat 'path' attendu manquant"; cat "$JSON_DIR/a2.json"; }
+grep -q '"id": "ospf-r5-voisin-srlinux"' "$JSON_DIR/a2.json" && ok "assertion OSPF côté SR Linux présente dans le rapport" \
+  || ko "assertion OSPF côté SR Linux absente du rapport"
 
 # ---------------------------------------------------------------- Bilan
 echo

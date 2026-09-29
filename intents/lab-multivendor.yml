@@ -1,0 +1,53 @@
+# intents/lab-multivendor.yml — état attendu du lab mixte FRR + Nokia SR Linux (Phase C,
+# SPEC_v3 §6, objectif O2)
+#
+# Toutes les valeurs sont vérifiées sur un snapshot réel du lab mixte durci (Phase B), pas
+# devinées. Volontairement diversifié par rapport à intents/lab.yml : certaines assertions
+# portent ici sur r5 (SR Linux) pour prouver que le même moteur d'assertions fonctionne
+# identiquement sur les deux drivers, sans aucune connaissance de la syntaxe SR Linux (tout
+# vient du modèle normalisé). "chemin-r1-vers-lan-r5" est la plus significative : elle
+# traverse les DEUX constructeurs dans le même calcul.
+
+assertions:
+
+  - id: bgp-r3-vers-r4
+    description: "Session eBGP r3 -> 172.16.34.2 Established, au moins 2 préfixes reçus (inchangé par rapport au lab FRR : r3/r4 partagent la même config)"
+    device: r3
+    type: bgp_session
+    neighbor: 172.16.34.2
+    min_prefixes_received: 2
+
+  - id: ospf-r5-voisin-srlinux
+    description: "r5 (SR Linux) a exactement 1 voisin OSPF Full (r4)"
+    device: r5
+    type: ospf_neighbors
+    count: 1
+
+  - id: route-r5-vers-as65001
+    description: "r5 (SR Linux) connaît l'agrégat 10.1.0.0/16 (AS65001), via OSPF, next-hop r4 par ethernet-1/1.0 (protocole normalisé \"ospfv2\" côté SR Linux, contrairement à \"ospf\" côté FRR -- vérifié en direct, pas supposé)"
+    device: r5
+    type: route_present
+    prefix: 10.1.0.0/16
+    protocol: ospfv2
+    next_hop: 10.2.45.1
+    interface: ethernet-1/1.0
+
+  - id: route-r4-sans-lan-r1-direct
+    description: "r4 n'a pas d'entrée EXACTE pour 10.1.12.0/30 (atteint seulement via l'agrégat 10.1.0.0/16 : voulu, même principe que sur le lab FRR)"
+    device: r4
+    type: route_absent
+    prefix: 10.1.12.0/30
+
+  - id: interface-r5-vers-r4
+    description: "r5 (SR Linux) ethernet-1/1 (vers r4) opérationnelle"
+    device: r5
+    type: interface_up
+    interface: ethernet-1/1
+
+  - id: chemin-r1-vers-lan-r5
+    description: "Le chemin logique de r1 (FRR) vers 192.168.2.0/24 traverse r3 (FRR, OSPF), r4 (FRR, eBGP) puis r5 (SR Linux, OSPF), où le préfixe est directement connecté -- calcul identique des deux côtés de la frontière FRR/SR Linux, sans lire aucune syntaxe de config"
+    device: r1
+    type: path
+    prefix: 192.168.2.0/24
+    via: [r3, r4, r5]
+    mode: all

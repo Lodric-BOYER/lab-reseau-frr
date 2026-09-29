@@ -20,6 +20,7 @@ from rich.console import Console
 from rich.table import Table
 
 from netcheck import __version__
+from netcheck.assertions import AssertionResult, Status
 from netcheck.compliance import NotApplicable, Violation
 from netcheck.diff import Finding, Severity
 from netcheck.secrets import mask_secrets
@@ -238,3 +239,82 @@ def write_compliance_html(
     Path(path).write_text(
         render_compliance_html(violations, compliant, rules_path, not_applicable), encoding="utf-8",
     )
+
+
+# ------------------------------------------------------------------------------------------
+# État attendu (netcheck assert, Phase C) : mêmes principes que diff/check, un troisième
+# vocabulaire de statut (OK / ÉCHEC / NON ÉVALUABLE, §6). Le "detail" d'un résultat "path" ne
+# contient jamais de texte de config (assert ne lit que le modèle normalisé) : pas de masquage
+# de secrets nécessaire ici, contrairement à diff/check.
+# ------------------------------------------------------------------------------------------
+
+_ASSERT_STYLE = {Status.OK: "bold green", Status.ECHEC: "bold red", Status.NON_EVALUABLE: "yellow"}
+_ASSERT_ORDER = {Status.ECHEC: 3, Status.NON_EVALUABLE: 2, Status.OK: 1}
+
+
+def print_assert_terminal(
+    results: list[AssertionResult], verdict_label: str, console: Console | None = None,
+) -> None:
+    console = console or Console()
+
+    if results:
+        table = Table(show_lines=False)
+        table.add_column("Statut")
+        table.add_column("Équipement")
+        table.add_column("Assertion")
+        table.add_column("Détail", overflow="fold")
+        for r in sorted(results, key=lambda r: -_ASSERT_ORDER[r.status]):
+            style = _ASSERT_STYLE[r.status]
+            table.add_row(f"[{style}]{r.status.value}[/]", r.assertion.device, r.assertion.id,
+                          r.detail or r.assertion.description)
+        console.print(table)
+    else:
+        console.print("Aucune assertion.")
+
+    counts = {s: sum(1 for r in results if r.status == s) for s in Status}
+    console.print(
+        f"Verdict : [bold]{verdict_label}[/bold]  "
+        f"({counts[Status.OK]} OK, {counts[Status.ECHEC]} échec(s), "
+        f"{counts[Status.NON_EVALUABLE]} non évaluable(s))"
+    )
+
+
+def assert_to_dict(results: list[AssertionResult], verdict_label: str) -> dict:
+    return {
+        "verdict": verdict_label,
+        "results": [
+            {
+                "id": r.assertion.id, "device": r.assertion.device, "type": r.assertion.type,
+                "status": r.status.value, "detail": r.detail,
+            }
+            for r in results
+        ],
+    }
+
+
+def write_assert_json(results: list[AssertionResult], verdict_label: str, path: str) -> None:
+    Path(path).write_text(
+        json.dumps(assert_to_dict(results, verdict_label), indent=2, ensure_ascii=False), encoding="utf-8",
+    )
+
+
+def render_assert_html(results: list[AssertionResult], verdict_label: str, intent_path: str) -> str:
+    """Rend le rapport HTML autonome (aucune ressource externe)."""
+    template = _ENV.get_template("assert.html.j2")
+    counts = {s.value: sum(1 for r in results if r.status == s) for s in Status}
+    devices = sorted({r.assertion.device for r in results})
+    return template.render(
+        verdict=verdict_label,
+        results=sorted(results, key=lambda r: -_ASSERT_ORDER[r.status]),
+        counts=counts,
+        devices=devices,
+        intent_path=str(intent_path),
+        generated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
+        netcheck_version=__version__,
+    )
+
+
+def write_assert_html(
+    results: list[AssertionResult], verdict_label: str, intent_path: str, path: str,
+) -> None:
+    Path(path).write_text(render_assert_html(results, verdict_label, intent_path), encoding="utf-8")

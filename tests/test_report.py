@@ -7,6 +7,7 @@ du type '<script>alert(1)</script>' doit ressortir échappée, jamais exécutabl
 from rich.console import Console
 
 from netcheck import report
+from netcheck.assertions import Assertion, AssertionResult, Status
 from netcheck.compliance import NotApplicable, Rule, Violation
 from netcheck.diff import Finding, Severity
 
@@ -300,3 +301,73 @@ def test_not_applicable_appears_in_terminal():
     assert "Non applicable" in text
     assert "r5" in text
     assert "1 non applicable" in text
+
+
+# ------------------------------------------------------------------------------------------
+# assert (Phase C, état attendu) : terminal, JSON, HTML. Pas de masquage ici -- assert ne lit
+# que le modèle normalisé, jamais de texte de config (voir la docstring de report.py).
+# ------------------------------------------------------------------------------------------
+
+def _assertion(type_="interface_up", device="r1", **params) -> Assertion:
+    return Assertion(id="test-id", description="une assertion de test", device=device,
+                      type=type_, params=params)
+
+
+def test_assert_terminal_shows_verdict_and_counts():
+    results = [
+        AssertionResult(_assertion(), Status.OK),
+        AssertionResult(_assertion(device="r2"), Status.ECHEC, "interface eth1 absente sur r2"),
+        AssertionResult(_assertion(device="r3"), Status.NON_EVALUABLE, "équipement r3 injoignable"),
+    ]
+    console = Console(record=True, width=120)
+    report.print_assert_terminal(results, "ÉCHEC", console=console)
+    text = console.export_text()
+    assert "ÉCHEC" in text
+    assert "1 OK" in text and "1 échec" in text and "1 non évaluable" in text
+    assert "interface eth1 absente sur r2" in text
+
+
+def test_assert_terminal_empty_results():
+    console = Console(record=True, width=120)
+    report.print_assert_terminal([], "OK", console=console)
+    assert "Aucune assertion" in console.export_text()
+
+
+def test_assert_to_dict_structure():
+    a = _assertion(type_="path", device="r1")
+    results = [AssertionResult(a, Status.ECHEC, "attendu r1 r3, obtenu r1 r2 r3")]
+    d = report.assert_to_dict(results, "ÉCHEC")
+    assert d == {
+        "verdict": "ÉCHEC",
+        "results": [{
+            "id": "test-id", "device": "r1", "type": "path",
+            "status": "ÉCHEC", "detail": "attendu r1 r3, obtenu r1 r2 r3",
+        }],
+    }
+
+
+def test_assert_html_renders_verdict_and_results():
+    results = [AssertionResult(_assertion(), Status.OK)]
+    html = report.render_assert_html(results, "OK", "intents/lab.yml")
+    assert "<strong>OK</strong>" in html
+    assert "intents/lab.yml" in html
+    assert "test-id" in html
+
+
+def test_assert_html_escapes_xss_payload():
+    payload = "<script>alert(1)</script>"
+    results = [AssertionResult(_assertion(), Status.ECHEC, payload)]
+    html = report.render_assert_html(results, "ÉCHEC", "intents/lab.yml")
+    assert payload not in html
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+
+
+def test_assert_html_is_self_contained_no_external_resources():
+    results = [AssertionResult(_assertion(), Status.OK)]
+    html = report.render_assert_html(results, "OK", "intents/lab.yml")
+    assert "http://" not in html and "https://" not in html and "src=" not in html
+
+
+def test_assert_html_conforme_still_renders():
+    html = report.render_assert_html([], "OK", "intents/lab.yml")
+    assert "Aucune assertion" in html

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rapport d'état attendu netcheck — {{ verdict }}</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 2rem; max-width: 960px; }
+  h1 { margin-bottom: 0.2em; font-size: 1.4em; }
+  .meta { color: #57606a; font-size: 0.9em; }
+  .verdict-ok { color: #1a7f37; }
+  .verdict-echec { color: #cf222e; }
+  .counters { margin: 1em 0; }
+  .badge { display: inline-block; padding: 0.15em 0.6em; border-radius: 1em; font-size: 0.85em; margin-right: 0.4em; white-space: nowrap; }
+  .badge-ok { background: #dafbe1; color: #1a7f37; border: 1px solid #1a7f3755; }
+  .badge-echec { background: #ffebe9; color: #cf222e; border: 1px solid #cf222e55; }
+  .badge-non-evaluable { background: #fff8c5; color: #9a6700; border: 1px solid #9a670055; }
+  table { border-collapse: collapse; width: 100%; margin-top: 1em; }
+  th, td { text-align: left; padding: 0.5em 0.7em; border-bottom: 1px solid #d0d7de; vertical-align: top; }
+  th { background: #f6f8fa; }
+  tr[hidden] { display: none; }
+  .filters { margin: 1em 0; display: flex; gap: 1.2em; flex-wrap: wrap; align-items: center; font-size: 0.9em; }
+  footer { margin-top: 2em; font-size: 0.8em; color: #57606a; border-top: 1px solid #d0d7de; padding-top: 1em; }
+</style>
+</head>
+<body>
+
+<h1>Rapport d'état attendu netcheck</h1>
+<p class="meta">Généré le {{ generated_at }} — intent : <code>{{ intent_path }}</code></p>
+<p class="verdict-{{ 'ok' if verdict == 'OK' else 'echec' }}">
+  <strong>{{ verdict }}</strong>
+</p>
+
+<div class="counters">
+  <span class="badge badge-ok">{{ counts.get("OK", 0) }} OK</span>
+  <span class="badge badge-echec">{{ counts.get("ÉCHEC", 0) }} échec(s)</span>
+  <span class="badge badge-non-evaluable">{{ counts.get("NON ÉVALUABLE", 0) }} non évaluable(s)</span>
+</div>
+
+<div class="filters">
+  <span>
+    {% for s in ["OK", "ÉCHEC", "NON ÉVALUABLE"] %}
+    <label><input type="checkbox" class="f-status" value="{{ s }}" checked> {{ s }}</label>
+    {% endfor %}
+  </span>
+  <label>Équipement :
+    <select id="f-device">
+      <option value="">Tous</option>
+      {% for d in devices %}
+      <option value="{{ d }}">{{ d }}</option>
+      {% endfor %}
+    </select>
+  </label>
+</div>
+
+<table id="results">
+  <thead>
+    <tr><th>Statut</th><th>Équipement</th><th>Assertion</th><th>Détail</th></tr>
+  </thead>
+  <tbody>
+    {% for r in results %}
+    <tr data-status="{{ r.status.value }}" data-device="{{ r.assertion.device }}">
+      <td><span class="badge badge-{{ 'ok' if r.status.value == 'OK' else ('echec' if r.status.value == 'ÉCHEC' else 'non-evaluable') }}">{{ r.status.value }}</span></td>
+      <td>{{ r.assertion.device }}</td>
+      <td>{{ r.assertion.id }}<br><small>{{ r.assertion.description }}</small></td>
+      <td>{{ r.detail }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p id="no-match" hidden>Aucun résultat ne correspond aux filtres sélectionnés.</p>
+{% if not results %}
+<p>Aucune assertion.</p>
+{% endif %}
+
+<footer>
+  netcheck v{{ netcheck_version }} — outil en lecture seule. À n'utiliser sur un réseau réel
+  qu'avec une autorisation écrite.
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var statusBoxes = Array.prototype.slice.call(document.querySelectorAll(".f-status"));
+  var deviceSelect = document.getElementById("f-device");
+  var rows = Array.prototype.slice.call(document.querySelectorAll("#results tbody tr"));
+  var noMatch = document.getElementById("no-match");
+
+  // Filtrage pur DOM : on montre/cache des lignes déjà rendues et échappées côté serveur.
+  function apply() {
+    var activeStatuses = statusBoxes.filter(function (box) { return box.checked; })
+      .map(function (box) { return box.value; });
+    var activeDevice = deviceSelect.value;
+    var visibleCount = 0;
+
+    rows.forEach(function (row) {
+      var show = activeStatuses.indexOf(row.getAttribute("data-status")) !== -1
+        && (activeDevice === "" || row.getAttribute("data-device") === activeDevice);
+      row.hidden = !show;
+      if (show) { visibleCount += 1; }
+    });
+
+    noMatch.hidden = visibleCount !== 0;
+  }
+
+  statusBoxes.forEach(function (box) { box.addEventListener("change", apply); });
+  deviceSelect.addEventListener("change", apply);
+  apply();
+})();
+</script>
+
+</body>
+</html>

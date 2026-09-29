@@ -1,0 +1,52 @@
+# intents/lab.yml — état attendu du lab FRR (Phase C, SPEC_v3 §6, objectif O2)
+#
+# Toutes les valeurs ci-dessous sont vérifiées sur un snapshot réel du lab durci (Phase B),
+# pas devinées. Format et champs : voir netcheck/assertions.py (docstring du module) et
+# netcheck/README.md. Résultat par assertion : OK, ÉCHEC ou NON ÉVALUABLE. Codes retour de
+# `assert` : 0 tout OK, 2 au moins un ÉCHEC, 3 erreur d'usage.
+#
+# Évaluées uniquement sur le modèle normalisé (model.py), jamais le texte de la config.
+
+assertions:
+
+  - id: bgp-r3-vers-r4
+    description: "Session eBGP r3 -> 172.16.34.2 Established, au moins 2 préfixes reçus"
+    device: r3
+    type: bgp_session
+    neighbor: 172.16.34.2
+    min_prefixes_received: 2
+
+  - id: ospf-r1-voisins
+    description: "r1 a exactement 2 voisins OSPF Full (r2 et r3)"
+    device: r1
+    type: ospf_neighbors
+    count: 2
+
+  - id: route-r1-vers-lan-r5
+    description: "r1 connaît 192.168.2.0/24 (LAN de pc2), via OSPF, next-hop r3 par eth2"
+    device: r1
+    type: route_present
+    prefix: 192.168.2.0/24
+    protocol: ospf
+    next_hop: 10.1.13.2
+    interface: eth2
+
+  - id: route-r4-sans-lan-r1-direct
+    description: "r4 n'a pas d'entrée EXACTE pour 10.1.12.0/30 (il l'atteint seulement via l'agrégat 10.1.0.0/16, jamais annoncé en préfixe précis : voulu, c'est le principe de l'agrégation eBGP)"
+    device: r4
+    type: route_absent
+    prefix: 10.1.12.0/30
+
+  - id: interface-r4-vers-r5
+    description: "r4 eth2 (vers r5) opérationnelle"
+    device: r4
+    type: interface_up
+    interface: eth2
+
+  - id: chemin-r1-vers-lan-r5
+    description: "Le chemin logique de r1 vers 192.168.2.0/24 passe par r3 (OSPF) puis r4 (eBGP) puis r5, où le préfixe est directement connecté"
+    device: r1
+    type: path
+    prefix: 192.168.2.0/24
+    via: [r3, r4, r5]
+    mode: all

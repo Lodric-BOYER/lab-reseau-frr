@@ -1,0 +1,438 @@
+"""Moteur d'assertions d'état attendu (`netcheck assert`, Phase C, SPEC_v3 §6, objectif O2).
+
+Format d'un fichier d'intent (voir aussi le commentaire en tête de intents/lab.yml) :
+  id: identifiant court et unique
+  description: phrase humaine
+  device: équipement sur lequel l'assertion porte (point de départ pour "path")
+  type: un des 6 types ci-dessous
+  ...  paramètres propres au type (voir chaque évaluateur _check_*)
+
+Toutes les assertions sont évaluées UNIQUEMENT sur le modèle normalisé (model.py), jamais sur
+le texte de la config : elles fonctionnent identiquement pour FRR et SR Linux.
+
+Sécurité : mêmes principes que compliance.py -- yaml.safe_load exclusivement.
+"""
+from __future__ import annotations
+
+import ipaddress
+from dataclasses import dataclass, field
+from enum import Enum
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from netcheck import management
+from netcheck.model import DeviceState, Route
+
+KNOWN_TYPES = {
+    "bgp_session",
+    "ospf_neighbors",
+    "route_present",
+    "route_absent",
+    "interface_up",
+    "path",
+}
+REQUIRED_FIELDS = {"id", "description", "device", "type"}
+
+# Profondeur maximale d'un chemin logique (Phase C, protection contre une boucle non détectée
+# par ailleurs ou une topologie anormalement longue) -- largement au-dessus de la taille de ce
+# lab (5 équipements), jamais une limite réaliste à atteindre légitimement ici.
+MAX_PATH_HOPS = 16
+
+
+class Status(str, Enum):
+    OK = "OK"
+    ECHEC = "ÉCHEC"
+    NON_EVALUABLE = "NON ÉVALUABLE"
+
+
+@dataclass
+class Assertion:
+    id: str
+    description: str
+    device: str
+    type: str
+    params: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class AssertionResult:
+    assertion: Assertion
+    status: Status
+    detail: str = ""
+
+
+# ------------------------------------------------------------------------------------------
+# Chargement et validation
+# ------------------------------------------------------------------------------------------
+
+def load_intent(path: str | Path) -> list[Assertion]:
+    """Charge et valide un fichier d'intent (intents/*.yml)."""
+    path = Path(path)
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as e:
+        raise ValueError(f"{path} : fichier YAML invalide ou refusé : {e}") from e
+
+    if not data:
+        return []
+    raw_assertions = data.get("assertions") if isinstance(data, dict) else data
+    if raw_assertions is None:
+        raise ValueError(f"{path} : clé 'assertions' absente")
+    if not isinstance(raw_assertions, list):
+        raise ValueError(f"{path} : 'assertions' doit être une liste")
+
+    assertions = [_validate_assertion(raw, index=i, path=path) for i, raw in enumerate(raw_assertions)]
+    _check_unique_ids(assertions, path)
+    return assertions
+
+
+def _validate_assertion(raw: Any, index: int, path: Path) -> Assertion:
+    label = raw.get("id", f"assertion #{index}") if isinstance(raw, dict) else f"assertion #{index}"
+    if not isinstance(raw, dict):
+        raise ValueError(f"{path} : {label} : une assertion doit être un objet YAML (clé: valeur)")
+
+    missing = REQUIRED_FIELDS - set(raw)
+    if missing:
+        raise ValueError(f"{path} : {label} : champ(s) obligatoire(s) manquant(s) : {sorted(missing)}")
+
+    if raw["type"] not in KNOWN_TYPES:
+        raise ValueError(
+            f"{path} : {label} : type '{raw['type']}' inconnu (attendu : {sorted(KNOWN_TYPES)})"
+        )
+
+    params = {k: v for k, v in raw.items() if k not in REQUIRED_FIELDS}
+    return Assertion(id=raw["id"], description=raw["description"], device=raw["device"],
+                      type=raw["type"], params=params)
+
+
+def _check_unique_ids(assertions: list[Assertion], path: Path) -> None:
+    seen = set()
+    for a in assertions:
+        if a.id in seen:
+            raise ValueError(f"{path} : id d'assertion en double : '{a.id}'")
+        seen.add(a.id)
+
+
+# ------------------------------------------------------------------------------------------
+# Évaluation
+# ------------------------------------------------------------------------------------------
+
+def evaluate(
+    assertions: list[Assertion],
+    devices: dict[str, DeviceState],
+    management_interfaces: set[str] | None = None,
+) -> list[AssertionResult]:
+    """Applique chaque assertion. `devices` est filtré une seule fois (interfaces/routes de
+    management retirées, comme compliance.evaluate) puis passé entier à chaque évaluateur :
+    "path" a besoin de tous les équipements pour traverser les sauts, les autres types n'en
+    lisent qu'un (assertion.device)."""
+    mgmt = set(management_interfaces or ())
+    filtered = {name: management.filtered(state, mgmt) for name, state in devices.items()}
+    return [_EVALUATORS[a.type](a, filtered) for a in assertions]
+
+
+def verdict(results: list[AssertionResult]) -> tuple[str, int]:
+    """Codes retour (§6) : 0 tout OK (NON ÉVALUABLE n'y change rien), 2 au moins un ÉCHEC."""
+    if any(r.status == Status.ECHEC for r in results):
+        return "ÉCHEC", 2
+    return "OK", 0
+
+
+def _unreachable(assertion: Assertion, devices: dict[str, DeviceState]) -> DeviceState | None:
+    """DeviceState de assertion.device si présent et joignable, sinon None (appelant renvoie
+    alors NON ÉVALUABLE) -- factorisé, commun aux 5 types à un seul équipement."""
+    state = devices.get(assertion.device)
+    if state is None or not state.reachable:
+        return None
+    return state
+
+
+# ------------------------------------------------------------------------------------------
+# bgp_session
+# ------------------------------------------------------------------------------------------
+
+def _check_bgp_session(assertion: Assertion, devices: dict[str, DeviceState]) -> AssertionResult:
+    state = _unreachable(assertion, devices)
+    if state is None:
+        return AssertionResult(assertion, Status.NON_EVALUABLE,
+                                f"équipement {assertion.device} absent du relevé ou injoignable")
+    neighbor = assertion.params.get("neighbor")
+    if not neighbor:
+        raise ValueError(f"assertion '{assertion.id}' (bgp_session) : paramètre 'neighbor' manquant")
+    expected_state = assertion.params.get("state", "Established")
+    min_pfx = assertion.params.get("min_prefixes_received")
+
+    peer = next((p for p in state.bgp_peers if p.neighbor == neighbor), None)
+    if peer is None:
+        return AssertionResult(assertion, Status.ECHEC,
+                                f"aucune session BGP vers {neighbor} sur {assertion.device}")
+    if peer.state != expected_state:
+        return AssertionResult(assertion, Status.ECHEC,
+            f"session BGP {neighbor} sur {assertion.device} : état {peer.state}, attendu {expected_state}")
+    if min_pfx is not None and peer.pfx_received < min_pfx:
+        return AssertionResult(assertion, Status.ECHEC,
+            f"session BGP {neighbor} sur {assertion.device} : {peer.pfx_received} préfixe(s) "
+            f"reçu(s), attendu au moins {min_pfx}")
+    return AssertionResult(assertion, Status.OK)
+
+
+# ------------------------------------------------------------------------------------------
+# ospf_neighbors
+# ------------------------------------------------------------------------------------------
+
+def _check_ospf_neighbors(assertion: Assertion, devices: dict[str, DeviceState]) -> AssertionResult:
+    state = _unreachable(assertion, devices)
+    if state is None:
+        return AssertionResult(assertion, Status.NON_EVALUABLE,
+                                f"équipement {assertion.device} absent du relevé ou injoignable")
+    expected_count = assertion.params.get("count")
+    if expected_count is None:
+        raise ValueError(f"assertion '{assertion.id}' (ospf_neighbors) : paramètre 'count' manquant")
+    expected_state = assertion.params.get("state", "Full")
+
+    actual = sum(1 for n in state.ospf_neighbors if n.state.startswith(expected_state))
+    if actual != expected_count:
+        return AssertionResult(assertion, Status.ECHEC,
+            f"{assertion.device} : {actual} voisin(s) OSPF {expected_state}, "
+            f"attendu exactement {expected_count}")
+    return AssertionResult(assertion, Status.OK)
+
+
+# ------------------------------------------------------------------------------------------
+# route_present / route_absent (correspondance EXACTE du préfixe, pas de LPM -- voir "path"
+# pour la recherche de la route la plus précise)
+# ------------------------------------------------------------------------------------------
+
+def _selected_route(state: DeviceState, prefix: str) -> Route | None:
+    return next((r for r in state.routes if r.prefix == prefix and r.selected), None)
+
+
+def _check_route_present(assertion: Assertion, devices: dict[str, DeviceState]) -> AssertionResult:
+    state = _unreachable(assertion, devices)
+    if state is None:
+        return AssertionResult(assertion, Status.NON_EVALUABLE,
+                                f"équipement {assertion.device} absent du relevé ou injoignable")
+    prefix = assertion.params.get("prefix")
+    if not prefix:
+        raise ValueError(f"assertion '{assertion.id}' (route_present) : paramètre 'prefix' manquant")
+
+    route = _selected_route(state, prefix)
+    if route is None:
+        return AssertionResult(assertion, Status.ECHEC, f"{assertion.device} ne connaît pas {prefix}")
+
+    expected_protocol = assertion.params.get("protocol")
+    if expected_protocol and route.protocol != expected_protocol:
+        return AssertionResult(assertion, Status.ECHEC,
+            f"{prefix} sur {assertion.device} : protocole {route.protocol}, attendu {expected_protocol}")
+
+    expected_nh = assertion.params.get("next_hop")
+    if expected_nh and not any(nh.ip == expected_nh for nh in route.nexthops):
+        return AssertionResult(assertion, Status.ECHEC,
+            f"{prefix} sur {assertion.device} : next-hop {expected_nh} absent "
+            f"(obtenu {[nh.ip for nh in route.nexthops]})")
+
+    expected_if = assertion.params.get("interface")
+    if expected_if and not any(nh.interface == expected_if for nh in route.nexthops):
+        return AssertionResult(assertion, Status.ECHEC,
+            f"{prefix} sur {assertion.device} : interface {expected_if} absente "
+            f"(obtenu {[nh.interface for nh in route.nexthops]})")
+
+    return AssertionResult(assertion, Status.OK)
+
+
+def _check_route_absent(assertion: Assertion, devices: dict[str, DeviceState]) -> AssertionResult:
+    state = _unreachable(assertion, devices)
+    if state is None:
+        return AssertionResult(assertion, Status.NON_EVALUABLE,
+                                f"équipement {assertion.device} absent du relevé ou injoignable")
+    prefix = assertion.params.get("prefix")
+    if not prefix:
+        raise ValueError(f"assertion '{assertion.id}' (route_absent) : paramètre 'prefix' manquant")
+
+    if _selected_route(state, prefix) is not None:
+        return AssertionResult(assertion, Status.ECHEC,
+                                f"{assertion.device} connaît {prefix} alors qu'il ne devrait pas")
+    return AssertionResult(assertion, Status.OK)
+
+
+# ------------------------------------------------------------------------------------------
+# interface_up
+# ------------------------------------------------------------------------------------------
+
+def _check_interface_up(assertion: Assertion, devices: dict[str, DeviceState]) -> AssertionResult:
+    state = _unreachable(assertion, devices)
+    if state is None:
+        return AssertionResult(assertion, Status.NON_EVALUABLE,
+                                f"équipement {assertion.device} absent du relevé ou injoignable")
+    name = assertion.params.get("interface")
+    if not name:
+        raise ValueError(f"assertion '{assertion.id}' (interface_up) : paramètre 'interface' manquant")
+
+    iface = next((i for i in state.interfaces if i.name == name), None)
+    if iface is None:
+        return AssertionResult(assertion, Status.ECHEC, f"interface {name} absente sur {assertion.device}")
+    if not (iface.admin_up and iface.oper_up):
+        return AssertionResult(assertion, Status.ECHEC,
+            f"interface {name} sur {assertion.device} : admin_up={iface.admin_up}, oper_up={iface.oper_up}")
+    return AssertionResult(assertion, Status.OK)
+
+
+# ------------------------------------------------------------------------------------------
+# path -- le type le plus riche (voir la docstring du module et les échanges de conception)
+# ------------------------------------------------------------------------------------------
+
+def _ip_to_device(devices: dict[str, DeviceState]) -> dict[str, set[str]]:
+    """{ip: {noms d'équipements}} d'après les interfaces (déjà filtrées des interfaces de
+    management par evaluate()). Plusieurs noms pour une même IP = conflit, résolu comme
+    NON ÉVALUABLE au moment du lookup (jamais deviné lequel des deux est le bon)."""
+    owners: dict[str, set[str]] = {}
+    for name, state in devices.items():
+        for iface in state.interfaces:
+            for addr in iface.addresses:
+                try:
+                    ip = str(ipaddress.ip_interface(addr).ip)
+                except ValueError:
+                    continue
+                owners.setdefault(ip, set()).add(name)
+    return owners
+
+
+def _most_specific_route(state: DeviceState, target: ipaddress.IPv4Network) -> Route | None:
+    """Route sélectionnée qui couvre `target` avec le préfixe le plus long (longest prefix
+    match) -- ex. r4 atteint les sous-réseaux de l'AS65001 via l'agrégat 10.1.0.0/16, sans
+    entrée exacte pour chacun d'eux."""
+    best, best_len = None, -1
+    for r in state.routes:
+        if not r.selected:
+            continue
+        try:
+            net = ipaddress.ip_network(r.prefix)
+        except ValueError:
+            continue
+        if net.version != target.version:
+            continue
+        if target.subnet_of(net) and net.prefixlen > best_len:
+            best, best_len = r, net.prefixlen
+    return best
+
+
+def _is_blackhole(route: Route) -> bool:
+    """Route sélectionnée mais sans next-hop exploitable (Null0 / blackhole / reject) : un
+    trou noir, fait observable -- ÉCHEC, jamais NON ÉVALUABLE (voir la docstring du module)."""
+    if not route.nexthops:
+        return True
+    return all(nh.ip is None and nh.interface is None and not nh.directly_connected
+               for nh in route.nexthops)
+
+
+def _trace(
+    devices: dict[str, DeviceState], ip_owners: dict[str, set[str]],
+    target: ipaddress.IPv4Network, current: str, visited: tuple[str, ...],
+) -> list[tuple[str, Any]]:
+    """Explore toutes les branches ECMP depuis `current`. Renvoie une liste de
+    (nature, donnée) : ("resolved", [séquence de routeurs]) un chemin complet trouvé,
+    ("echec", raison) un trou noir (fait observable), ("non_evaluable", raison) une limite de
+    la méthode (boucle, profondeur, routeur ou next-hop inconnu)."""
+    if current in visited:
+        return [("non_evaluable", f"boucle détectée : {' -> '.join(visited + (current,))}")]
+    if len(visited) >= MAX_PATH_HOPS:
+        return [("non_evaluable", f"profondeur maximale ({MAX_PATH_HOPS} sauts) dépassée")]
+    visited = visited + (current,)
+
+    state = devices.get(current)
+    if state is None or not state.reachable:
+        return [("non_evaluable", f"équipement {current} absent du relevé ou injoignable")]
+
+    route = _most_specific_route(state, target)
+    if route is None:
+        return [("echec", f"trou noir sur {current} : aucune route ne couvre {target}")]
+    if _is_blackhole(route):
+        return [("echec",
+                  f"trou noir sur {current} : route {route.prefix} ({route.protocol}) "
+                  f"sans next-hop exploitable")]
+
+    if any(nh.directly_connected for nh in route.nexthops):
+        return [("resolved", list(visited))]
+
+    outcomes: list[tuple[str, Any]] = []
+    for nh in route.nexthops:
+        if nh.ip is None:
+            outcomes.append(("non_evaluable",
+                f"next-hop sans IP exploitable sur {current} (route {route.prefix})"))
+            continue
+        owners = ip_owners.get(nh.ip)
+        if not owners:
+            outcomes.append(("non_evaluable",
+                f"next-hop {nh.ip} (sur {current}) ne correspond à aucun équipement connu"))
+            continue
+        if len(owners) > 1:
+            outcomes.append(("non_evaluable",
+                f"adresse {nh.ip} portée par plusieurs équipements ({', '.join(sorted(owners))})"))
+            continue
+        outcomes.extend(_trace(devices, ip_owners, target, next(iter(owners)), visited))
+    return outcomes
+
+
+def _check_path(assertion: Assertion, devices: dict[str, DeviceState]) -> AssertionResult:
+    prefix = assertion.params.get("prefix")
+    via = assertion.params.get("via")
+    if not prefix or via is None:
+        raise ValueError(f"assertion '{assertion.id}' (path) : paramètres 'prefix' et 'via' requis")
+    mode = assertion.params.get("mode", "all")
+    if mode not in ("all", "any"):
+        raise ValueError(
+            f"assertion '{assertion.id}' (path) : mode doit être 'all' ou 'any' (reçu : {mode!r})")
+
+    state = _unreachable(assertion, devices)
+    if state is None:
+        return AssertionResult(assertion, Status.NON_EVALUABLE,
+                                f"équipement {assertion.device} absent du relevé ou injoignable")
+    try:
+        target = ipaddress.ip_network(prefix)
+    except ValueError as e:
+        raise ValueError(f"assertion '{assertion.id}' (path) : prefix invalide ({prefix}) : {e}") from e
+
+    expected = [assertion.device] + list(via)
+    ip_owners = _ip_to_device(devices)
+    outcomes = _trace(devices, ip_owners, target, assertion.device, ())
+
+    resolved = [seq for nature, seq in outcomes if nature == "resolved"]
+    echecs = [reason for nature, reason in outcomes if nature == "echec"]
+    non_evals = [reason for nature, reason in outcomes if nature == "non_evaluable"]
+    matches = [p for p in resolved if p == expected]
+    mismatches = [p for p in resolved if p != expected]
+
+    def _mismatch_detail(path: list[str]) -> str:
+        return f"attendu {' '.join(expected)}, obtenu {' '.join(path)}"
+
+    if mode == "all":
+        if echecs:
+            return AssertionResult(assertion, Status.ECHEC, echecs[0])
+        if mismatches:
+            return AssertionResult(assertion, Status.ECHEC, _mismatch_detail(mismatches[0]))
+        if non_evals:
+            return AssertionResult(assertion, Status.NON_EVALUABLE, non_evals[0])
+        return AssertionResult(assertion, Status.OK)
+
+    # mode == "any"
+    if matches:
+        return AssertionResult(assertion, Status.OK)
+    if non_evals:
+        return AssertionResult(assertion, Status.NON_EVALUABLE, non_evals[0])
+    if echecs:
+        return AssertionResult(assertion, Status.ECHEC, echecs[0])
+    if mismatches:
+        return AssertionResult(assertion, Status.ECHEC, _mismatch_detail(mismatches[0]))
+    return AssertionResult(assertion, Status.NON_EVALUABLE, "aucun chemin n'a pu être résolu")
+
+
+_EVALUATORS = {
+    "bgp_session": _check_bgp_session,
+    "ospf_neighbors": _check_ospf_neighbors,
+    "route_present": _check_route_present,
+    "route_absent": _check_route_absent,
+    "interface_up": _check_interface_up,
+    "path": _check_path,
+}

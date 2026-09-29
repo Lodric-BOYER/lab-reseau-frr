@@ -113,6 +113,33 @@ grep -q "ebgp-politique-entrante" "$JSON_DIR/c2.json" && ok "règle 'ebgp-politi
 grep -q '"device": "r3"' "$JSON_DIR/c2.json" && ok "non-conformité localisée sur r3" \
   || ko "équipement r3 absent du rapport"
 
+# ---------------------------------------------------------------- A1 : état attendu, nominal
+title "A1 : état attendu (assert) -> OK, en direct et hors ligne"
+out=$($NC assert --intent intents/lab.yml --json "$JSON_DIR/a1_direct.json" 2>&1); code=$?
+[[ "$code" == "0" ]] && ok "en direct : code retour = 0" || { ko "en direct : code retour = $code (attendu 0)"; echo "$out"; }
+echo "$out" | grep -q "Verdict : OK" && ok "en direct : verdict = OK" || { ko "verdict inattendu"; echo "$out"; }
+
+$NC snapshot a1_hors_ligne --force >/dev/null
+out=$($NC assert --intent intents/lab.yml --snapshot a1_hors_ligne --json "$JSON_DIR/a1_snapshot.json" 2>&1); code=$?
+[[ "$code" == "0" ]] && ok "hors ligne : code retour = 0" || { ko "hors ligne : code retour = $code (attendu 0)"; echo "$out"; }
+echo "$out" | grep -q "Verdict : OK" && ok "hors ligne : verdict = OK" || { ko "verdict inattendu (hors ligne)"; echo "$out"; }
+
+# ---------------------------------------------------------------- A2 : coupure du lien r4<->r5
+title "A2 : ip link set eth2 down sur r4 (lien vers r5) -> ÉCHEC (assert)"
+docker exec "$LAB-r4" ip link set eth2 down
+sleep 15
+out=$($NC assert --intent intents/lab.yml --json "$JSON_DIR/a2.json" 2>&1); code=$?
+docker exec "$LAB-r4" ip link set eth2 up
+wait_healthy && ok "retour à la normale (health.py)" || ko "health.py toujours KO après restauration"
+
+[[ "$code" == "2" ]] && ok "code retour = 2" || { ko "code retour = $code (attendu 2)"; echo "$out"; }
+echo "$out" | grep -q "Verdict : ÉCHEC" && ok "verdict = ÉCHEC" || { ko "verdict inattendu"; echo "$out"; }
+grep -q '"id": "chemin-r1-vers-lan-r5"' "$JSON_DIR/a2.json" && grep -q "trou noir" "$JSON_DIR/a2.json" \
+  && ok "assertion 'path' en ÉCHEC avec la raison 'trou noir'" \
+  || { ko "constat 'path' attendu manquant"; cat "$JSON_DIR/a2.json"; }
+grep -q '"id": "interface-r4-vers-r5"' "$JSON_DIR/a2.json" && ok "assertion 'interface_up' présente dans le rapport" \
+  || ko "assertion 'interface_up' absente du rapport"
+
 # ---------------------------------------------------------------- Guard : encadre S2 via --change
 title "Guard : encadre S2 (coût OSPF) via --change --yes"
 cat > "$JSON_DIR/guard_change.sh" <<'EOF'
