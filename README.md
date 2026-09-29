@@ -11,7 +11,8 @@ Il tourne sur un simple PC portable sous WSL2, sans aucun matériel réseau.
 | **Stack** | WSL2 (Ubuntu) · Docker 29 · containerlab 0.79 · FRRouting 10.2.1 · Python 3 · Netmiko 4.8 |
 | **Routage** | OSPF (point-to-point, interfaces passives) dans chaque AS · eBGP filtré (prefix-list + route-map) entre AS65001 et AS65002 |
 | **Automatisation** | `health.py` (état OSPF/BGP) · `backup.py` (sauvegardes + baseline) · `drift.py` (diff vs baseline, rapport Markdown) |
-| **netcheck** | Validation de changements (état avant/après : routes, OSPF, BGP) · audit de conformité par règles YAML · rapports HTML · 84 tests unitaires + 30 scénarios réels |
+| **netcheck** | Validation de changements (état avant/après : routes, OSPF, BGP) · audit de conformité par règles YAML · rapports HTML · 2 drivers (FRR, SR Linux) |
+| **v2 (multi-constructeurs)** | `lab-multivendor.clab.yml` : mêmes r1-r4, r5 = Nokia SR Linux 26.7.2 · registre de drivers + champ `drivers:` par règle de conformité + identifiants par driver |
 | **Sécurité** | Commandes en lecture seule (liste blanche) · YAML chargé en `safe_load` · rapports protégés contre le XSS (testé) |
 
 ## Topologie
@@ -49,14 +50,21 @@ Il tourne sur un simple PC portable sous WSL2, sans aucun matériel réseau.
 ## Arborescence
 
 ```
-lab.clab.yml            topologie containerlab
-docker/Dockerfile       image FRR 10.2.1 + SSH (compte netops)
-configs/daemons         démons FRR activés
-configs/rX/frr.conf     configuration de chaque routeur (montée dans le conteneur)
-automation/             phase 2 : scripts Netmiko (health, backup, drift)
-netcheck/               validation de changement et conformité (snapshot/diff/check/guard)
-tests/                  fixtures et scénarios de bout en bout de netcheck (integration.sh)
-test_lab.sh             scénario de bout en bout du lab (phases 1 et 2), 28 contrôles
+lab.clab.yml                    topologie containerlab (lab FRR)
+lab-multivendor.clab.yml        topologie containerlab (lab v2 : FRR + Nokia SR Linux)
+docker/Dockerfile               image FRR 10.2.1 + SSH (compte netops)
+configs/daemons                 démons FRR activés
+configs/rX/frr.conf             configuration de chaque routeur FRR (montée dans le conteneur)
+configs-multivendor/r5/         config de démarrage SR Linux (syntaxe "set", lab v2)
+automation/                     phase 2 : scripts Netmiko (health, backup, drift)
+automation/inventory.yml            inventaire du lab FRR
+automation/inventory-multivendor.yml inventaire du lab v2 (driver par routeur)
+netcheck/                       validation de changement et conformité (snapshot/diff/check/guard)
+tests/                          fixtures et scénarios de bout en bout de netcheck
+tests/integration.sh                lab FRR (S1-S5, C1/C2, guard)
+tests/integration_multivendor.sh    lab v2 (S1, coupure r4<->r5, C1)
+test_lab.sh                     scénario de bout en bout du lab FRR (phases 1 et 2), 28 contrôles
+test_lab_multivendor.sh         scénario de bout en bout du lab v2 (topologie + routage)
 ```
 
 ---
@@ -366,6 +374,112 @@ Le script enchaîne 28 contrôles automatiques et renvoie le code 0 si tout pass
 `bash tests/integration.sh` fait de même pour netcheck : les scénarios S1 à S5 (diff), C1/C2
 (conformité) et un `guard --change` de bout en bout, 30 contrôles, sur le lab déjà déployé.
 
+## Lab multi-constructeurs (v2 : FRR + Nokia SR Linux)
+
+Deuxième topologie, [`lab-multivendor.clab.yml`](lab-multivendor.clab.yml) : mêmes r1-r4 et
+même adressage que le lab FRR (`configs/` **strictement inchangé**), mais r5 devient un vrai
+équipement Nokia SR Linux (`ghcr.io/nokia/srlinux:26.7.2-519`) au lieu de FRR. Objectif :
+vérifier que `netcheck` fonctionne réellement sur un lab hétérogène, pas seulement sur un
+seul constructeur.
+
+```
+            AS65001 (OSPF area 0)                          AS65002 (OSPF area 0)
+                                            eBGP
+  pc1 ──── r1 ─────────── r3 ═══════════════════════════ r4 ─────────── r5 ──── pc2
+            \            /        172.16.34.0/30                    (SR Linux)
+             \          /
+              └── r2 ──┘
+  LAN 192.168.1.0/24                                            LAN 192.168.2.0/24
+```
+
+Réseau de management distinct (`172.20.21.0/24`) et nom de lab distinct
+(`frr-lab-multivendor`) : les deux labs ne se mélangent jamais **et ne tournent jamais en même
+temps** (même méthode de test des deux côtés : destroy le lab en cours avant de déployer
+l'autre).
+
+### Démarrage
+
+```bash
+sudo containerlab deploy -t lab-multivendor.clab.yml
+```
+
+r5 démarre depuis [`configs-multivendor/r5/config.cli`](configs-multivendor/r5/config.cli)
+(syntaxe SR Linux `set`, appliquée dès le premier démarrage, sans intervention manuelle --
+prouvé par plusieurs redéploiements à froid pendant le développement). Convergence OSPF
+complète observée en ~25 s.
+
+### Mesures réelles (WSL, 15 Gi de RAM disponible)
+
+| | |
+|---|---|
+| Taille de l'image SR Linux | 752 789 953 octets (~718 Mo), vérifiée via l'API du registre GHCR avant le premier téléchargement |
+| Temps de démarrage SR Linux | ~18 s entre `containerlab deploy` et une CLI `sr_cli` utilisable |
+| RAM supplémentaire du lab mixte | ~1,9 Go, dont ~1,8 Go attribuables à r5 seul (mesurée par différence sur `free -h` ; `docker stats --no-stream` affiche 0B/0B pour r5 -- observé deux fois, sans source officielle confirmant un défaut connu, donc décrit ici comme une simple observation) |
+
+### Deux pièges MTU (réellement rencontrés, pas anticipés)
+
+**1. MTU du lien r4 ↔ r5.** La MTU par défaut d'un lien containerlab (veth) est 9500 octets ;
+le châssis SR Linux de ce lab plafonne bien plus bas en pratique. Résultat observé : les
+paquets DBD (Database Description) envoyés par FRR à 9500 étaient systématiquement rejetés
+par SR Linux (compteur `Bad MTUs` non nul), l'adjacence restant bloquée en Exchange/ExStart
+indéfiniment, sans erreur explicite côté FRR.
+
+Point de vocabulaire important (corrigé après relecture) : **OSPF ne "négocie" pas le MTU, il
+le contrôle.** Chaque routeur annonce sa propre MTU dans ses paquets DBD ; le voisin compare
+cette valeur annoncée à *sa* MTU locale et rejette le paquet si l'annonce dépasse (RFC 2328,
+section 10.6) -- ce n'est pas un accord négocié entre les deux MTU, mais un refus unilatéral
+en cas de désaccord. `mtu-ignore` (contourner ce refus) est une extension propre à certains
+constructeurs, **hors standard** : la RFC ne prévoit aucune façon officielle de l'ignorer.
+
+Correctif retenu : fixer `mtu: 1500` (standard Ethernet) sur ce lien précis, dans
+`lab-multivendor.clab.yml`, plutôt que du jumbo proche du plafond du châssis -- aligne les
+deux côtés sans dépendre d'une limite matérielle propre à ce modèle particulier.
+
+**2. `ip-mtu` doit rester strictement inférieur au `mtu` L2, d'au moins 14 octets.** Une fois
+le MTU du lien aligné à 1500, la sous-interface SR Linux restait `down, reason
+ip-mtu-too-large` tant que son `ip-mtu` (1500) n'était pas strictement inférieur au `mtu` L2
+de l'interface porteuse. Correctif : `mtu 1514` sur l'interface L2, `ip-mtu 1500` sur la
+sous-interface -- une marge de 14 octets, exactement la taille d'un en-tête Ethernet.
+Constaté sur l'équipement réel, jamais dans la documentation officielle consultée : la règle
+de conformité `srlinux-mtu-marge-suffisante` (netcheck) vérifie ce point en continu.
+
+### Différences FRR / SR Linux qui comptent pour netcheck
+
+| | FRR | SR Linux |
+|---|---|---|
+| CLI | `vtysh -c "..."`, impératif | `sr_cli -- "..."`, hiérarchique (datastores `show` / `info from state` / `info from running`) |
+| Config texte | blocs `interface X ... exit`, à plat | blocs `interface X { ... }` imbriqués (JSON-like) |
+| Next-hop d'une route | porté directement par la route | indirection à deux niveaux (`next-hop-group` -> `next-hop`), support ECMP natif |
+| Type d'interface OSPF | `point-to-point` explicite (convention de ce lab) | défaut `broadcast` sur Ethernet -- `interface-type point-to-point` à positionner explicitement (règle `srlinux-ospf-point-to-point`) |
+| Identifiants par défaut | `netops` / `netops` | `admin` / `NokiaSrl1!` (défaut de l'image containerlab, lab de développement uniquement) |
+
+### Identifiants : variables par driver
+
+`NETCHECK_USER`/`NETCHECK_PASS` s'appliquent à **tous** les routeurs, y compris ceux d'un
+autre driver -- les positionner pour cibler FRR écraserait silencieusement les identifiants
+SR Linux de r5, et inversement. Utiliser plutôt les variables spécifiques à un driver, plus
+prioritaires que le générique :
+
+```bash
+export NETCHECK_SRLINUX_USER=admin
+export NETCHECK_SRLINUX_PASS='NokiaSrl1!'
+```
+
+Ordre complet, du plus spécifique au moins spécifique : `NETCHECK_<DRIVER>_USER/PASS` >
+`NETCHECK_USER/PASS` > `LAB_USER/PASS` > l'inventaire lui-même.
+
+### Utiliser netcheck sur ce lab
+
+```bash
+python -m netcheck snapshot avant -i automation/inventory-multivendor.yml
+python -m netcheck check -i automation/inventory-multivendor.yml
+```
+
+`bash test_lab_multivendor.sh` (topologie + routage, 15/15) et `bash
+tests/integration_multivendor.sh` (netcheck sur les deux drivers à la fois : diff, coupure du
+lien r4↔r5 vue des deux côtés, conformité, 13/13) couvrent ce lab de bout en bout -- voir
+[netcheck/README.md](netcheck/README.md) pour le détail du registre de drivers.
+
 ## Dépannage
 
 | Symptôme | Cause probable | Solution |
@@ -386,6 +500,6 @@ sudo containerlab destroy -t lab.clab.yml --cleanup
 
 ---
 
-*Validation : lab déployé et testé sur un PC portable Windows (WSL2, Docker 29.8, containerlab 0.79, FRR 10.2.1). Résultats vérifiés : convergence OSPF/BGP, ping et traceroute pc1 → pc2, scripts health/backup/drift en SSH non-root, détection d'une panne BGP et d'une dérive de configuration simulées. netcheck : `pytest` au vert, `tests/integration.sh` (S1-S5, C1/C2, `guard`) 30/30 en conditions réelles sur ce même lab.*
+*Validation : lab déployé et testé sur un PC portable Windows (WSL2, Docker 29.8, containerlab 0.79, FRR 10.2.1). Résultats vérifiés : convergence OSPF/BGP, ping et traceroute pc1 → pc2, scripts health/backup/drift en SSH non-root, détection d'une panne BGP et d'une dérive de configuration simulées. netcheck : `pytest` au vert, `tests/integration.sh` (S1-S5, C1/C2, `guard`) 30/30 en conditions réelles sur ce même lab. Lab v2 (FRR + Nokia SR Linux) : `test_lab_multivendor.sh` et `tests/integration_multivendor.sh` (diff, coupure du lien r4↔r5 vue des deux côtés, conformité) également validés en conditions réelles -- voir la section "Lab multi-constructeurs" ci-dessus pour le détail.*
 
 *Réalisé avec l'assistance de Claude (Anthropic) pour la conception, le code et la documentation. Le déploiement, les tests et la validation ont été faits sur ma machine. Le détail de la démarche est dans le rapport, section 2.4.*

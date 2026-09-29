@@ -93,32 +93,40 @@ place après la sous-commande, comme tout argument `argparse`).
 
 ## Ajouter un driver constructeur (ex. Cisco IOS, FortiGate)
 
-Rien en dehors de `drivers/` ne doit connaître la syntaxe d'un constructeur particulier :
-`collector.py`, `diff.py`, `compliance.py` et `report.py` ne travaillent que sur le modèle
-normalisé (`model.py`). Pour ajouter un driver :
+**Ce que dit le modèle** : `diff.py`, `report.py` et l'essentiel de `compliance.py` ne
+travaillent que sur le modèle normalisé (`model.py`) -- eux n'ont jamais besoin de changer.
 
-1. Créer `drivers/<constructeur>.py` avec une classe héritant de `drivers.base.Driver`.
-2. Définir `REQUIRED_COMMANDS` : les commandes **logiques** de ce driver, prises dans
-   `collector.ALLOWED_COMMANDS` (toutes ne sont pas obligatoires — un pare-feu n'a pas
-   d'OSPF, par exemple : `parse()` renvoie alors des listes vides pour ce qu'il ne collecte
-   pas).
-3. Implémenter `translate(commande_logique) -> commande_cli_réelle`. Pour FRR, ça préfixe
-   par `vtysh -c`.
-4. Implémenter `parse(raw, name, host) -> DeviceState`, en gérant les variations de format
-   entre versions du même OS (voir `FrrDriver._parse_ospf`, qui lit `nbrState` ou `state`
-   selon la version de FRR — découvert en testant sur le vrai lab, pas deviné).
-5. Optionnel : surcharger `clean_output()` pour retirer un bruit propre au constructeur
-   avant analyse.
-6. Construire des fixtures **réelles** (`tests/fixtures/<driver>/`) en interrogeant un
-   vrai équipement — jamais des JSON inventés à la main, ils cachent presque toujours un
-   champ absent ou mal nommé (voir `tests/fixtures/r1/bgp_summary.json` : `{}`, sans
-   aucune clé `peers`, quand aucun BGP n'est configuré — un cas qu'on ne devine pas ; ou,
-   côté SR Linux, `tests/fixtures/r5/route.json` : une route apprise dynamiquement référence
-   un `next-hop-group` qui s'est avéré indirect -- résolu en deux temps via deux tableaux de
-   la même réponse JSON, une architecture réelle découverte en creusant en direct, pas
-   devinée non plus, documentée dans `drivers/srlinux.py`).
-7. Ajouter la classe au registre `collector.DRIVER_REGISTRY`, sous le nom que portera le champ
-   `driver:` de l'inventaire.
+**Ce qui doit vraiment changer, honnêtement, à l'ajout d'un driver SR Linux (Phase D1/D2)** :
+pas seulement un fichier dans `drivers/`. Liste complète, sans rien cacher :
+
+1. `drivers/<constructeur>.py` : une classe héritant de `drivers.base.Driver`
+   (`REQUIRED_COMMANDS`, `translate()`, `parse()`, `clean_output()` optionnel) -- voir
+   `drivers/srlinux.py`.
+2. `collector.DRIVER_REGISTRY` : la classe doit y être ajoutée sous le nom que portera le
+   champ `driver:` de l'inventaire (Phase D1) -- c'est ce registre qui résout automatiquement
+   le bon driver par routeur.
+3. `model.DeviceState.driver` (`str`, défaut `"frr"`) : renseigné par `collector.collect()`
+   d'après le champ `driver` du routeur (pas par le driver lui-même) -- c'est ce que
+   `compliance.py` lit pour savoir quelles règles s'appliquent à quel équipement.
+4. L'inventaire (`automation/inventory-<lab>.yml`) : un champ `driver:` par routeur du
+   nouveau constructeur, plus ses propres identifiants (voir le point 5).
+5. Identifiants par driver (Phase D2) : si le nouveau constructeur a ses propres identifiants
+   par défaut, `inventory.py` les résout via `NETCHECK_<DRIVER>_USER/PASS` en priorité sur le
+   générique `NETCHECK_USER/PASS` -- sans ça, positionner ce dernier pour cibler un autre
+   driver écraserait silencieusement les identifiants du nouveau constructeur.
+6. `compliance.py` : toute règle de `rules/*.yml` qui lit le TEXTE de la running-config est
+   écrite pour la syntaxe d'UN seul constructeur et doit porter `drivers: [<ce constructeur>]`
+   (Phase D2) -- sans ça, elle produit de fausses non-conformités sur tout autre driver. Une
+   règle qui ne lit que le modèle normalisé (`interface_description_required`) reste
+   universelle, sans ce champ.
+7. Fixtures **réelles** (`tests/fixtures/<driver>/`) en interrogeant un vrai équipement --
+   jamais des JSON inventés à la main, ils cachent presque toujours un champ absent ou mal
+   nommé (voir `tests/fixtures/r1/bgp_summary.json` : `{}`, sans aucune clé `peers`, quand
+   aucun BGP n'est configuré -- un cas qu'on ne devine pas ; ou, côté SR Linux,
+   `tests/fixtures/r5/route.json` : une route apprise dynamiquement référence un
+   `next-hop-group` qui s'est avéré indirect -- résolu en deux temps via deux tableaux de la
+   même réponse JSON, une architecture réelle découverte en creusant en direct, pas devinée
+   non plus, documentée dans `drivers/srlinux.py`).
 
 ## Reconnaissance du loopback (`is_loopback`)
 
