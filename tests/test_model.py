@@ -42,3 +42,20 @@ def test_device_state_roundtrip_preserves_is_loopback():
     state = DeviceState.from_dict(OLD_FORMAT_SNAPSHOT)
     restored = DeviceState.from_dict(state.to_dict())
     assert restored.interfaces[0].is_loopback is None
+
+
+# -- Compatibilité ascendante du champ "driver" (Phase D2) ----------------------------------
+# Même principe que is_loopback : un snapshot écrit avant l'ajout du champ (aucune clé
+# "driver" dans le JSON, comme OLD_FORMAT_SNAPSHOT ci-dessus) doit se charger sans planter,
+# avec la valeur par défaut "frr" -- comportement historique du lab mono-constructeur avant
+# que collector.collect() ne renseigne ce champ explicitement (Phase D1).
+
+def test_old_snapshot_without_driver_key_defaults_to_frr():
+    state = DeviceState.from_dict(OLD_FORMAT_SNAPSHOT)
+    assert state.driver == "frr"
+
+
+def test_device_state_roundtrip_preserves_driver_default():
+    state = DeviceState.from_dict(OLD_FORMAT_SNAPSHOT)
+    restored = DeviceState.from_dict(state.to_dict())
+    assert restored.driver == "frr"

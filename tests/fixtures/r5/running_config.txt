@@ -1,4 +1,5 @@
     interface ethernet-1/1 {
+        description vers-r4
         admin-state enable
         mtu 1514
         subinterface 0 {
@@ -12,6 +13,7 @@
         }
     }
     interface ethernet-1/2 {
+        description LAN-pc2
         admin-state enable
         subinterface 0 {
             admin-state enable

@@ -1,10 +1,12 @@
 set / interface ethernet-1/1 admin-state enable
+set / interface ethernet-1/1 description vers-r4
 set / interface ethernet-1/1 mtu 1514
 set / interface ethernet-1/1 subinterface 0 admin-state enable
 set / interface ethernet-1/1 subinterface 0 ipv4 admin-state enable
 set / interface ethernet-1/1 subinterface 0 ipv4 address 10.2.45.2/30
 set / interface ethernet-1/1 subinterface 0 ip-mtu 1500
 set / interface ethernet-1/2 admin-state enable
+set / interface ethernet-1/2 description LAN-pc2
 set / interface ethernet-1/2 subinterface 0 admin-state enable
 set / interface ethernet-1/2 subinterface 0 ipv4 admin-state enable
 set / interface ethernet-1/2 subinterface 0 ipv4 address 192.168.2.1/24

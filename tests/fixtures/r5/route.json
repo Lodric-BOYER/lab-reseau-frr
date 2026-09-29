@@ -13,8 +13,8 @@
         "preference": 150,
         "active": true,
         "route-limit-exceeded": false,
-        "last-app-update": "2026-09-28T20:52:42.661Z (7 minutes ago)",
-        "next-hop-group": "2325983324",
+        "last-app-update": "2026-09-29T05:39:56.364Z (24 seconds ago)",
+        "next-hop-group": "3028223218",
         "next-hop-group-network-instance": "default",
         "resilient-hash": false,
         "dynamic-load-balancing": false,
@@ -24,7 +24,7 @@
         "fib-programming": {
           "suppressed": false,
           "last-successful-operation-type": "add",
-          "last-successful-operation-timestamp": "2026-09-28T20:52:42.662Z (7 minutes ago)",
+          "last-successful-operation-timestamp": "2026-09-29T05:39:56.365Z (24 seconds ago)",
           "pending-operation-type": "none",
           "last-failed-operation-type": "none"
         }
@@ -41,15 +41,15 @@
         "preference": 0,
         "active": true,
         "route-limit-exceeded": false,
-        "last-app-update": "2026-09-28T20:52:37.296Z (7 minutes ago)",
-        "next-hop-group": "2325983323",
+        "last-app-update": "2026-09-29T05:39:55.685Z (25 seconds ago)",
+        "next-hop-group": "3028223217",
         "next-hop-group-network-instance": "default",
         "resilient-hash": false,
         "dynamic-load-balancing": false,
         "fib-programming": {
           "suppressed": false,
           "last-successful-operation-type": "add",
-          "last-successful-operation-timestamp": "2026-09-28T20:52:37.297Z (7 minutes ago)",
+          "last-successful-operation-timestamp": "2026-09-29T05:39:55.686Z (25 seconds ago)",
           "pending-operation-type": "none",
           "last-failed-operation-type": "none"
         }
@@ -66,15 +66,15 @@
         "preference": 0,
         "active": true,
         "route-limit-exceeded": false,
-        "last-app-update": "2026-09-28T20:52:37.296Z (7 minutes ago)",
-        "next-hop-group": "2325983322",
+        "last-app-update": "2026-09-29T05:39:55.685Z (25 seconds ago)",
+        "next-hop-group": "3028223216",
         "next-hop-group-network-instance": "default",
         "resilient-hash": false,
         "dynamic-load-balancing": false,
         "fib-programming": {
           "suppressed": false,
           "last-successful-operation-type": "add",
-          "last-successful-operation-timestamp": "2026-09-28T20:52:37.297Z (7 minutes ago)",
+          "last-successful-operation-timestamp": "2026-09-29T05:39:55.686Z (25 seconds ago)",
           "pending-operation-type": "none",
           "last-failed-operation-type": "none"
         }
@@ -91,15 +91,15 @@
         "preference": 0,
         "active": true,
         "route-limit-exceeded": false,
-        "last-app-update": "2026-09-28T20:52:37.296Z (7 minutes ago)",
-        "next-hop-group": "2325983316",
+        "last-app-update": "2026-09-29T05:39:55.685Z (25 seconds ago)",
+        "next-hop-group": "3028223215",
         "next-hop-group-network-instance": "default",
         "resilient-hash": false,
         "dynamic-load-balancing": false,
         "fib-programming": {
           "suppressed": false,
           "last-successful-operation-type": "add",
-          "last-successful-operation-timestamp": "2026-09-28T20:52:37.297Z (7 minutes ago)",
+          "last-successful-operation-timestamp": "2026-09-29T05:39:55.686Z (25 seconds ago)",
           "pending-operation-type": "none",
           "last-failed-operation-type": "none"
         }
@@ -116,15 +116,15 @@
         "preference": 10,
         "active": true,
         "route-limit-exceeded": false,
-        "last-app-update": "2026-09-28T20:52:42.661Z (7 minutes ago)",
-        "next-hop-group": "2325983324",
+        "last-app-update": "2026-09-29T05:39:56.364Z (24 seconds ago)",
+        "next-hop-group": "3028223218",
         "next-hop-group-network-instance": "default",
         "resilient-hash": false,
         "dynamic-load-balancing": false,
         "fib-programming": {
           "suppressed": false,
           "last-successful-operation-type": "add",
-          "last-successful-operation-timestamp": "2026-09-28T20:52:42.662Z (7 minutes ago)",
+          "last-successful-operation-timestamp": "2026-09-29T05:39:56.364Z (24 seconds ago)",
           "pending-operation-type": "none",
           "last-failed-operation-type": "none"
         }
@@ -141,15 +141,15 @@
         "preference": 0,
         "active": true,
         "route-limit-exceeded": false,
-        "last-app-update": "2026-09-28T20:26:09.279Z (34 minutes ago)",
-        "next-hop-group": "2325983309",
+        "last-app-update": "2026-09-29T05:39:50.238Z (31 seconds ago)",
+        "next-hop-group": "3028223212",
         "next-hop-group-network-instance": "default",
         "resilient-hash": false,
         "dynamic-load-balancing": false,
         "fib-programming": {
           "suppressed": false,
           "last-successful-operation-type": "add",
-          "last-successful-operation-timestamp": "2026-09-28T20:26:09.280Z (34 minutes ago)",
+          "last-successful-operation-timestamp": "2026-09-29T05:39:50.239Z (31 seconds ago)",
           "pending-operation-type": "none",
           "last-failed-operation-type": "none"
         }
@@ -166,15 +166,15 @@
         "preference": 10,
         "active": true,
         "route-limit-exceeded": false,
-        "last-app-update": "2026-09-28T20:52:42.661Z (7 minutes ago)",
-        "next-hop-group": "2325983324",
+        "last-app-update": "2026-09-29T05:39:56.364Z (24 seconds ago)",
+        "next-hop-group": "3028223218",
         "next-hop-group-network-instance": "default",
         "resilient-hash": false,
         "dynamic-load-balancing": false,
         "fib-programming": {
           "suppressed": false,
           "last-successful-operation-type": "add",
-          "last-successful-operation-timestamp": "2026-09-28T20:52:42.662Z (7 minutes ago)",
+          "last-successful-operation-timestamp": "2026-09-29T05:39:56.365Z (24 seconds ago)",
           "pending-operation-type": "none",
           "last-failed-operation-type": "none"
         }
@@ -191,8 +191,8 @@
         "preference": 150,
         "active": true,
         "route-limit-exceeded": false,
-        "last-app-update": "2026-09-28T20:52:42.661Z (7 minutes ago)",
-        "next-hop-group": "2325983324",
+        "last-app-update": "2026-09-29T05:39:56.364Z (24 seconds ago)",
+        "next-hop-group": "3028223218",
         "next-hop-group-network-instance": "default",
         "resilient-hash": false,
         "dynamic-load-balancing": false,
@@ -202,7 +202,7 @@
         "fib-programming": {
           "suppressed": false,
           "last-successful-operation-type": "add",
-          "last-successful-operation-timestamp": "2026-09-28T20:52:42.662Z (7 minutes ago)",
+          "last-successful-operation-timestamp": "2026-09-29T05:39:56.365Z (24 seconds ago)",
           "pending-operation-type": "none",
           "last-failed-operation-type": "none"
         }
@@ -219,15 +219,15 @@
         "preference": 0,
         "active": true,
         "route-limit-exceeded": false,
-        "last-app-update": "2026-09-28T20:36:05.754Z (24 minutes ago)",
-        "next-hop-group": "2325983321",
+        "last-app-update": "2026-09-29T05:39:55.411Z (25 seconds ago)",
+        "next-hop-group": "3028223214",
         "next-hop-group-network-instance": "default",
         "resilient-hash": false,
         "dynamic-load-balancing": false,
         "fib-programming": {
           "suppressed": false,
           "last-successful-operation-type": "add",
-          "last-successful-operation-timestamp": "2026-09-28T20:36:05.755Z (24 minutes ago)",
+          "last-successful-operation-timestamp": "2026-09-29T05:39:55.412Z (25 seconds ago)",
           "pending-operation-type": "none",
           "last-failed-operation-type": "none"
         }
@@ -244,15 +244,15 @@
         "preference": 0,
         "active": true,
         "route-limit-exceeded": false,
-        "last-app-update": "2026-09-28T20:36:05.754Z (24 minutes ago)",
-        "next-hop-group": "2325983320",
+        "last-app-update": "2026-09-29T05:39:55.411Z (25 seconds ago)",
+        "next-hop-group": "3028223213",
         "next-hop-group-network-instance": "default",
         "resilient-hash": false,
         "dynamic-load-balancing": false,
         "fib-programming": {
           "suppressed": false,
           "last-successful-operation-type": "add",
-          "last-successful-operation-timestamp": "2026-09-28T20:36:05.755Z (24 minutes ago)",
+          "last-successful-operation-timestamp": "2026-09-29T05:39:55.411Z (25 seconds ago)",
           "pending-operation-type": "none",
           "last-failed-operation-type": "none"
         }
@@ -269,15 +269,15 @@
         "preference": 0,
         "active": true,
         "route-limit-exceeded": false,
-        "last-app-update": "2026-09-28T20:36:05.754Z (24 minutes ago)",
-        "next-hop-group": "2325983316",
+        "last-app-update": "2026-09-29T05:39:55.411Z (25 seconds ago)",
+        "next-hop-group": "3028223215",
         "next-hop-group-network-instance": "default",
         "resilient-hash": false,
         "dynamic-load-balancing": false,
         "fib-programming": {
           "suppressed": false,
           "last-successful-operation-type": "add",
-          "last-successful-operation-timestamp": "2026-09-28T20:36:05.755Z (24 minutes ago)",
+          "last-successful-operation-timestamp": "2026-09-29T05:39:55.412Z (25 seconds ago)",
           "pending-operation-type": "none",
           "last-failed-operation-type": "none"
         }
@@ -318,7 +318,7 @@
         },
         {
           "prefix-length": 24,
-          "active-routes": 1
+          "active-routes": 2
         },
         {
           "prefix-length": 30,
@@ -326,7 +326,7 @@
         },
         {
           "prefix-length": 32,
-          "active-routes": 3
+          "active-routes": 6
         }
       ]
     }
@@ -348,31 +348,69 @@
   },
   "next-hop-group": [
     {
-      "index": "2325983309",
+      "index": "3028223212",
       "backup-next-hop-group": "0",
       "backup-active": false,
       "fib-programming": {
         "last-successful-operation-type": "add",
-        "last-successful-operation-timestamp": "2026-09-28T20:26:09.280Z (34 minutes ago)",
+        "last-successful-operation-timestamp": "2026-09-29T05:39:50.239Z (31 seconds ago)",
         "pending-operation-type": "none",
         "last-failed-operation-type": "none"
       },
       "next-hop": [
         {
           "id": 0,
-          "next-hop": "2325983309",
+          "next-hop": "3028223211",
           "resolved": "not-applicable",
           "resource-allocation-failed": false
         }
       ]
     },
     {
-      "index": "2325983316",
+      "index": "3028223213",
       "backup-next-hop-group": "0",
       "backup-active": false,
       "fib-programming": {
         "last-successful-operation-type": "add",
-        "last-successful-operation-timestamp": "2026-09-28T20:26:14.370Z (34 minutes ago)",
+        "last-successful-operation-timestamp": "2026-09-29T05:39:55.411Z (25 seconds ago)",
+        "pending-operation-type": "none",
+        "last-failed-operation-type": "none"
+      },
+      "next-hop": [
+        {
+          "id": 0,
+          "next-hop": "3028223212",
+          "resolved": "not-applicable",
+          "resource-allocation-failed": false
+        }
+      ]
+    },
+    {
+      "index": "3028223214",
+      "backup-next-hop-group": "0",
+      "backup-active": false,
+      "fib-programming": {
+        "last-successful-operation-type": "add",
+        "last-successful-operation-timestamp": "2026-09-29T05:39:55.411Z (25 seconds ago)",
+        "pending-operation-type": "none",
+        "last-failed-operation-type": "none"
+      },
+      "next-hop": [
+        {
+          "id": 0,
+          "next-hop": "3028223213",
+          "resolved": "not-applicable",
+          "resource-allocation-failed": false
+        }
+      ]
+    },
+    {
+      "index": "3028223215",
+      "backup-next-hop-group": "0",
+      "backup-active": false,
+      "fib-programming": {
+        "last-successful-operation-type": "add",
+        "last-successful-operation-timestamp": "2026-09-29T05:39:55.411Z (25 seconds ago)",
         "pending-operation-type": "none",
         "last-failed-operation-type": "none"
       },
@@ -386,95 +424,57 @@
       ]
     },
     {
-      "index": "2325983320",
+      "index": "3028223216",
       "backup-next-hop-group": "0",
       "backup-active": false,
       "fib-programming": {
         "last-successful-operation-type": "add",
-        "last-successful-operation-timestamp": "2026-09-28T20:36:05.755Z (24 minutes ago)",
+        "last-successful-operation-timestamp": "2026-09-29T05:39:55.686Z (25 seconds ago)",
         "pending-operation-type": "none",
         "last-failed-operation-type": "none"
       },
       "next-hop": [
         {
           "id": 0,
-          "next-hop": "2325983318",
+          "next-hop": "3028223214",
           "resolved": "not-applicable",
           "resource-allocation-failed": false
         }
       ]
     },
     {
-      "index": "2325983321",
+      "index": "3028223217",
       "backup-next-hop-group": "0",
       "backup-active": false,
       "fib-programming": {
         "last-successful-operation-type": "add",
-        "last-successful-operation-timestamp": "2026-09-28T20:36:05.755Z (24 minutes ago)",
+        "last-successful-operation-timestamp": "2026-09-29T05:39:55.686Z (25 seconds ago)",
         "pending-operation-type": "none",
         "last-failed-operation-type": "none"
       },
       "next-hop": [
         {
           "id": 0,
-          "next-hop": "2325983319",
+          "next-hop": "3028223215",
           "resolved": "not-applicable",
           "resource-allocation-failed": false
         }
       ]
     },
     {
-      "index": "2325983322",
+      "index": "3028223218",
       "backup-next-hop-group": "0",
       "backup-active": false,
       "fib-programming": {
         "last-successful-operation-type": "add",
-        "last-successful-operation-timestamp": "2026-09-28T20:52:37.297Z (7 minutes ago)",
+        "last-successful-operation-timestamp": "2026-09-29T05:39:56.364Z (25 seconds ago)",
         "pending-operation-type": "none",
         "last-failed-operation-type": "none"
       },
       "next-hop": [
         {
           "id": 0,
-          "next-hop": "2325983320",
-          "resolved": "not-applicable",
-          "resource-allocation-failed": false
-        }
-      ]
-    },
-    {
-      "index": "2325983323",
-      "backup-next-hop-group": "0",
-      "backup-active": false,
-      "fib-programming": {
-        "last-successful-operation-type": "add",
-        "last-successful-operation-timestamp": "2026-09-28T20:52:37.297Z (7 minutes ago)",
-        "pending-operation-type": "none",
-        "last-failed-operation-type": "none"
-      },
-      "next-hop": [
-        {
-          "id": 0,
-          "next-hop": "2325983321",
-          "resolved": "not-applicable",
-          "resource-allocation-failed": false
-        }
-      ]
-    },
-    {
-      "index": "2325983324",
-      "backup-next-hop-group": "0",
-      "backup-active": false,
-      "fib-programming": {
-        "last-successful-operation-type": "add",
-        "last-successful-operation-timestamp": "2026-09-28T20:52:42.662Z (7 minutes ago)",
-        "pending-operation-type": "none",
-        "last-failed-operation-type": "none"
-      },
-      "next-hop": [
-        {
-          "id": 0,
-          "next-hop": "2325983322",
+          "next-hop": "3028223216",
           "resolved": "not-applicable",
           "resource-allocation-failed": false
         }
@@ -488,36 +488,36 @@
       "type": "broadcast"
     },
     {
-      "index": "2325983309",
+      "index": "3028223211",
       "resource-allocation-failed": false,
       "type": "extract"
     },
     {
-      "index": "2325983318",
+      "index": "3028223212",
       "resource-allocation-failed": false,
       "type": "extract"
     },
     {
-      "index": "2325983319",
+      "index": "3028223213",
       "resource-allocation-failed": false,
       "type": "direct",
       "ip-address": "192.168.2.1",
       "subinterface": "ethernet-1/2.0"
     },
     {
-      "index": "2325983320",
+      "index": "3028223214",
       "resource-allocation-failed": false,
       "type": "extract"
     },
     {
-      "index": "2325983321",
+      "index": "3028223215",
       "resource-allocation-failed": false,
       "type": "direct",
       "ip-address": "10.2.45.2",
       "subinterface": "ethernet-1/1.0"
     },
     {
-      "index": "2325983322",
+      "index": "3028223216",
       "resource-allocation-failed": false,
       "type": "direct",
       "ip-address": "10.2.45.1",

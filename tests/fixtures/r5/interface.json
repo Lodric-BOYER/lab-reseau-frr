@@ -2,12 +2,13 @@
   "interface": [
     {
       "name": "ethernet-1/1",
+      "description": "vers-r4",
       "admin-state": "enable",
       "mtu": 1514,
       "loopback-mode": "none",
       "ifindex": 32768,
       "oper-state": "up",
-      "last-change": "2026-09-28T20:52:31.823Z (7 minutes ago)",
+      "last-change": "2026-09-29T05:39:50.232Z (30 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -20,30 +21,30 @@
         "ethernet-1/6"
       ],
       "statistics": {
-        "in-packets": "257",
-        "in-octets": "22562",
-        "in-unicast-packets": "20",
-        "in-broadcast-packets": "2",
-        "in-multicast-packets": "226",
-        "in-discarded-packets": "8",
-        "in-error-packets": "1",
+        "in-packets": "14",
+        "in-octets": "1378",
+        "in-unicast-packets": "0",
+        "in-broadcast-packets": "1",
+        "in-multicast-packets": "12",
+        "in-discarded-packets": "1",
+        "in-error-packets": "0",
         "in-fcs-error-packets": "0",
-        "out-packets": "335",
-        "out-octets": "36842",
+        "out-packets": "20",
+        "out-octets": "1898",
         "out-mirror-octets": "0",
-        "out-unicast-packets": "29",
-        "out-broadcast-packets": "10",
-        "out-multicast-packets": "296",
+        "out-unicast-packets": "1",
+        "out-broadcast-packets": "5",
+        "out-multicast-packets": "14",
         "out-discarded-packets": "0",
         "out-error-packets": "0",
         "out-mirror-packets": "0",
-        "carrier-transitions": "2",
-        "interface-transitions": "5",
+        "carrier-transitions": "0",
+        "interface-transitions": "1",
         "link-transitions": "0"
       },
       "traffic-rate": {
-        "in-bps": "68",
-        "out-bps": "227"
+        "in-bps": "178",
+        "out-bps": "134"
       },
       "transceiver": {
         "tx-laser": false,
@@ -58,7 +59,7 @@
         "dac-link-training": false,
         "lacp-port-priority": 32768,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:01",
+        "hw-mac-address": "1A:4D:06:FF:00:01",
         "flow-control": {
           "receive": false
         },
@@ -77,16 +78,16 @@
           "in-fragment-frames": "0",
           "in-crc-error-frames": "0",
           "out-mac-pause-frames": "0",
-          "in-64b-frames": "6",
-          "in-65b-to-127b-frames": "245",
-          "in-128b-to-255b-frames": "6",
+          "in-64b-frames": "1",
+          "in-65b-to-127b-frames": "9",
+          "in-128b-to-255b-frames": "4",
           "in-256b-to-511b-frames": "0",
           "in-512b-to-1023b-frames": "0",
           "in-1024b-to-1518b-frames": "0",
           "in-1519b-or-longer-frames": "0",
-          "out-64b-frames": "13",
-          "out-65b-to-127b-frames": "246",
-          "out-128b-to-255b-frames": "76",
+          "out-64b-frames": "6",
+          "out-65b-to-127b-frames": "10",
+          "out-128b-to-255b-frames": "4",
           "out-256b-to-511b-frames": "0",
           "out-512b-to-1023b-frames": "0",
           "out-1024b-to-1518b-frames": "0",
@@ -127,7 +128,7 @@
           "name": "ethernet-1/1.0",
           "ifindex": 65536,
           "oper-state": "up",
-          "last-change": "2026-09-28T20:52:31.823Z (7 minutes ago)",
+          "last-change": "2026-09-29T05:39:50.232Z (30 seconds ago)",
           "ipv4": {
             "admin-state": "enable",
             "allow-directed-broadcast": false,
@@ -150,9 +151,9 @@
               "neighbor": [
                 {
                   "ipv4-address": "10.2.45.1",
-                  "link-layer-address": "AA:C1:AB:35:F7:74",
+                  "link-layer-address": "AA:C1:AB:B2:6D:D6",
                   "origin": "dynamic",
-                  "expiration-time": "2026-09-29T00:53:53.308Z (3 hours from now)",
+                  "expiration-time": "2026-09-29T09:39:55.751Z (3 hours from now)",
                   "group-based-policy-tag": 0,
                   "datapath-programming": {
                     "status": "success"
@@ -189,19 +190,19 @@
             }
           },
           "statistics": {
-            "in-packets": "253",
-            "in-octets": "22284",
-            "in-discarded-packets": "249",
-            "in-forwarded-packets": "3",
-            "in-forwarded-octets": "268",
+            "in-packets": "13",
+            "in-octets": "1314",
+            "in-discarded-packets": "13",
+            "in-forwarded-packets": "0",
+            "in-forwarded-octets": "0",
             "in-matched-ra-packets": "0",
-            "out-forwarded-packets": "4",
-            "out-forwarded-octets": "398",
-            "out-originated-packets": "247",
-            "out-originated-octets": "21596",
+            "out-forwarded-packets": "0",
+            "out-forwarded-octets": "0",
+            "out-originated-packets": "13",
+            "out-originated-octets": "1306",
             "out-discarded-packets": "0",
-            "out-packets": "251",
-            "out-octets": "21994"
+            "out-packets": "13",
+            "out-octets": "1306"
           }
         }
       ],
@@ -211,12 +212,13 @@
     },
     {
       "name": "ethernet-1/2",
+      "description": "LAN-pc2",
       "admin-state": "enable",
       "mtu": 9232,
       "loopback-mode": "none",
       "ifindex": 32770,
       "oper-state": "up",
-      "last-change": "2026-09-28T20:35:59.247Z (24 minutes ago)",
+      "last-change": "2026-09-29T05:39:50.232Z (30 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -229,30 +231,30 @@
         "ethernet-1/6"
       ],
       "statistics": {
-        "in-packets": "15",
-        "in-octets": "1212",
-        "in-unicast-packets": "6",
+        "in-packets": "1",
+        "in-octets": "74",
+        "in-unicast-packets": "0",
         "in-broadcast-packets": "0",
         "in-multicast-packets": "0",
-        "in-discarded-packets": "9",
+        "in-discarded-packets": "1",
         "in-error-packets": "0",
         "in-fcs-error-packets": "0",
-        "out-packets": "90",
-        "out-octets": "15918",
+        "out-packets": "6",
+        "out-octets": "528",
         "out-mirror-octets": "0",
-        "out-unicast-packets": "5",
-        "out-broadcast-packets": "11",
-        "out-multicast-packets": "74",
+        "out-unicast-packets": "0",
+        "out-broadcast-packets": "5",
+        "out-multicast-packets": "1",
         "out-discarded-packets": "0",
         "out-error-packets": "0",
         "out-mirror-packets": "0",
-        "carrier-transitions": "2",
-        "interface-transitions": "5",
+        "carrier-transitions": "0",
+        "interface-transitions": "1",
         "link-transitions": "0"
       },
       "traffic-rate": {
         "in-bps": "0",
-        "out-bps": "158"
+        "out-bps": "0"
       },
       "transceiver": {
         "tx-laser": false,
@@ -267,7 +269,7 @@
         "dac-link-training": false,
         "lacp-port-priority": 32768,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:02",
+        "hw-mac-address": "1A:4D:06:FF:00:02",
         "flow-control": {
           "receive": false
         },
@@ -286,16 +288,16 @@
           "in-fragment-frames": "0",
           "in-crc-error-frames": "0",
           "out-mac-pause-frames": "0",
-          "in-64b-frames": "2",
-          "in-65b-to-127b-frames": "13",
+          "in-64b-frames": "0",
+          "in-65b-to-127b-frames": "1",
           "in-128b-to-255b-frames": "0",
           "in-256b-to-511b-frames": "0",
           "in-512b-to-1023b-frames": "0",
           "in-1024b-to-1518b-frames": "0",
           "in-1519b-or-longer-frames": "0",
-          "out-64b-frames": "13",
-          "out-65b-to-127b-frames": "3",
-          "out-128b-to-255b-frames": "74",
+          "out-64b-frames": "5",
+          "out-65b-to-127b-frames": "0",
+          "out-128b-to-255b-frames": "1",
           "out-256b-to-511b-frames": "0",
           "out-512b-to-1023b-frames": "0",
           "out-1024b-to-1518b-frames": "0",
@@ -336,7 +338,7 @@
           "name": "ethernet-1/2.0",
           "ifindex": 65538,
           "oper-state": "up",
-          "last-change": "2026-09-28T20:35:59.247Z (24 minutes ago)",
+          "last-change": "2026-09-29T05:39:50.232Z (30 seconds ago)",
           "ipv4": {
             "admin-state": "enable",
             "allow-directed-broadcast": false,
@@ -386,19 +388,19 @@
             }
           },
           "statistics": {
-            "in-packets": "13",
-            "in-octets": "1084",
-            "in-discarded-packets": "9",
-            "in-forwarded-packets": "4",
-            "in-forwarded-octets": "398",
+            "in-packets": "1",
+            "in-octets": "74",
+            "in-discarded-packets": "1",
+            "in-forwarded-packets": "0",
+            "in-forwarded-octets": "0",
             "in-matched-ra-packets": "0",
-            "out-forwarded-packets": "4",
-            "out-forwarded-octets": "370",
+            "out-forwarded-packets": "0",
+            "out-forwarded-octets": "0",
             "out-originated-packets": "0",
             "out-originated-octets": "0",
             "out-discarded-packets": "0",
-            "out-packets": "4",
-            "out-octets": "370"
+            "out-packets": "0",
+            "out-octets": "0"
           }
         }
       ],
@@ -413,7 +415,7 @@
       "ifindex": 32772,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.712Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -435,7 +437,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:03",
+        "hw-mac-address": "1A:4D:06:FF:00:03",
         "flow-control": {
           "receive": false
         },
@@ -454,7 +456,7 @@
       "ifindex": 32774,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.712Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -476,7 +478,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:04",
+        "hw-mac-address": "1A:4D:06:FF:00:04",
         "flow-control": {
           "receive": false
         },
@@ -495,7 +497,7 @@
       "ifindex": 32776,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.712Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -517,7 +519,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:05",
+        "hw-mac-address": "1A:4D:06:FF:00:05",
         "flow-control": {
           "receive": false
         },
@@ -536,7 +538,7 @@
       "ifindex": 32778,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.712Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -558,7 +560,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:06",
+        "hw-mac-address": "1A:4D:06:FF:00:06",
         "flow-control": {
           "receive": false
         },
@@ -577,7 +579,7 @@
       "ifindex": 32780,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.712Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -599,7 +601,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:07",
+        "hw-mac-address": "1A:4D:06:FF:00:07",
         "flow-control": {
           "receive": false
         },
@@ -618,7 +620,7 @@
       "ifindex": 32782,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.712Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -640,7 +642,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:08",
+        "hw-mac-address": "1A:4D:06:FF:00:08",
         "flow-control": {
           "receive": false
         },
@@ -659,7 +661,7 @@
       "ifindex": 32784,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.712Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -681,7 +683,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:09",
+        "hw-mac-address": "1A:4D:06:FF:00:09",
         "flow-control": {
           "receive": false
         },
@@ -700,7 +702,7 @@
       "ifindex": 32786,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.712Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -722,7 +724,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:0A",
+        "hw-mac-address": "1A:4D:06:FF:00:0A",
         "flow-control": {
           "receive": false
         },
@@ -741,7 +743,7 @@
       "ifindex": 32788,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.712Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -763,7 +765,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:0B",
+        "hw-mac-address": "1A:4D:06:FF:00:0B",
         "flow-control": {
           "receive": false
         },
@@ -782,7 +784,7 @@
       "ifindex": 32790,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.712Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -804,7 +806,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:0C",
+        "hw-mac-address": "1A:4D:06:FF:00:0C",
         "flow-control": {
           "receive": false
         },
@@ -823,7 +825,7 @@
       "ifindex": 32792,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.712Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -845,7 +847,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:0D",
+        "hw-mac-address": "1A:4D:06:FF:00:0D",
         "flow-control": {
           "receive": false
         },
@@ -864,7 +866,7 @@
       "ifindex": 32794,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.712Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -886,7 +888,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:0E",
+        "hw-mac-address": "1A:4D:06:FF:00:0E",
         "flow-control": {
           "receive": false
         },
@@ -905,7 +907,7 @@
       "ifindex": 32796,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.712Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -927,7 +929,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:0F",
+        "hw-mac-address": "1A:4D:06:FF:00:0F",
         "flow-control": {
           "receive": false
         },
@@ -946,7 +948,7 @@
       "ifindex": 32798,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -968,7 +970,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:10",
+        "hw-mac-address": "1A:4D:06:FF:00:10",
         "flow-control": {
           "receive": false
         },
@@ -987,7 +989,7 @@
       "ifindex": 32800,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1009,7 +1011,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:11",
+        "hw-mac-address": "1A:4D:06:FF:00:11",
         "flow-control": {
           "receive": false
         },
@@ -1028,7 +1030,7 @@
       "ifindex": 32802,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1050,7 +1052,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:12",
+        "hw-mac-address": "1A:4D:06:FF:00:12",
         "flow-control": {
           "receive": false
         },
@@ -1069,7 +1071,7 @@
       "ifindex": 32804,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1091,7 +1093,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:13",
+        "hw-mac-address": "1A:4D:06:FF:00:13",
         "flow-control": {
           "receive": false
         },
@@ -1110,7 +1112,7 @@
       "ifindex": 32806,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1132,7 +1134,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:14",
+        "hw-mac-address": "1A:4D:06:FF:00:14",
         "flow-control": {
           "receive": false
         },
@@ -1151,7 +1153,7 @@
       "ifindex": 32808,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1173,7 +1175,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:15",
+        "hw-mac-address": "1A:4D:06:FF:00:15",
         "flow-control": {
           "receive": false
         },
@@ -1192,7 +1194,7 @@
       "ifindex": 32810,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1214,7 +1216,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:16",
+        "hw-mac-address": "1A:4D:06:FF:00:16",
         "flow-control": {
           "receive": false
         },
@@ -1233,7 +1235,7 @@
       "ifindex": 32812,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1255,7 +1257,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:17",
+        "hw-mac-address": "1A:4D:06:FF:00:17",
         "flow-control": {
           "receive": false
         },
@@ -1274,7 +1276,7 @@
       "ifindex": 32814,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1296,7 +1298,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:18",
+        "hw-mac-address": "1A:4D:06:FF:00:18",
         "flow-control": {
           "receive": false
         },
@@ -1315,7 +1317,7 @@
       "ifindex": 32816,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1337,7 +1339,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:19",
+        "hw-mac-address": "1A:4D:06:FF:00:19",
         "flow-control": {
           "receive": false
         },
@@ -1356,7 +1358,7 @@
       "ifindex": 32818,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1378,7 +1380,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:1A",
+        "hw-mac-address": "1A:4D:06:FF:00:1A",
         "flow-control": {
           "receive": false
         },
@@ -1397,7 +1399,7 @@
       "ifindex": 32820,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1419,7 +1421,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:1B",
+        "hw-mac-address": "1A:4D:06:FF:00:1B",
         "flow-control": {
           "receive": false
         },
@@ -1438,7 +1440,7 @@
       "ifindex": 32822,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1460,7 +1462,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:1C",
+        "hw-mac-address": "1A:4D:06:FF:00:1C",
         "flow-control": {
           "receive": false
         },
@@ -1479,7 +1481,7 @@
       "ifindex": 32824,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1501,7 +1503,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:1D",
+        "hw-mac-address": "1A:4D:06:FF:00:1D",
         "flow-control": {
           "receive": false
         },
@@ -1520,7 +1522,7 @@
       "ifindex": 32826,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1542,7 +1544,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:1E",
+        "hw-mac-address": "1A:4D:06:FF:00:1E",
         "flow-control": {
           "receive": false
         },
@@ -1561,7 +1563,7 @@
       "ifindex": 32828,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1583,7 +1585,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:1F",
+        "hw-mac-address": "1A:4D:06:FF:00:1F",
         "flow-control": {
           "receive": false
         },
@@ -1602,7 +1604,7 @@
       "ifindex": 32830,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1624,7 +1626,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:20",
+        "hw-mac-address": "1A:4D:06:FF:00:20",
         "flow-control": {
           "receive": false
         },
@@ -1643,7 +1645,7 @@
       "ifindex": 32832,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1665,7 +1667,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:21",
+        "hw-mac-address": "1A:4D:06:FF:00:21",
         "flow-control": {
           "receive": false
         },
@@ -1684,7 +1686,7 @@
       "ifindex": 32834,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1706,7 +1708,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:22",
+        "hw-mac-address": "1A:4D:06:FF:00:22",
         "flow-control": {
           "receive": false
         },
@@ -1725,7 +1727,7 @@
       "ifindex": 32836,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1747,7 +1749,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:23",
+        "hw-mac-address": "1A:4D:06:FF:00:23",
         "flow-control": {
           "receive": false
         },
@@ -1766,7 +1768,7 @@
       "ifindex": 32838,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1788,7 +1790,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:24",
+        "hw-mac-address": "1A:4D:06:FF:00:24",
         "flow-control": {
           "receive": false
         },
@@ -1807,7 +1809,7 @@
       "ifindex": 32840,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1829,7 +1831,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:25",
+        "hw-mac-address": "1A:4D:06:FF:00:25",
         "flow-control": {
           "receive": false
         },
@@ -1848,7 +1850,7 @@
       "ifindex": 32842,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1870,7 +1872,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:26",
+        "hw-mac-address": "1A:4D:06:FF:00:26",
         "flow-control": {
           "receive": false
         },
@@ -1889,7 +1891,7 @@
       "ifindex": 32844,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1911,7 +1913,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:27",
+        "hw-mac-address": "1A:4D:06:FF:00:27",
         "flow-control": {
           "receive": false
         },
@@ -1930,7 +1932,7 @@
       "ifindex": 32846,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1952,7 +1954,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:28",
+        "hw-mac-address": "1A:4D:06:FF:00:28",
         "flow-control": {
           "receive": false
         },
@@ -1971,7 +1973,7 @@
       "ifindex": 32848,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -1993,7 +1995,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:29",
+        "hw-mac-address": "1A:4D:06:FF:00:29",
         "flow-control": {
           "receive": false
         },
@@ -2012,7 +2014,7 @@
       "ifindex": 32850,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.713Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -2034,7 +2036,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:2A",
+        "hw-mac-address": "1A:4D:06:FF:00:2A",
         "flow-control": {
           "receive": false
         },
@@ -2053,7 +2055,7 @@
       "ifindex": 32852,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.714Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -2075,7 +2077,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:2B",
+        "hw-mac-address": "1A:4D:06:FF:00:2B",
         "flow-control": {
           "receive": false
         },
@@ -2094,7 +2096,7 @@
       "ifindex": 32854,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.714Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -2116,7 +2118,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:2C",
+        "hw-mac-address": "1A:4D:06:FF:00:2C",
         "flow-control": {
           "receive": false
         },
@@ -2135,7 +2137,7 @@
       "ifindex": 32856,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.714Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -2157,7 +2159,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:2D",
+        "hw-mac-address": "1A:4D:06:FF:00:2D",
         "flow-control": {
           "receive": false
         },
@@ -2176,7 +2178,7 @@
       "ifindex": 32858,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.818Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.714Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -2198,7 +2200,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:2E",
+        "hw-mac-address": "1A:4D:06:FF:00:2E",
         "flow-control": {
           "receive": false
         },
@@ -2217,7 +2219,7 @@
       "ifindex": 32860,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.819Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.714Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -2239,7 +2241,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:2F",
+        "hw-mac-address": "1A:4D:06:FF:00:2F",
         "flow-control": {
           "receive": false
         },
@@ -2258,7 +2260,7 @@
       "ifindex": 32862,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.819Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.714Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -2280,7 +2282,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "25G",
-        "hw-mac-address": "1A:40:06:FF:00:30",
+        "hw-mac-address": "1A:4D:06:FF:00:30",
         "flow-control": {
           "receive": false
         },
@@ -2299,7 +2301,7 @@
       "ifindex": 32864,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.819Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.714Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -2315,7 +2317,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "100G",
-        "hw-mac-address": "1A:40:06:FF:00:31",
+        "hw-mac-address": "1A:4D:06:FF:00:31",
         "flow-control": {
           "receive": false
         },
@@ -2334,7 +2336,7 @@
       "ifindex": 32866,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.819Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.714Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -2350,7 +2352,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "100G",
-        "hw-mac-address": "1A:40:06:FF:00:32",
+        "hw-mac-address": "1A:4D:06:FF:00:32",
         "flow-control": {
           "receive": false
         },
@@ -2369,7 +2371,7 @@
       "ifindex": 32868,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.819Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.714Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -2385,7 +2387,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "100G",
-        "hw-mac-address": "1A:40:06:FF:00:33",
+        "hw-mac-address": "1A:4D:06:FF:00:33",
         "flow-control": {
           "receive": false
         },
@@ -2404,7 +2406,7 @@
       "ifindex": 32870,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.819Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.714Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -2420,7 +2422,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "100G",
-        "hw-mac-address": "1A:40:06:FF:00:34",
+        "hw-mac-address": "1A:4D:06:FF:00:34",
         "flow-control": {
           "receive": false
         },
@@ -2439,7 +2441,7 @@
       "ifindex": 32872,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.819Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.714Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -2455,7 +2457,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "100G",
-        "hw-mac-address": "1A:40:06:FF:00:35",
+        "hw-mac-address": "1A:4D:06:FF:00:35",
         "flow-control": {
           "receive": false
         },
@@ -2474,7 +2476,7 @@
       "ifindex": 32874,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.819Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.714Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -2490,7 +2492,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "100G",
-        "hw-mac-address": "1A:40:06:FF:00:36",
+        "hw-mac-address": "1A:4D:06:FF:00:36",
         "flow-control": {
           "receive": false
         },
@@ -2509,7 +2511,7 @@
       "ifindex": 32876,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.819Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.714Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -2525,7 +2527,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "100G",
-        "hw-mac-address": "1A:40:06:FF:00:37",
+        "hw-mac-address": "1A:4D:06:FF:00:37",
         "flow-control": {
           "receive": false
         },
@@ -2544,7 +2546,7 @@
       "ifindex": 32878,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.819Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.714Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -2560,7 +2562,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "100G",
-        "hw-mac-address": "1A:40:06:FF:00:38",
+        "hw-mac-address": "1A:4D:06:FF:00:38",
         "flow-control": {
           "receive": false
         },
@@ -2579,7 +2581,7 @@
       "ifindex": 32880,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.819Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.714Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -2595,7 +2597,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "10G",
-        "hw-mac-address": "1A:40:06:FF:00:39",
+        "hw-mac-address": "1A:4D:06:FF:00:39",
         "flow-control": {
           "receive": false
         },
@@ -2614,7 +2616,7 @@
       "ifindex": 32882,
       "oper-state": "down",
       "oper-down-reason": "port-admin-disabled",
-      "last-change": "2026-09-28T20:26:02.819Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:42.714Z (38 seconds ago)",
       "linecard": 1,
       "forwarding-complex": "0",
       "forwarding-mode": "store-and-forward",
@@ -2630,7 +2632,7 @@
       "ethernet": {
         "dac-link-training": false,
         "port-speed": "10G",
-        "hw-mac-address": "1A:40:06:FF:00:3A",
+        "hw-mac-address": "1A:4D:06:FF:00:3A",
         "flow-control": {
           "receive": false
         },
@@ -2647,7 +2649,7 @@
       "admin-state": "enable",
       "ifindex": 1073807360,
       "oper-state": "up",
-      "last-change": "2026-09-28T20:26:09.269Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:50.229Z (30 seconds ago)",
       "ethernet": {
         "hold-time": {
           "up": 0,
@@ -2661,7 +2663,7 @@
           "name": "lo0.0",
           "ifindex": 1073872896,
           "oper-state": "up",
-          "last-change": "2026-09-28T20:26:09.270Z (34 minutes ago)",
+          "last-change": "2026-09-29T05:39:50.230Z (30 seconds ago)",
           "ipv4": {
             "admin-state": "enable",
             "allow-directed-broadcast": false,
@@ -2722,23 +2724,23 @@
       "mtu": 1514,
       "ifindex": 1073807616,
       "oper-state": "up",
-      "last-change": "2026-09-28T20:26:03.983Z (34 minutes ago)",
+      "last-change": "2026-09-29T05:39:43.818Z (37 seconds ago)",
       "forwarding-mode": "store-and-forward",
       "statistics": {
-        "in-packets": "2545",
-        "in-octets": "211088",
-        "in-unicast-packets": "2536",
+        "in-packets": "33",
+        "in-octets": "4240",
+        "in-unicast-packets": "30",
         "in-broadcast-packets": "0",
-        "in-multicast-packets": "8",
+        "in-multicast-packets": "2",
         "in-discarded-packets": "1",
         "in-error-packets": "0",
         "in-fcs-error-packets": "0",
-        "out-packets": "23451",
-        "out-octets": "3768818",
+        "out-packets": "48",
+        "out-octets": "9031",
         "out-mirror-octets": "0",
-        "out-unicast-packets": "23360",
+        "out-unicast-packets": "31",
         "out-broadcast-packets": "6",
-        "out-multicast-packets": "85",
+        "out-multicast-packets": "11",
         "out-discarded-packets": "0",
         "out-error-packets": "0",
         "out-mirror-packets": "0",
@@ -2747,12 +2749,12 @@
         "link-transitions": "0"
       },
       "traffic-rate": {
-        "in-bps": "3062",
-        "out-bps": "6245"
+        "in-bps": "3006",
+        "out-bps": "6138"
       },
       "ethernet": {
         "port-speed": "1G",
-        "hw-mac-address": "1A:40:06:00:00:00",
+        "hw-mac-address": "1A:4D:06:00:00:00",
         "flow-control": {
           "receive": false
         },
@@ -2769,18 +2771,18 @@
           "in-crc-error-frames": "0",
           "out-mac-pause-frames": "0",
           "in-64b-frames": "4",
-          "in-65b-to-127b-frames": "2302",
-          "in-128b-to-255b-frames": "229",
+          "in-65b-to-127b-frames": "19",
+          "in-128b-to-255b-frames": "9",
           "in-256b-to-511b-frames": "0",
           "in-512b-to-1023b-frames": "0",
-          "in-1024b-to-1518b-frames": "10",
+          "in-1024b-to-1518b-frames": "1",
           "in-1519b-or-longer-frames": "0",
           "out-64b-frames": "6",
-          "out-65b-to-127b-frames": "152",
-          "out-128b-to-255b-frames": "23140",
-          "out-256b-to-511b-frames": "109",
-          "out-512b-to-1023b-frames": "24",
-          "out-1024b-to-1518b-frames": "20",
+          "out-65b-to-127b-frames": "21",
+          "out-128b-to-255b-frames": "13",
+          "out-256b-to-511b-frames": "4",
+          "out-512b-to-1023b-frames": "2",
+          "out-1024b-to-1518b-frames": "2",
           "out-1519b-or-longer-frames": "0"
         }
       },
@@ -2792,7 +2794,7 @@
           "name": "mgmt0.0",
           "ifindex": 1073873152,
           "oper-state": "up",
-          "last-change": "2026-09-28T20:26:03.983Z (34 minutes ago)",
+          "last-change": "2026-09-29T05:39:43.818Z (37 seconds ago)",
           "ipv4": {
             "admin-state": "enable",
             "allow-directed-broadcast": false,
@@ -2816,9 +2818,9 @@
               "neighbor": [
                 {
                   "ipv4-address": "172.20.21.1",
-                  "link-layer-address": "32:93:54:73:03:71",
+                  "link-layer-address": "42:3A:73:66:11:49",
                   "origin": "dynamic",
-                  "expiration-time": "2026-09-29T00:26:10.132Z (3 hours from now)",
+                  "expiration-time": "2026-09-29T09:39:49.978Z (3 hours from now)",
                   "group-based-policy-tag": 0,
                   "datapath-programming": {
                     "status": "success"
@@ -2831,7 +2833,7 @@
             "admin-state": "enable",
             "address": [
               {
-                "ip-prefix": "fe80::1840:6ff:fe00:0/64",
+                "ip-prefix": "fe80::184d:6ff:fe00:0/64",
                 "type": "link-local-unicast",
                 "origin": "link-layer",
                 "status": "preferred"
@@ -2847,12 +2849,12 @@
               "proxy-nd": false,
               "neighbor": [
                 {
-                  "ipv6-address": "fe80::80ca:cdff:fe04:9bd",
-                  "link-layer-address": "82:CA:CD:04:09:BD",
+                  "ipv6-address": "fe80::5cfc:e1ff:fec5:19f7",
+                  "link-layer-address": "5E:FC:E1:C5:19:F7",
                   "origin": "dynamic",
                   "is-router": false,
                   "current-state": "stale",
-                  "next-state-time": "2026-09-29T00:26:10.046Z (3 hours from now)",
+                  "next-state-time": "2026-09-29T09:39:49.259Z (3 hours from now)",
                   "group-based-policy-tag": 0,
                   "datapath-programming": {
                     "status": "success"
@@ -2879,19 +2881,19 @@
             }
           },
           "statistics": {
-            "in-packets": "2514",
-            "in-octets": "206998",
-            "in-discarded-packets": "2514",
+            "in-packets": "25",
+            "in-octets": "3544",
+            "in-discarded-packets": "25",
             "in-forwarded-packets": "0",
             "in-forwarded-octets": "0",
             "in-matched-ra-packets": "0",
             "out-forwarded-packets": "0",
             "out-forwarded-octets": "0",
-            "out-originated-packets": "23345",
-            "out-originated-octets": "3747559",
+            "out-originated-packets": "33",
+            "out-originated-octets": "6903",
             "out-discarded-packets": "0",
-            "out-packets": "23345",
-            "out-octets": "3747559"
+            "out-packets": "33",
+            "out-octets": "6903"
           }
         }
       ],

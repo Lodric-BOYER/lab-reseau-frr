@@ -59,8 +59,11 @@ def test_default_rules_file_loads_and_is_non_empty():
     assert {r.kind for r in rules} == {
         "line_present", "line_absent", "bgp_neighbor_inbound_policy",
         "bgp_neighbor_outbound_policy", "ospf_passive_on_interfaces",
+        "interface_description_required",
         "srlinux_interface_mtu_margin", "srlinux_ospf_interface_type_point_to_point",
     }
+    universal = next(r for r in rules if r.kind == "interface_description_required")
+    assert universal.drivers is None  # O3 : lit le modèle, jamais du texte -> tous les drivers
 
 
 def test_default_rules_file_all_text_based_rules_are_scoped_to_frr():
@@ -367,6 +370,32 @@ def test_evaluate_universal_rule_applies_to_every_driver():
     devices = {"r5": srlinux_device()}  # sans interfaces : rien a signaler, mais bien evaluee
     violations, not_applicable = compliance.evaluate([universal_rule], devices)
     assert not_applicable == []  # jamais "non applicable" pour une regle universelle
+
+
+def test_old_snapshot_without_driver_field_is_evaluated_as_frr():
+    # Compatibilité ascendante (Phase D2) : un snapshot écrit avant l'ajout du champ "driver"
+    # (donc chargé via DeviceState.from_dict sans cette clé -> défaut "frr", voir
+    # test_model.py) doit continuer à fonctionner hors ligne avec `check --snapshot` : les
+    # règles FRR s'appliquent normalement, les règles SR Linux deviennent "non applicable"
+    # (jamais une erreur de chargement, jamais une fausse conformité).
+    from netcheck.model import DeviceState
+    old_snapshot_data = {
+        "name": "r1", "host": "172.20.20.11", "timestamp": "2026-01-01T00:00:00+00:00",
+        "reachable": True, "running_config": R3_CONFIG,
+        # pas de clé "driver" : simule un snapshot pré-D2.
+    }
+    state = DeviceState.from_dict(old_snapshot_data)
+    assert state.driver == "frr"
+
+    frr_rule = Rule(id="frr-rule", description="d", severity="basse", applies_to="all",
+                     drivers=["frr"], kind="line_present", params={"pattern": "^log syslog informational$"})
+    srl_rule = Rule(id="srl-rule", description="d", severity="basse", applies_to="all",
+                     drivers=["srlinux"], kind="srlinux_interface_mtu_margin", params={})
+
+    violations, not_applicable = compliance.evaluate([frr_rule, srl_rule], {"r1": state})
+    assert violations == []  # la regle FRR trouve bien la ligne dans R3_CONFIG
+    assert len(not_applicable) == 1
+    assert not_applicable[0].rule.id == "srl-rule"
 
 
 def test_not_applicable_never_affects_verdict():

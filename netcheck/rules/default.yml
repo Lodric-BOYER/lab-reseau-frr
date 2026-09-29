@@ -107,6 +107,14 @@ rules:
     kind: line_present
     pattern: '^\s*ospf router-id \d+\.\d+\.\d+\.\d+'
 
+  # --- Règle universelle (objectif O3) : lit le modèle normalisé, jamais du texte, donc
+  # aucun "drivers" -- s'applique à FRR comme à SR Linux sans distinction. -------------------
+  - id: interface-avec-description
+    description: "Toute interface avec une adresse IP, hors loopback, doit avoir une description."
+    severity: basse
+    applies_to: all
+    kind: interface_description_required
+
   # --- Règles SR Linux (Phase D2) ---------------------------------------------------------
   - id: srlinux-mtu-marge-suffisante
     description: "L'ip-mtu d'une sous-interface SR Linux doit rester au moins 14 octets sous le mtu L2 (évite l'échec ip-mtu-too-large constaté en Phase C)."

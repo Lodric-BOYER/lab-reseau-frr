@@ -25,8 +25,11 @@ def test_parse_interfaces_r5():
     assert by_name["ethernet-1/1"].oper_up is True
     assert "10.2.45.2/30" in by_name["ethernet-1/1"].addresses
 
-    # Jamais configurée sur ce lab : ne doit pas planter, reste à None (comme FRR sur eth0).
-    assert by_name["ethernet-1/1"].description is None
+    # Description ajoutée en Phase D2 (interface_description_required, règle universelle O3).
+    assert by_name["ethernet-1/1"].description == "vers-r4"
+    assert by_name["ethernet-1/2"].description == "LAN-pc2"
+    # mgmt0, elle, n'a jamais de description sur ce lab : ne doit pas planter, reste à None.
+    assert by_name["mgmt0"].description is None
 
     # is_loopback (motif YANG confirmé sur l'équipement, pas une supposition).
     assert by_name["lo0"].is_loopback is True
