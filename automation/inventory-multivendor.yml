@@ -3,11 +3,17 @@
 # lab-multivendor.clab.yml (172.20.21.0/24). r1-r4 = FRR, identiques à inventory.yml (C9) ;
 # r5 = Nokia SR Linux (driver "srlinux", champ lu uniquement par collector.py._resolve_driver).
 #
-# Identifiants r5 : ceux par défaut de l'image containerlab (admin / NokiaSrl1!), acceptés ici
-# uniquement (C11) -- ce fichier et les variables d'environnement sont les deux seuls
-# emplacements autorisés à les contenir. NETCHECK_USER/NETCHECK_PASS (ou LAB_USER/LAB_PASS),
-# s'ils sont positionnés, s'appliquent uniformément à tous les routeurs y compris r5 (même
-# mécanisme que inventory.yml, non modifié pour cette phase).
+# Identifiants r5 (admin / NokiaSrl1!) : ce sont les identifiants PAR DÉFAUT de l'image
+# containerlab SR Linux, valables uniquement sur ce lab de développement -- jamais des
+# identifiants de production. Acceptés en clair ici car ce fichier est l'un des deux seuls
+# emplacements autorisés à les contenir (C11), l'autre étant les variables d'environnement.
+# Sur un vrai déploiement, surcharger via les variables d'environnement plutôt que ce fichier.
+#
+# Résolution des identifiants (netcheck/inventory.py), du plus spécifique au moins spécifique :
+#   NETCHECK_<DRIVER>_USER/PASS  >  NETCHECK_USER/PASS  >  LAB_USER/PASS  >  ce fichier
+# Sur un inventaire mixte, NETCHECK_USER/PASS s'applique à TOUS les routeurs (y compris r5) --
+# pour cibler un seul driver, utiliser la variable spécifique, ex. NETCHECK_SRLINUX_USER/PASS
+# pour ne surcharger que r5 sans toucher aux identifiants FRR de r1-r4.
 defaults:
   device_type: linux      # Netmiko se connecte au shell Alpine, puis lance vtysh
   username: netops
