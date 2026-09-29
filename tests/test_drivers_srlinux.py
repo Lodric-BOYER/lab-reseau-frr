@@ -112,6 +112,8 @@ def test_parse_full_device_state_no_bgp():
             "show ip ospf neighbor json": "ospf_neighbor.json",
             "show running-config": "running_config.txt",
             "show ospf running-config": "ospf_running_config.txt",
+            "show system authentication": "system_authentication.txt",
+            "show system banner": "system_banner.txt",
         }.items()
     }
     state = driver.parse(raw, name="r5", host="172.20.21.15")
@@ -130,3 +132,8 @@ def test_parse_full_device_state_no_bgp():
     assert "# --- interface ---" in state.running_config
     assert "# --- network-instance default protocols ospf ---" in state.running_config
     assert "interface-type point-to-point" in state.running_config
+    # Phase A : deux sections de plus (vides sur le lab actuel, non durci -- Phase B les
+    # remplira), mais bien présentes avec leur marqueur pour que les règles de sécurité
+    # puissent les distinguer d'une absence de collecte.
+    assert "# --- system authentication ---" in state.running_config
+    assert "# --- system banner ---" in state.running_config

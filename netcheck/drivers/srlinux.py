@@ -30,6 +30,14 @@ d'architecture SR Linux (pas des choix arbitraires) :
   réutilisent la même syntaxe de bloc "interface <nom> { ... }" avec un sens différent (une
   interface physique d'un côté, une sous-interface dans une zone OSPF de l'autre) : sans
   séparateur explicite, un parseur de règle de conformité pourrait confondre les deux.
+- Phase A (sécurité, O1) : deux sections de plus, par le même principe. L'authentification
+  OSPF SR Linux ne porte pas de mot de passe inline sur l'interface (contrairement à FRR) :
+  l'interface référence une "keychain" nommée, définie à part sous /system authentication --
+  d'où une commande dédiée pour vérifier que la keychain référencée existe vraiment (et pas
+  seulement que l'interface la mentionne). Une bannière de connexion vit sous /system banner.
+  Vérifié en direct que la commande non restreinte ("info from running system") expose la clé
+  privée TLS, le hash du mot de passe admin et la communauté SNMP en clair : jamais utilisée,
+  au profit de ces deux sous-branches précises.
 """
 from __future__ import annotations
 
@@ -51,6 +59,8 @@ class SrlinuxDriver(Driver):
         "show ip ospf neighbor json",
         "show running-config",
         "show ospf running-config",
+        "show system authentication",
+        "show system banner",
     ]
 
     _TRANSLATION = {
@@ -59,6 +69,8 @@ class SrlinuxDriver(Driver):
         "show ip ospf neighbor json": "show network-instance default protocols ospf neighbor | as json",
         "show running-config": "info from running interface *",
         "show ospf running-config": "info from running network-instance default protocols ospf",
+        "show system authentication": "info from running system authentication",
+        "show system banner": "info from running system banner",
     }
 
     def translate(self, command: str) -> str:
@@ -67,7 +79,9 @@ class SrlinuxDriver(Driver):
     def parse(self, raw: dict[str, str], name: str, host: str) -> DeviceState:
         running_config = (
             "# --- interface ---\n" + raw["show running-config"] + "\n"
-            "# --- network-instance default protocols ospf ---\n" + raw["show ospf running-config"]
+            "# --- network-instance default protocols ospf ---\n" + raw["show ospf running-config"] + "\n"
+            "# --- system authentication ---\n" + raw["show system authentication"] + "\n"
+            "# --- system banner ---\n" + raw["show system banner"]
         )
         return DeviceState(
             name=name,

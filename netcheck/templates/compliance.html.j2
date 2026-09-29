@@ -52,18 +52,37 @@
       {% endfor %}
     </select>
   </label>
+  <label>Catégorie :
+    <select id="f-category">
+      <option value="">Toutes</option>
+      {% for c in categories %}
+      <option value="{{ c }}">{{ c }}</option>
+      {% endfor %}
+    </select>
+  </label>
 </div>
 
 <table id="violations">
   <thead>
-    <tr><th>Gravité</th><th>Équipement</th><th>Règle</th><th>Détail</th></tr>
+    <tr><th>Gravité</th><th>Équipement</th><th>Catégorie</th><th>Règle</th><th>Détail</th></tr>
   </thead>
   <tbody>
     {% for v in violations %}
-    <tr data-severity="{{ v.rule.severity }}" data-device="{{ v.device }}">
+    <tr data-severity="{{ v.rule.severity }}" data-device="{{ v.device }}"
+        data-category="{{ v.rule.category or '(sans catégorie)' }}">
       <td><span class="badge badge-{{ v.rule.severity }}">{{ v.rule.severity }}</span></td>
       <td>{{ v.device }}</td>
-      <td>{{ v.rule.id }}<br><small>{{ v.rule.description }}</small></td>
+      <td>{{ v.rule.category or "—" }}</td>
+      <td>
+        {{ v.rule.id }}<br><small>{{ v.rule.description }}</small>
+        {% if v.rule.references %}
+        <br><small>Réf. :
+          {% for ref in v.rule.references %}
+            <a href="{{ ref.url }}" rel="noopener noreferrer">{{ ref.title }}</a>{% if not loop.last %}, {% endif %}
+          {% endfor %}
+        </small>
+        {% endif %}
+      </td>
       <td>{{ v.detail }}</td>
     </tr>
     {% endfor %}
@@ -105,6 +124,7 @@ conforme, ni non-conformité, sans effet sur le verdict ni le code retour.</p>
   "use strict";
   var sevBoxes = Array.prototype.slice.call(document.querySelectorAll(".f-sev"));
   var deviceSelect = document.getElementById("f-device");
+  var categorySelect = document.getElementById("f-category");
   var rows = Array.prototype.slice.call(document.querySelectorAll("#violations tbody tr"));
   var noMatch = document.getElementById("no-match");
 
@@ -114,11 +134,13 @@ conforme, ni non-conformité, sans effet sur le verdict ni le code retour.</p>
     var activeSeverities = sevBoxes.filter(function (box) { return box.checked; })
       .map(function (box) { return box.value; });
     var activeDevice = deviceSelect.value;
+    var activeCategory = categorySelect.value;
     var visibleCount = 0;
 
     rows.forEach(function (row) {
       var show = activeSeverities.indexOf(row.getAttribute("data-severity")) !== -1
-        && (activeDevice === "" || row.getAttribute("data-device") === activeDevice);
+        && (activeDevice === "" || row.getAttribute("data-device") === activeDevice)
+        && (activeCategory === "" || row.getAttribute("data-category") === activeCategory);
       row.hidden = !show;
       if (show) { visibleCount += 1; }
     });
@@ -128,6 +150,7 @@ conforme, ni non-conformité, sans effet sur le verdict ni le code retour.</p>
 
   sevBoxes.forEach(function (box) { box.addEventListener("change", apply); });
   deviceSelect.addEventListener("change", apply);
+  categorySelect.addEventListener("change", apply);
   apply();
 })();
 </script>

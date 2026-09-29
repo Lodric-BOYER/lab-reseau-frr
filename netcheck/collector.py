@@ -29,6 +29,14 @@ from labtools import run_parallel  # noqa: E402  (import après modification de 
 # syntaxe SR Linux ne permettant pas de la combiner avec "show running-config" en une seule
 # requête -- voir drivers/srlinux.py). Un driver ne peut pas en demander d'autres : toute
 # commande de configuration est refusée avant même la connexion SSH.
+#
+# Phase A (sécurité, O1) : deux commandes SR Linux supplémentaires, délibérément étroites.
+# La règle d'authentification OSPF a besoin de vérifier qu'une keychain existe réellement
+# (elle vit sous /system authentication, hors de la portée interface/OSPF déjà collectée) et
+# la règle de bannière a besoin de /system banner. Vérifié en direct que "info from running
+# system" (sans restriction) expose la clé privée TLS, le hash du mot de passe admin et la
+# communauté SNMP en clair -- disproportionné pour ce qui est requis ici, donc jamais ajouté ;
+# seules les deux sous-branches précises le sont.
 ALLOWED_COMMANDS = {
     "show interface json",
     "show ip route json",
@@ -37,6 +45,8 @@ ALLOWED_COMMANDS = {
     "show bgp ipv4 unicast json",
     "show running-config",
     "show ospf running-config",
+    "show system authentication",
+    "show system banner",
 }
 
 # Registre des drivers disponibles, indexé par le champ "driver" de l'inventaire (Phase D1).

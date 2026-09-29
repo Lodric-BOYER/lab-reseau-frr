@@ -143,7 +143,8 @@ def test_not_applicable_appears_in_json():
     na = [NotApplicable(rule=rule, device="r5", reason="driver 'srlinux' non couvert")]
     d = report.compliance_to_dict([], compliant=True, not_applicable=na)
     assert d["not_applicable"] == [
-        {"rule_id": "frr-only", "device": "r5", "reason": "driver 'srlinux' non couvert"}
+        {"rule_id": "frr-only", "device": "r5", "reason": "driver 'srlinux' non couvert",
+         "category": None, "references": None}
     ]
     assert d["violations"] == []  # jamais mélangé aux violations
 
@@ -151,6 +152,76 @@ def test_not_applicable_appears_in_json():
 def test_not_applicable_empty_list_in_json_when_omitted():
     d = report.compliance_to_dict([], compliant=True)
     assert d["not_applicable"] == []
+
+
+# ------------------------------------------------------------------------------------------
+# Références et catégorie (Phase A, sécurité, C14)
+# ------------------------------------------------------------------------------------------
+
+def test_references_rendered_as_links_in_html():
+    rule = Rule(id="ospf-auth", description="d", severity="haute", applies_to="all",
+                drivers=["frr"], kind="line_present", category="ospf",
+                references=[{"title": "RFC 2328", "url": "https://www.rfc-editor.org/rfc/rfc2328.html"}])
+    violations = [Violation(rule=rule, device="r1", detail="x")]
+    html = report.render_compliance_html(violations, compliant=False, rules_path="rules/security.yml")
+    assert 'href="https://www.rfc-editor.org/rfc/rfc2328.html"' in html
+    assert "RFC 2328" in html
+
+
+def test_reference_title_and_url_are_escaped_against_xss():
+    payload = "<script>alert(1)</script>"
+    rule = Rule(id="x", description="d", severity="haute", applies_to="all", kind="line_present",
+                references=[{"title": payload, "url": payload}])
+    violations = [Violation(rule=rule, device="r1", detail="x")]
+    html = report.render_compliance_html(violations, compliant=False, rules_path="rules/security.yml")
+    assert payload not in html
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+
+
+def test_no_references_no_reference_block_in_html():
+    rule = Rule(id="x", description="d", severity="basse", applies_to="all", kind="line_present")
+    violations = [Violation(rule=rule, device="r1", detail="x")]
+    html = report.render_compliance_html(violations, compliant=False, rules_path="rules/default.yml")
+    assert "Réf. :" not in html
+
+
+def test_category_filter_select_present_in_html():
+    rule = Rule(id="x", description="d", severity="haute", applies_to="all", kind="line_present",
+                category="bgp")
+    violations = [Violation(rule=rule, device="r3", detail="x")]
+    html = report.render_compliance_html(violations, compliant=False, rules_path="rules/security.yml")
+    assert 'id="f-category"' in html
+    assert "<option value=\"bgp\">bgp</option>" in html
+
+
+def test_violation_json_includes_category_and_references():
+    rule = Rule(id="x", description="d", severity="haute", applies_to="all", kind="line_present",
+                category="bgp", references=[{"title": "RFC 7454", "url": "https://www.rfc-editor.org/rfc/rfc7454.html"}])
+    violations = [Violation(rule=rule, device="r3", detail="x")]
+    d = report.compliance_to_dict(violations, compliant=False)
+    assert d["violations"][0]["category"] == "bgp"
+    assert d["violations"][0]["references"] == [
+        {"title": "RFC 7454", "url": "https://www.rfc-editor.org/rfc/rfc7454.html"}
+    ]
+
+
+def test_violation_json_category_and_references_none_when_absent():
+    rule = Rule(id="x", description="d", severity="basse", applies_to="all", kind="line_present")
+    violations = [Violation(rule=rule, device="r1", detail="x")]
+    d = report.compliance_to_dict(violations, compliant=False)
+    assert d["violations"][0]["category"] is None
+    assert d["violations"][0]["references"] is None
+
+
+def test_references_listed_in_terminal_output():
+    rule = Rule(id="ospf-auth", description="d", severity="haute", applies_to="all", kind="line_present",
+                references=[{"title": "RFC 2328", "url": "https://www.rfc-editor.org/rfc/rfc2328.html"}])
+    violations = [Violation(rule=rule, device="r1", detail="x")]
+    console = Console(record=True, width=120)
+    report.print_compliance_terminal(violations, compliant=False, console=console)
+    text = console.export_text()
+    assert "Références" in text
+    assert "RFC 2328" in text
 
 
 def test_not_applicable_appears_in_terminal():

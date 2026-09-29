@@ -1,0 +1,165 @@
+# rules/security.yml — règles de durcissement (Phase A, SPEC_v3 §4, objectif O1).
+#
+# Distinct de default.yml : celui-ci audite le lab dans son état ACTUEL (Phase A, non modifié)
+# et produit délibérément un rapport NON CONFORME — c'est la démonstration "avant" de la
+# Phase B, qui durcira le lab puis reproduira ce même rapport comme preuve "après".
+#
+# Deux champs optionnels de plus par rapport à default.yml :
+#   references: [{title: "...", url: "..."}]   sources vérifiées (RFC, doc constructeur) — un
+#                                                champ vide plutôt qu'une source inventée (C14)
+#   category:   "ospf" | "bgp" | "acces" | "journalisation"   regroupe le rapport HTML
+#
+# Nouveaux kind (Phase A) :
+#   ospf_authentication_required             chaque interface OSPF active (non passive) porte
+#                                             "ip ospf authentication message-digest"
+#   bgp_neighbor_password_required           chaque voisin eBGP a "neighbor X password ..."
+#   bgp_neighbor_maximum_prefix_required     chaque voisin eBGP a "neighbor X maximum-prefix N"
+#   bgp_neighbor_ttl_security_required       chaque voisin eBGP a "neighbor X ttl-security ..."
+#   bgp_neighbor_no_default_route_policy     la prefix-list en entrée n'autorise pas 0.0.0.0/0
+#   bgp_neighbor_no_own_prefixes_policy      la prefix-list en entrée n'autorise pas un préfixe
+#                                             que ce routeur annonce déjà lui-même
+#   srlinux_ospf_authentication_required     chaque interface OSPF SR Linux active référence une
+#                                             keychain existante, de type ospf
+#
+# TCP-AO (RFC 5925) volontairement absent du périmètre : ni le kernel WSL2 de ce lab
+# (CONFIG_TCP_AO absent de /proc/config.gz, vérifié en direct) ni bgpd (FRRouting/frr#7240,
+# feature request ouverte depuis 2020, jamais mergée) ne le supportent. TCP-MD5 (RFC 2385) est
+# la seule authentification eBGP réaliste ici, malgré ses faiblesses connues face à TCP-AO.
+#
+# Authentification OSPF FRR<->SR Linix (lien r4<->r5, Phase B) : MD5 classique (RFC 2328
+# Annexe D) est le seul algorithme commun aux deux constructeurs pour OSPF — vérifié en
+# interopérabilité réelle. FRR n'implémente aucune variante HMAC-SHA (RFC 5709) ; côté SR
+# Linix, le schéma YANG interdit "hmac-md5"/"hmac-sha-*" pour une keychain de type "ospf"
+# (réservés à "isis"), donc "hmac-md5" et "md5" ne sont PAS interchangeables sur cet équipement.
+#
+# Limite vérifiée en direct sur FRR 10.2.1 : "service password-encryption" est accepté sans
+# erreur mais NE CHIFFRE PAS la clé OSPF message-digest ni le mot de passe BGP dans
+# running-config — les deux restent en clair, dans la config comme dans les snapshots
+# netcheck (déjà exclus de Git, C4). Valeurs de lab uniquement, jamais réutilisables ailleurs.
+#
+# La bannière FRR ("banner motd") est volontairement absente de ce fichier : vérifié en direct
+# qu'elle n'apparaît dans aucune sortie "show running-config" (réglage propre à la session
+# vtysh, jamais partagé avec les daemons zebra/bgpd/ospfd, jamais persisté sur disque sans un
+# "write" explicite) — netcheck ne peut donc pas la vérifier par sa méthode de collecte
+# actuelle. La bannière de connexion SSH du conteneur, elle, dépend de sshd (Linux), hors du
+# périmètre de netcheck. Voir le README pour le détail.
+
+rules:
+  # --- OSPF ---------------------------------------------------------------------------------
+  - id: ospf-authentification-message-digest
+    description: "Chaque interface OSPF active doit être authentifiée (message-digest / MD5)."
+    severity: haute
+    applies_to: all
+    drivers: [frr]
+    category: ospf
+    kind: ospf_authentication_required
+    references:
+      - title: "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)"
+        url: "https://www.rfc-editor.org/rfc/rfc2328.html"
+
+  - id: srlinux-ospf-authentification-keychain
+    description: "Chaque interface OSPF SR Linux active doit référencer une keychain d'authentification existante, de type ospf."
+    severity: haute
+    applies_to: all
+    drivers: [srlinux]
+    category: ospf
+    kind: srlinux_ospf_authentication_required
+    references:
+      - title: "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)"
+        url: "https://www.rfc-editor.org/rfc/rfc2328.html"
+
+  # --- BGP ------------------------------------------------------------------------------------
+  - id: ebgp-authentification-tcp-md5
+    description: "Chaque voisin eBGP doit avoir un mot de passe TCP-MD5 (TCP-AO non disponible dans ce lab : voir l'en-tête de ce fichier)."
+    severity: haute
+    applies_to: [r3, r4]
+    drivers: [frr]
+    category: bgp
+    kind: bgp_neighbor_password_required
+    references:
+      - title: "RFC 2385 — Protection of BGP Sessions via the TCP MD5 Signature Option"
+        url: "https://www.rfc-editor.org/rfc/rfc2385.html"
+      - title: "RFC 7454 — BGP Operations and Security"
+        url: "https://www.rfc-editor.org/rfc/rfc7454.html"
+
+  - id: ebgp-maximum-prefix
+    description: "Chaque voisin eBGP doit avoir une limite maximum-prefix (protection contre une fuite de routes massive)."
+    severity: moyenne
+    applies_to: [r3, r4]
+    drivers: [frr]
+    category: bgp
+    kind: bgp_neighbor_maximum_prefix_required
+    references:
+      - title: "RFC 7454 — BGP Operations and Security"
+        url: "https://www.rfc-editor.org/rfc/rfc7454.html"
+
+  - id: ebgp-gtsm-ttl-security
+    description: "Chaque voisin eBGP doit avoir le GTSM (ttl-security hops) activé."
+    severity: moyenne
+    applies_to: [r3, r4]
+    drivers: [frr]
+    category: bgp
+    kind: bgp_neighbor_ttl_security_required
+    references:
+      - title: "RFC 5082 — The Generalized TTL Security Mechanism (GTSM)"
+        url: "https://www.rfc-editor.org/rfc/rfc5082.html"
+      - title: "RFC 7454 — BGP Operations and Security"
+        url: "https://www.rfc-editor.org/rfc/rfc7454.html"
+
+  - id: ebgp-pas-de-route-par-defaut
+    description: "La prefix-list appliquée en entrée à un voisin eBGP ne doit pas autoriser 0.0.0.0/0, sous aucune forme (avec ou sans le/ge)."
+    severity: haute
+    applies_to: [r3, r4]
+    drivers: [frr]
+    category: bgp
+    kind: bgp_neighbor_no_default_route_policy
+    references:
+      - title: "RFC 7454 — BGP Operations and Security"
+        url: "https://www.rfc-editor.org/rfc/rfc7454.html"
+
+  - id: ebgp-pas-de-reinjection-de-prefixes-locaux
+    description: "La prefix-list appliquée en entrée à un voisin eBGP ne doit pas autoriser un préfixe que ce routeur annonce déjà lui-même."
+    severity: haute
+    applies_to: [r3, r4]
+    drivers: [frr]
+    category: bgp
+    kind: bgp_neighbor_no_own_prefixes_policy
+    references:
+      - title: "RFC 7454 — BGP Operations and Security"
+        url: "https://www.rfc-editor.org/rfc/rfc7454.html"
+
+  # --- Accès ----------------------------------------------------------------------------------
+  - id: securite-pas-de-mot-de-passe-en-clair
+    description: "Aucun mot de passe local en clair dans la configuration (dupliquée de default.yml : ce rapport d'audit de sécurité doit se suffire à lui-même)."
+    severity: critique
+    applies_to: all
+    drivers: [frr]
+    category: acces
+    kind: line_absent
+    pattern: "^\\s*(enable )?password\\s"
+    # Aucune source vérifiée cette session pour ce point précis (C14) : champ volontairement
+    # absent plutôt qu'une référence inventée.
+
+  - id: srlinux-banniere-de-connexion
+    description: "Une bannière de connexion (login-banner) doit être configurée."
+    severity: basse
+    applies_to: all
+    drivers: [srlinux]
+    category: acces
+    kind: line_present
+    pattern: "^\\s*login-banner\\s"
+    references:
+      - title: "SR Linux — CLI interface (login-banner / motd-banner)"
+        url: "https://documentation.nokia.com/srlinux/26-3/books/system-mgmt/cli-interface.html"
+
+  # --- Journalisation ---------------------------------------------------------------------------
+  - id: securite-journalisation-active
+    description: "Le journal système (syslog) doit être actif (limite : vérifie uniquement la présence de la ligne de configuration — ce conteneur de lab n'a pas de démon syslog, voir le README)."
+    severity: basse
+    applies_to: all
+    drivers: [frr]
+    category: journalisation
+    kind: line_present
+    pattern: "^log syslog informational$"
+    # Aucune source vérifiée cette session pour ce point précis (C14) : champ volontairement
+    # absent plutôt qu'une référence inventée.

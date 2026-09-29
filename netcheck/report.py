@@ -112,14 +112,26 @@ def print_compliance_terminal(
         table = Table(show_lines=False)
         table.add_column("Gravité")
         table.add_column("Équipement")
+        table.add_column("Catégorie")
         table.add_column("Règle")
         table.add_column("Détail", overflow="fold")
         for v in sorted(violations, key=lambda v: -_COMPLIANCE_ORDER[v.rule.severity]):
             style = _COMPLIANCE_STYLE[v.rule.severity]
-            table.add_row(f"[{style}]{v.rule.severity.upper()}[/]", v.device, v.rule.id, v.detail)
+            table.add_row(f"[{style}]{v.rule.severity.upper()}[/]", v.device,
+                          v.rule.category or "—", v.rule.id, v.detail)
         console.print(table)
     else:
         console.print("Aucune non-conformité.")
+
+    # Références (Phase A, C14) : une ligne par règle concernée, titres seulement (les URLs
+    # complètes sont dans le JSON/HTML) -- pas de doublon si plusieurs équipements violent la
+    # même règle.
+    rules_with_refs = {v.rule.id: v.rule for v in violations if v.rule.references}
+    if rules_with_refs:
+        console.print("\n[bold]Références :[/bold]")
+        for rule in sorted(rules_with_refs.values(), key=lambda r: r.id):
+            titles = ", ".join(ref["title"] for ref in rule.references)
+            console.print(f"  {rule.id} : {titles}")
 
     if not_applicable:
         na_table = Table(show_lines=False, title="Non applicable (Phase D2)")
@@ -141,11 +153,17 @@ def compliance_to_dict(
     return {
         "compliant": compliant,
         "violations": [
-            {"severity": v.rule.severity, "rule_id": v.rule.id, "device": v.device, "detail": v.detail}
+            {
+                "severity": v.rule.severity, "rule_id": v.rule.id, "device": v.device, "detail": v.detail,
+                "category": v.rule.category, "references": v.rule.references,
+            }
             for v in violations
         ],
         "not_applicable": [
-            {"rule_id": n.rule.id, "device": n.device, "reason": n.reason}
+            {
+                "rule_id": n.rule.id, "device": n.device, "reason": n.reason,
+                "category": n.rule.category, "references": n.rule.references,
+            }
             for n in (not_applicable or [])
         ],
     }
@@ -170,12 +188,16 @@ def render_compliance_html(
     not_applicable = not_applicable or []
     counts = {sev: sum(1 for v in violations if v.rule.severity == sev) for sev in _COMPLIANCE_ORDER}
     devices = sorted({v.device for v in violations} | {n.device for n in not_applicable})
+    # Regroupement par catégorie (Phase A, C14) : None -> "(sans catégorie)" pour les règles
+    # antérieures à la Phase A, qui n'ont jamais ce champ.
+    categories = sorted({v.rule.category or "(sans catégorie)" for v in violations})
     return template.render(
         compliant=compliant,
         violations=sorted(violations, key=lambda v: -_COMPLIANCE_ORDER[v.rule.severity]),
         not_applicable=sorted(not_applicable, key=lambda n: (n.device, n.rule.id)),
         counts=counts,
         devices=devices,
+        categories=categories,
         rules_path=str(rules_path),
         generated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
         netcheck_version=__version__,

@@ -37,6 +37,14 @@ KNOWN_KINDS = {
     "interface_description_required",
     "srlinux_interface_mtu_margin",
     "srlinux_ospf_interface_type_point_to_point",
+    # -- Phase A (sécurité, O1) --------------------------------------------------------------
+    "ospf_authentication_required",
+    "bgp_neighbor_password_required",
+    "bgp_neighbor_maximum_prefix_required",
+    "bgp_neighbor_ttl_security_required",
+    "bgp_neighbor_no_default_route_policy",
+    "bgp_neighbor_no_own_prefixes_policy",
+    "srlinux_ospf_authentication_required",
 }
 KNOWN_SEVERITIES = {"critique", "haute", "moyenne", "basse"}
 KNOWN_DRIVERS = set(DRIVER_REGISTRY)  # Phase D2 : validation du champ optionnel "drivers"
@@ -55,6 +63,13 @@ class Rule:
     # DeviceState.driver y figure ; les autres deviennent "non applicable" (evaluate()), pas
     # "conformes" et jamais une violation.
     drivers: list[str] | None = None
+    # Phase A (sécurité, O1, C14) : références vérifiables (ANSSI, CIS, RFC, doc constructeur).
+    # None = aucune référence. Chaque entrée est {"title": str, "url": str} -- un champ vide
+    # plutôt qu'inventé si aucune source fiable n'a été trouvée pour la règle (C14).
+    references: list[dict[str, str]] | None = None
+    # Regroupement du rapport HTML par thème (ex. "acces", "journalisation", "bgp", "ospf").
+    # None = pas de catégorie (règles antérieures à la Phase A).
+    category: str | None = None
     params: dict[str, Any] = field(default_factory=dict)
 
     def applies(self, device_name: str) -> bool:
@@ -136,9 +151,28 @@ def _validate_rule(raw: Any, index: int, path: Path) -> Rule:
                 f"(disponibles : {sorted(KNOWN_DRIVERS)})"
             )
 
-    params = {k: v for k, v in raw.items() if k not in REQUIRED_FIELDS and k != "drivers"}
+    references = raw.get("references")  # optionnel (Phase A, C14) : absent = aucune référence
+    if references is not None:
+        if not isinstance(references, list) or not references:
+            raise ValueError(f"{path} : {label} : references doit être une liste non vide de {{title, url}}")
+        for entry in references:
+            if not isinstance(entry, dict) or set(entry) != {"title", "url"}:
+                raise ValueError(
+                    f"{path} : {label} : chaque référence doit être un objet {{title: ..., url: ...}} "
+                    f"exactement (reçu : {entry!r})"
+                )
+            if not entry["title"] or not entry["url"]:
+                raise ValueError(f"{path} : {label} : title et url d'une référence ne peuvent pas être vides")
+
+    category = raw.get("category")  # optionnel : absent = pas de regroupement HTML
+    if category is not None and not isinstance(category, str):
+        raise ValueError(f"{path} : {label} : category doit être une chaîne")
+
+    meta_fields = REQUIRED_FIELDS | {"drivers", "references", "category"}
+    params = {k: v for k, v in raw.items() if k not in meta_fields}
     return Rule(id=raw["id"], description=raw["description"], severity=raw["severity"],
-                applies_to=applies_to, kind=raw["kind"], drivers=drivers, params=params)
+                applies_to=applies_to, kind=raw["kind"], drivers=drivers,
+                references=references, category=category, params=params)
 
 
 def _check_unique_ids(rules: list[Rule], path: Path) -> None:
@@ -346,6 +380,176 @@ def _check_ospf_passive_on_interfaces(rule: Rule, device: DeviceState) -> list[V
     return violations
 
 
+def _check_ospf_authentication_required(rule: Rule, device: DeviceState) -> list[Violation]:
+    """Toute interface OSPF active (non passive) doit porter une authentification message-
+    digest (Phase A, O1). Vérifié en direct (FRR 10.2.1) : accepté sans casser l'adjacence
+    quand appliqué symétriquement des deux côtés d'un lien -- mais `service password-
+    encryption` ne chiffre PAS la clé dans running-config (vérifié en direct également) : elle
+    reste en clair dans la config et dans les snapshots, d'où la portée du champ `references`
+    de cette règle et le rappel dans le README (snapshots exclus de Git, valeurs de lab)."""
+    blocks = _interface_blocks(device.running_config)
+    violations = []
+    for name, block in blocks.items():
+        if "ip ospf area" not in block or "ip ospf passive" in block:
+            continue  # pas de l'OSPF actif sur cette interface : pas d'adjacence, rien à protéger
+        if "ip ospf authentication message-digest" not in block:
+            violations.append(Violation(rule, device.name,
+                f"interface {name} : adjacence OSPF active sans authentification "
+                f"message-digest"))
+    return violations
+
+
+def _eligible_ebgp_neighbors(device: DeviceState) -> list[str]:
+    """IP des voisins eBGP (remote-as différent de l'AS local) de cet équipement, ou liste vide
+    s'il n'a pas de BGP configuré -- factorisé pour les règles de sécurité par voisin."""
+    bgp = _bgp_block(device.running_config)
+    if bgp is None:
+        return []
+    local_as, block = bgp
+    return [ip for ip, remote_as in re.findall(r"^\s*neighbor (\S+) remote-as (\d+)", block, re.MULTILINE)
+            if remote_as != local_as]
+
+
+def _check_bgp_neighbor_password_required(rule: Rule, device: DeviceState) -> list[Violation]:
+    """Chaque voisin eBGP doit avoir un mot de passe TCP-MD5 (Phase A, O1). Vérifié en direct :
+    accepté par FRR 10.2.1 (kernel WSL2 : CONFIG_TCP_MD5SIG=y). TCP-AO (RFC 5925), plus récent,
+    est hors de portée ici : ni le kernel WSL2 (CONFIG_TCP_AO absent) ni bgpd (feature request
+    FRRouting#7240, jamais mergée) ne le supportent dans ce lab -- TCP-MD5 est donc la seule
+    option réaliste, malgré ses faiblesses cryptographiques connues face à TCP-AO."""
+    bgp = _bgp_block(device.running_config)
+    if bgp is None:
+        return []
+    _, block = bgp
+    violations = []
+    for ip in _eligible_ebgp_neighbors(device):
+        if not re.search(rf"^\s*neighbor {re.escape(ip)} password \S+\s*$", block, re.MULTILINE):
+            violations.append(Violation(rule, device.name,
+                f"voisin eBGP {ip} sans authentification TCP-MD5 (mot de passe)"))
+    return violations
+
+
+def _check_bgp_neighbor_maximum_prefix_required(rule: Rule, device: DeviceState) -> list[Violation]:
+    """Chaque voisin eBGP doit avoir une limite `maximum-prefix` (Phase A, O1) : protège contre
+    une fuite de routes massive côté voisin. Vérifié en direct : accepté par FRR 10.2.1, mais
+    la modification force un reset de la session (FSM repassé par Active quelques secondes,
+    NOTIFICATION Cease envoyée) -- un `clear bgp` explicite a été nécessaire pour un retour
+    immédiat à Established pendant ce test ; à surveiller en Phase B (test_lab.sh/
+    integration.sh doivent rester verts malgré ce reset)."""
+    bgp = _bgp_block(device.running_config)
+    if bgp is None:
+        return []
+    _, block = bgp
+    violations = []
+    for ip in _eligible_ebgp_neighbors(device):
+        if not re.search(rf"^\s*neighbor {re.escape(ip)} maximum-prefix \d+\s*$", block, re.MULTILINE):
+            violations.append(Violation(rule, device.name,
+                f"voisin eBGP {ip} sans limite maximum-prefix"))
+    return violations
+
+
+def _check_bgp_neighbor_ttl_security_required(rule: Rule, device: DeviceState) -> list[Violation]:
+    """Chaque voisin eBGP doit avoir le GTSM (`ttl-security hops`, RFC 5082) activé (Phase A,
+    O1) : rejette les paquets dont le TTL indique qu'ils viennent de plus loin que le voisin
+    direct attendu, sans les coûts cryptographiques d'une authentification. Vérifié en direct :
+    accepté par FRR 10.2.1 sur ce lien directement connecté (hops 1) ; même remarque que
+    `bgp_neighbor_maximum_prefix_required` sur le reset de session observé au moment du
+    changement."""
+    bgp = _bgp_block(device.running_config)
+    if bgp is None:
+        return []
+    _, block = bgp
+    violations = []
+    for ip in _eligible_ebgp_neighbors(device):
+        if not re.search(rf"^\s*neighbor {re.escape(ip)} ttl-security hops \d+\s*$", block, re.MULTILINE):
+            violations.append(Violation(rule, device.name,
+                f"voisin eBGP {ip} sans GTSM (ttl-security hops)"))
+    return violations
+
+
+def _route_map_in_name(block: str, neighbor: str) -> str | None:
+    """Nom du route-map appliqué en entrée ('in') à ce voisin, ou None si aucun (dans ce cas,
+    la règle ebgp-politique-entrante existante signale déjà le problème -- pas le rôle des
+    règles de politique ci-dessous, qui supposent qu'un route-map en entrée existe)."""
+    m = re.search(rf"^\s*neighbor {re.escape(neighbor)} route-map (\S+) in\s*$", block, re.MULTILINE)
+    return m.group(1) if m else None
+
+
+def _route_map_prefix_lists(running_config: str, route_map_name: str) -> list[str]:
+    """Noms des prefix-lists référencées par 'match ip address prefix-list' dans un route-map
+    (toutes ses séquences, pas seulement la première)."""
+    names = []
+    in_block = False
+    for line in running_config.splitlines():
+        if line.startswith(f"route-map {route_map_name} "):
+            in_block = True
+            continue
+        if in_block:
+            if line.strip() == "exit":
+                in_block = False
+                continue
+            m = re.match(r"\s*match ip address prefix-list (\S+)", line)
+            if m:
+                names.append(m.group(1))
+    return names
+
+
+def _prefix_list_networks(running_config: str, name: str) -> list[str]:
+    """Réseau (sans le 'le'/'ge' éventuel) de chaque entrée 'permit'/'deny' d'une prefix-list."""
+    pattern = rf"^ip prefix-list {re.escape(name)} seq \d+ (?:permit|deny) (\S+)"
+    return re.findall(pattern, running_config, re.MULTILINE)
+
+
+def _check_bgp_neighbor_no_default_route_policy(rule: Rule, device: DeviceState) -> list[Violation]:
+    """La prefix-list appliquée en entrée à chaque voisin eBGP ne doit autoriser 0.0.0.0/0 sous
+    aucune forme (Phase A, O1 -- politique déclarée, pas la table de routage : un voisin qui
+    n'annonce pas encore de route par défaut aujourd'hui ne prouve rien sur le filtrage lui-
+    même). Toute entrée dont le réseau de base est 0.0.0.0/0 couvre la route par défaut exacte,
+    qu'elle porte ou non une clause `le`/`ge` -- 'permit 0.0.0.0/0' et 'permit 0.0.0.0/0 le 32'
+    sont donc tous deux détectés par la même vérification sur le réseau de base."""
+    bgp = _bgp_block(device.running_config)
+    if bgp is None:
+        return []
+    _, block = bgp
+    violations = []
+    for ip in _eligible_ebgp_neighbors(device):
+        pl_name = _route_map_in_name(block, ip)
+        if pl_name is None:
+            continue
+        for pl in _route_map_prefix_lists(device.running_config, pl_name):
+            for network in _prefix_list_networks(device.running_config, pl):
+                if network == "0.0.0.0/0":
+                    violations.append(Violation(rule, device.name,
+                        f"prefix-list '{pl}' (politique d'entrée du voisin eBGP {ip}) "
+                        f"autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur"))
+    return violations
+
+
+def _check_bgp_neighbor_no_own_prefixes_policy(rule: Rule, device: DeviceState) -> list[Violation]:
+    """La prefix-list appliquée en entrée à chaque voisin eBGP ne doit pas autoriser un préfixe
+    que ce routeur annonce lui-même (Phase A, O1 -- politique déclarée) : sans ce filtre, un
+    voisin pourrait réannoncer nos propres préfixes, créant une boucle ou un détournement de
+    trafic. Vérifié sur la config réelle : r3 annonce 10.1.0.0/16 et 192.168.1.0/24, sa
+    PL-EBGP-IN n'autorise que 10.2.0.0/16 et 192.168.2.0/24 -- déjà conforme aujourd'hui."""
+    bgp = _bgp_block(device.running_config)
+    if bgp is None:
+        return []
+    local_as, block = bgp
+    own_networks = set(re.findall(r"^\s*network (\S+)", block, re.MULTILINE))
+    violations = []
+    for ip in _eligible_ebgp_neighbors(device):
+        pl_name = _route_map_in_name(block, ip)
+        if pl_name is None:
+            continue
+        for pl in _route_map_prefix_lists(device.running_config, pl_name):
+            for network in _prefix_list_networks(device.running_config, pl):
+                if network in own_networks:
+                    violations.append(Violation(rule, device.name,
+                        f"prefix-list '{pl}' (politique d'entrée du voisin eBGP {ip}) "
+                        f"autorise {network}, que ce routeur annonce déjà lui-même : "
+                        f"risque de réinjection"))
+    return violations
+
+
 def _is_loopback(iface) -> bool:
     """Utilise Interface.is_loopback quand le driver le connaît (v2, O3) ; sinon (None --
     driver qui n'expose pas l'info, ou snapshot pris avant l'ajout du champ), retombe sur
@@ -430,6 +634,41 @@ def _check_srlinux_ospf_interface_type_point_to_point(rule: Rule, device: Device
     return violations
 
 
+def _check_srlinux_ospf_authentication_required(rule: Rule, device: DeviceState) -> list[Violation]:
+    """Toute interface OSPF active (non passive) doit référencer une keychain d'authentification
+    existante et de type ospf (Phase A, O1). SR Linux n'a pas de mot de passe inline sur
+    l'interface (contrairement à FRR) : l'authentification est une keychain nommée, définie à
+    part sous /system authentication (schéma YANG vérifié en direct par sondage : seuls
+    'cleartext' et 'md5' sont des algorithmes valides pour un type 'ospf' -- 'hmac-md5' est
+    réservé à isis, refusé au commit pour ospf/tcp-md5). Vérifié en interopérabilité réelle
+    avec FRR (message-digest-key md5) sur le lien r4<->r5 : MD5 classique s'établit en Full des
+    deux côtés ; c'est le seul algorithme commun aux deux constructeurs pour OSPF (FRR
+    n'implémente que le MD5 classique RFC 2328 Appendix D, aucune variante HMAC-SHA)."""
+    ospf_section = _srlinux_section(device.running_config, "network-instance default protocols ospf")
+    auth_section = _srlinux_section(device.running_config, "system authentication")
+    keychains = _srlinux_brace_blocks(auth_section, "keychain ")
+    violations = []
+    for name, block in _srlinux_brace_blocks(ospf_section, "interface ").items():
+        if re.search(r"^\s*passive true\s*$", block, re.MULTILINE):
+            continue  # pas d'adjacence sur une interface passive : rien à authentifier
+        match = re.search(r"^\s*keychain (\S+)\s*$", block, re.MULTILINE)
+        if not match:
+            violations.append(Violation(rule, device.name,
+                f"interface OSPF {name} active (non passive) sans authentification "
+                f"(aucune keychain référencée)"))
+            continue
+        keychain_block = keychains.get(match.group(1))
+        if keychain_block is None:
+            violations.append(Violation(rule, device.name,
+                f"interface OSPF {name} référence la keychain '{match.group(1)}', "
+                f"introuvable sous /system authentication"))
+        elif not re.search(r"^\s*type ospf\s*$", keychain_block, re.MULTILINE):
+            violations.append(Violation(rule, device.name,
+                f"interface OSPF {name} référence la keychain '{match.group(1)}', "
+                f"qui n'est pas de type ospf"))
+    return violations
+
+
 _EVALUATORS = {
     "line_present": _check_line_present,
     "line_absent": _check_line_absent,
@@ -439,4 +678,12 @@ _EVALUATORS = {
     "interface_description_required": _check_interface_description_required,
     "srlinux_interface_mtu_margin": _check_srlinux_interface_mtu_margin,
     "srlinux_ospf_interface_type_point_to_point": _check_srlinux_ospf_interface_type_point_to_point,
+    # -- Phase A (sécurité, O1) ---------------------------------------------------------------
+    "ospf_authentication_required": _check_ospf_authentication_required,
+    "bgp_neighbor_password_required": _check_bgp_neighbor_password_required,
+    "bgp_neighbor_maximum_prefix_required": _check_bgp_neighbor_maximum_prefix_required,
+    "bgp_neighbor_ttl_security_required": _check_bgp_neighbor_ttl_security_required,
+    "bgp_neighbor_no_default_route_policy": _check_bgp_neighbor_no_default_route_policy,
+    "bgp_neighbor_no_own_prefixes_policy": _check_bgp_neighbor_no_own_prefixes_policy,
+    "srlinux_ospf_authentication_required": _check_srlinux_ospf_authentication_required,
 }

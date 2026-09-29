@@ -168,6 +168,85 @@ def test_drivers_field_rejects_a_bare_string(tmp_path):
 
 
 # ------------------------------------------------------------------------------------------
+# Champs "references" et "category" (Phase A, sécurité, C14) : validation du schéma
+# ------------------------------------------------------------------------------------------
+
+def test_references_field_absent_means_none(tmp_path):
+    path = _write(tmp_path,
+        "rules:\n  - id: x\n    description: y\n    severity: haute\n"
+        "    applies_to: all\n    kind: line_present\n    pattern: x\n")
+    assert load_rules(path)[0].references is None
+
+
+def test_references_field_accepted_with_title_and_url(tmp_path):
+    path = _write(tmp_path,
+        "rules:\n  - id: x\n    description: y\n    severity: haute\n    applies_to: all\n"
+        "    kind: line_present\n    pattern: x\n"
+        "    references:\n      - title: RFC 2328\n        url: https://www.rfc-editor.org/rfc/rfc2328.html\n")
+    refs = load_rules(path)[0].references
+    assert refs == [{"title": "RFC 2328", "url": "https://www.rfc-editor.org/rfc/rfc2328.html"}]
+
+
+def test_references_field_must_be_a_non_empty_list(tmp_path):
+    path = _write(tmp_path,
+        "rules:\n  - id: x\n    description: y\n    severity: haute\n"
+        "    applies_to: all\n    kind: line_present\n    pattern: x\n    references: []\n")
+    with pytest.raises(ValueError, match="references"):
+        load_rules(path)
+
+
+def test_references_entry_must_have_exactly_title_and_url(tmp_path):
+    path = _write(tmp_path,
+        "rules:\n  - id: x\n    description: y\n    severity: haute\n    applies_to: all\n"
+        "    kind: line_present\n    pattern: x\n"
+        "    references:\n      - title: RFC 2328\n")
+    with pytest.raises(ValueError, match="title"):
+        load_rules(path)
+
+
+def test_references_entry_rejects_empty_title_or_url(tmp_path):
+    path = _write(tmp_path,
+        "rules:\n  - id: x\n    description: y\n    severity: haute\n    applies_to: all\n"
+        "    kind: line_present\n    pattern: x\n"
+        "    references:\n      - title: \"\"\n        url: https://example.org\n")
+    with pytest.raises(ValueError, match="vides"):
+        load_rules(path)
+
+
+def test_category_field_absent_means_none(tmp_path):
+    path = _write(tmp_path,
+        "rules:\n  - id: x\n    description: y\n    severity: haute\n"
+        "    applies_to: all\n    kind: line_present\n    pattern: x\n")
+    assert load_rules(path)[0].category is None
+
+
+def test_category_field_accepted_as_string(tmp_path):
+    path = _write(tmp_path,
+        "rules:\n  - id: x\n    description: y\n    severity: haute\n    applies_to: all\n"
+        "    kind: line_present\n    pattern: x\n    category: bgp\n")
+    assert load_rules(path)[0].category == "bgp"
+
+
+def test_security_rules_file_loads_and_covers_new_kinds():
+    security_path = Path(__file__).resolve().parent.parent / "netcheck" / "rules" / "security.yml"
+    rules = load_rules(security_path)
+    assert len(rules) >= 9
+    kinds = {r.kind for r in rules}
+    assert {
+        "ospf_authentication_required", "bgp_neighbor_password_required",
+        "bgp_neighbor_maximum_prefix_required", "bgp_neighbor_ttl_security_required",
+        "bgp_neighbor_no_default_route_policy", "bgp_neighbor_no_own_prefixes_policy",
+        "srlinux_ospf_authentication_required",
+    } <= kinds
+    # Chaque règle qui porte "references" doit avoir title+url non vides (déjà garanti par le
+    # chargement, mais reconfirmé ici pour repérer un fichier qui l'aurait contourné).
+    for r in rules:
+        if r.references:
+            for ref in r.references:
+                assert ref["title"] and ref["url"]
+
+
+# ------------------------------------------------------------------------------------------
 # line_present / line_absent
 # ------------------------------------------------------------------------------------------
 
@@ -268,6 +347,159 @@ def test_ospf_passive_ignores_interfaces_not_matching_pattern():
 
 
 # ------------------------------------------------------------------------------------------
+# ospf_authentication_required (Phase A, sécurité, O1) : vérifié en direct sur r1<->r2 (FRR
+# 10.2.1), adjacence reste Full une fois appliqué symétriquement.
+# ------------------------------------------------------------------------------------------
+
+R1_CONFIG = (FIXTURES / "r1" / "running_config.txt").read_text(encoding="utf-8")
+
+
+def test_ospf_authentication_violation_on_unhardened_lab():
+    # Configuration réelle actuelle (avant Phase B) : aucune interface OSPF n'est authentifiée.
+    r = rule("ospf_authentication_required")
+    dev = device(running_config=R1_CONFIG, name="r1")
+    violations = compliance._check_ospf_authentication_required(r, dev)
+    assert {v.detail.split()[1] for v in violations} == {"eth1", "eth2"}  # actives, non passives
+
+
+def test_ospf_authentication_conforme_once_configured():
+    hardened = R1_CONFIG.replace(
+        " ip ospf network point-to-point\nexit",
+        " ip ospf authentication message-digest\n"
+        " ip ospf message-digest-key 1 md5 CleDeLabUniquement\n"
+        " ip ospf network point-to-point\nexit",
+    )
+    r = rule("ospf_authentication_required")
+    assert compliance._check_ospf_authentication_required(r, device(running_config=hardened, name="r1")) == []
+
+
+def test_ospf_authentication_ignores_passive_interfaces():
+    # eth3 (LAN) et lo sont passives : pas d'adjacence, rien à authentifier.
+    r = rule("ospf_authentication_required")
+    dev = device(running_config=R1_CONFIG, name="r1")
+    violations = compliance._check_ospf_authentication_required(r, dev)
+    assert not any("eth3" in v.detail or " lo " in v.detail for v in violations)
+
+
+# ------------------------------------------------------------------------------------------
+# bgp_neighbor_password_required / maximum_prefix / ttl_security (Phase A, sécurité, O1) :
+# les trois vérifiées en direct sur la session eBGP réelle r3<->r4 (FRR 10.2.1).
+# ------------------------------------------------------------------------------------------
+
+def test_bgp_password_violation_on_unhardened_lab():
+    r = rule("bgp_neighbor_password_required")
+    violations = compliance._check_bgp_neighbor_password_required(r, device())  # R3_CONFIG
+    assert len(violations) == 1 and "172.16.34.2" in violations[0].detail
+
+
+def test_bgp_password_conforme_once_configured():
+    hardened = R3_CONFIG.replace(
+        " neighbor 172.16.34.2 description r4-AS65002\n",
+        " neighbor 172.16.34.2 description r4-AS65002\n"
+        " neighbor 172.16.34.2 password CleDeLabUniquement\n",
+    )
+    r = rule("bgp_neighbor_password_required")
+    assert compliance._check_bgp_neighbor_password_required(r, device(running_config=hardened)) == []
+
+
+def test_bgp_password_no_bgp_is_not_a_violation():
+    r = rule("bgp_neighbor_password_required")
+    dev = device(running_config=R1_CONFIG, name="r1")
+    assert compliance._check_bgp_neighbor_password_required(r, dev) == []
+
+
+def test_bgp_maximum_prefix_violation_on_unhardened_lab():
+    r = rule("bgp_neighbor_maximum_prefix_required")
+    violations = compliance._check_bgp_neighbor_maximum_prefix_required(r, device())
+    assert len(violations) == 1 and "172.16.34.2" in violations[0].detail
+
+
+def test_bgp_maximum_prefix_conforme_once_configured():
+    # Positionné dans l'address-family, comme vérifié en direct (contrairement à
+    # ttl-security, qui est une commande de niveau voisin, hors address-family).
+    hardened = R3_CONFIG.replace(
+        "  network 192.168.1.0/24\n",
+        "  network 192.168.1.0/24\n  neighbor 172.16.34.2 maximum-prefix 100\n",
+    )
+    r = rule("bgp_neighbor_maximum_prefix_required")
+    assert compliance._check_bgp_neighbor_maximum_prefix_required(r, device(running_config=hardened)) == []
+
+
+def test_bgp_ttl_security_violation_on_unhardened_lab():
+    r = rule("bgp_neighbor_ttl_security_required")
+    violations = compliance._check_bgp_neighbor_ttl_security_required(r, device())
+    assert len(violations) == 1 and "172.16.34.2" in violations[0].detail
+
+
+def test_bgp_ttl_security_conforme_once_configured():
+    hardened = R3_CONFIG.replace(
+        " neighbor 172.16.34.2 description r4-AS65002\n",
+        " neighbor 172.16.34.2 description r4-AS65002\n"
+        " neighbor 172.16.34.2 ttl-security hops 1\n",
+    )
+    r = rule("bgp_neighbor_ttl_security_required")
+    assert compliance._check_bgp_neighbor_ttl_security_required(r, device(running_config=hardened)) == []
+
+
+# ------------------------------------------------------------------------------------------
+# bgp_neighbor_no_default_route_policy / no_own_prefixes_policy (Phase A, sécurité, O1) :
+# politique déclarée (prefix-list en entrée), jamais la table de routage -- voir la docstring
+# des évaluateurs. r3 est déjà conforme aux deux sur sa config réelle.
+# ------------------------------------------------------------------------------------------
+
+def test_no_default_route_conforme_on_real_config():
+    r = rule("bgp_neighbor_no_default_route_policy")
+    assert compliance._check_bgp_neighbor_no_default_route_policy(r, device()) == []  # R3_CONFIG
+
+
+def test_no_default_route_violation_when_prefix_list_permits_it():
+    broken = R3_CONFIG.replace(
+        "ip prefix-list PL-EBGP-IN seq 10 permit 10.2.0.0/16\n",
+        "ip prefix-list PL-EBGP-IN seq 10 permit 10.2.0.0/16\n"
+        "ip prefix-list PL-EBGP-IN seq 30 permit 0.0.0.0/0\n",
+    )
+    r = rule("bgp_neighbor_no_default_route_policy")
+    violations = compliance._check_bgp_neighbor_no_default_route_policy(r, device(running_config=broken))
+    assert len(violations) == 1 and "0.0.0.0/0" in violations[0].detail
+
+
+def test_no_default_route_violation_even_with_le_clause():
+    # "0.0.0.0/0 le 32" autorise tout : détecté via le réseau de base, pas la clause le/ge.
+    broken = R3_CONFIG.replace(
+        "ip prefix-list PL-EBGP-IN seq 10 permit 10.2.0.0/16\n",
+        "ip prefix-list PL-EBGP-IN seq 10 permit 10.2.0.0/16\n"
+        "ip prefix-list PL-EBGP-IN seq 30 permit 0.0.0.0/0 le 32\n",
+    )
+    r = rule("bgp_neighbor_no_default_route_policy")
+    violations = compliance._check_bgp_neighbor_no_default_route_policy(r, device(running_config=broken))
+    assert len(violations) == 1
+
+
+def test_no_own_prefixes_conforme_on_real_config():
+    r = rule("bgp_neighbor_no_own_prefixes_policy")
+    assert compliance._check_bgp_neighbor_no_own_prefixes_policy(r, device()) == []  # R3_CONFIG
+
+
+def test_no_own_prefixes_violation_when_reinjected():
+    # r3 annonce 10.1.0.0/16 ; si sa PL-EBGP-IN l'autorisait aussi en entrée, un voisin pourrait
+    # le lui réannoncer.
+    broken = R3_CONFIG.replace(
+        "ip prefix-list PL-EBGP-IN seq 10 permit 10.2.0.0/16\n",
+        "ip prefix-list PL-EBGP-IN seq 10 permit 10.2.0.0/16\n"
+        "ip prefix-list PL-EBGP-IN seq 30 permit 10.1.0.0/16\n",
+    )
+    r = rule("bgp_neighbor_no_own_prefixes_policy")
+    violations = compliance._check_bgp_neighbor_no_own_prefixes_policy(r, device(running_config=broken))
+    assert len(violations) == 1 and "10.1.0.0/16" in violations[0].detail
+
+
+def test_no_own_prefixes_no_bgp_is_not_a_violation():
+    r = rule("bgp_neighbor_no_own_prefixes_policy")
+    dev = device(running_config=R1_CONFIG, name="r1")
+    assert compliance._check_bgp_neighbor_no_own_prefixes_policy(r, dev) == []
+
+
+# ------------------------------------------------------------------------------------------
 # Règles SR Linux (Phase D2) : fixtures réelles (tests/fixtures/r5/), running_config construit
 # EXACTEMENT comme le fait SrlinuxDriver.parse() (mêmes marqueurs de section), pour que les
 # tests exercent le vrai format produit, pas une supposition sur ce format.
@@ -278,15 +510,42 @@ R5_INTERFACE_CONFIG = (R5_FIXTURES / "running_config.txt").read_text(encoding="u
 R5_OSPF_CONFIG = (R5_FIXTURES / "ospf_running_config.txt").read_text(encoding="utf-8")
 
 
-def srlinux_device(interface_config=None, ospf_config=None, name="r5") -> DeviceState:
+def srlinux_device(interface_config=None, ospf_config=None, auth_config=None, banner_config=None,
+                    name="r5") -> DeviceState:
     interface_config = R5_INTERFACE_CONFIG if interface_config is None else interface_config
     ospf_config = R5_OSPF_CONFIG if ospf_config is None else ospf_config
+    auth_config = "" if auth_config is None else auth_config
+    banner_config = "" if banner_config is None else banner_config
     running_config = (
         "# --- interface ---\n" + interface_config + "\n"
-        "# --- network-instance default protocols ospf ---\n" + ospf_config
+        "# --- network-instance default protocols ospf ---\n" + ospf_config + "\n"
+        "# --- system authentication ---\n" + auth_config + "\n"
+        "# --- system banner ---\n" + banner_config
     )
     return DeviceState(name=name, host="172.20.21.15", timestamp="2026-01-01T00:00:00+00:00",
                         reachable=True, running_config=running_config, driver="srlinux")
+
+
+# Phase A (sécurité, O1) : textes réellement capturés en direct sur r5 (keychain + référence
+# depuis l'interface OSPF), pendant le test d'interopérabilité MD5 FRR<->SR Linux -- retirés du
+# lab après capture (Phase B les remettra en place pour de bon), mais ce sont de vraies sorties
+# de l'équipement, pas un format inventé.
+R5_OSPF_CONFIG_WITH_AUTH = R5_OSPF_CONFIG.replace(
+    "interface ethernet-1/1.0 {\n                interface-type point-to-point\n            }",
+    "interface ethernet-1/1.0 {\n                interface-type point-to-point\n"
+    "                authentication {\n                    keychain frr-ospf\n"
+    "                }\n            }",
+)
+R5_AUTH_CONFIG_OSPF_KEYCHAIN = (
+    "    keychain frr-ospf {\n"
+    "        admin-state enable\n"
+    "        type ospf\n"
+    "        key 1 {\n"
+    "            algorithm md5\n"
+    "            authentication-key $aes1$ATLlcEqv7bqoT28=$quwaA3HqquakFj2MYIQ7VQ==\n"
+    "        }\n"
+    "    }\n"
+)
 
 
 def test_srlinux_mtu_margin_conforme_sur_le_vrai_lab():
@@ -330,6 +589,47 @@ def test_srlinux_ospf_point_to_point_violation_quand_absent():
     violations = compliance._check_srlinux_ospf_interface_type_point_to_point(
         r, srlinux_device(ospf_config=broken))
     assert len(violations) == 1 and "ethernet-1/1.0" in violations[0].detail
+
+
+def test_srlinux_ospf_authentication_violation_on_unhardened_lab():
+    # Configuration réelle actuelle (avant Phase B) : aucune keychain n'existe encore.
+    r = rule("srlinux_ospf_authentication_required")
+    violations = compliance._check_srlinux_ospf_authentication_required(r, srlinux_device())
+    assert len(violations) == 1
+    assert "ethernet-1/1.0" in violations[0].detail and "aucune keychain" in violations[0].detail
+
+
+def test_srlinux_ospf_authentication_conforme_once_configured():
+    # Textes réellement capturés en direct (voir R5_OSPF_CONFIG_WITH_AUTH / R5_AUTH_CONFIG_*),
+    # pendant le test d'interopérabilité MD5 avec FRR (adjacence confirmée Full des deux côtés).
+    r = rule("srlinux_ospf_authentication_required")
+    violations = compliance._check_srlinux_ospf_authentication_required(
+        r, srlinux_device(ospf_config=R5_OSPF_CONFIG_WITH_AUTH, auth_config=R5_AUTH_CONFIG_OSPF_KEYCHAIN))
+    assert violations == []
+
+
+def test_srlinux_ospf_authentication_violation_when_keychain_missing():
+    # L'interface référence une keychain, mais /system authentication est vide (dangling ref).
+    r = rule("srlinux_ospf_authentication_required")
+    violations = compliance._check_srlinux_ospf_authentication_required(
+        r, srlinux_device(ospf_config=R5_OSPF_CONFIG_WITH_AUTH))  # auth_config par défaut : vide
+    assert len(violations) == 1 and "introuvable" in violations[0].detail
+
+
+def test_srlinux_ospf_authentication_violation_when_keychain_wrong_type():
+    wrong_type = R5_AUTH_CONFIG_OSPF_KEYCHAIN.replace("type ospf", "type isis")
+    r = rule("srlinux_ospf_authentication_required")
+    violations = compliance._check_srlinux_ospf_authentication_required(
+        r, srlinux_device(ospf_config=R5_OSPF_CONFIG_WITH_AUTH, auth_config=wrong_type))
+    assert len(violations) == 1 and "n'est pas de type ospf" in violations[0].detail
+
+
+def test_srlinux_ospf_authentication_ignores_passive_interfaces():
+    # ethernet-1/2.0 et lo0.0 sont passives : aucune violation attendue à leur sujet, même sans
+    # aucune keychain configurée nulle part.
+    r = rule("srlinux_ospf_authentication_required")
+    violations = compliance._check_srlinux_ospf_authentication_required(r, srlinux_device())
+    assert not any("ethernet-1/2.0" in v.detail or "lo0.0" in v.detail for v in violations)
 
 
 def test_srlinux_ospf_point_to_point_ignores_passive_interfaces():
