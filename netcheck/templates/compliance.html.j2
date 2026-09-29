@@ -75,6 +75,26 @@
 <p>Aucune non-conformité.</p>
 {% endif %}
 
+{% if not_applicable %}
+<h2>Non applicable</h2>
+<p class="meta">Règle(s) qui ne concernent pas le driver de l'équipement (Phase D2) — ni
+conforme, ni non-conformité, sans effet sur le verdict ni le code retour.</p>
+<table id="not-applicable">
+  <thead>
+    <tr><th>Équipement</th><th>Règle</th><th>Raison</th></tr>
+  </thead>
+  <tbody>
+    {% for na in not_applicable %}
+    <tr>
+      <td>{{ na.device }}</td>
+      <td>{{ na.rule.id }}<br><small>{{ na.rule.description }}</small></td>
+      <td>{{ na.reason }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
 <footer>
   netcheck v{{ netcheck_version }} — outil en lecture seule. À n'utiliser sur un réseau réel
   qu'avec une autorisation écrite.

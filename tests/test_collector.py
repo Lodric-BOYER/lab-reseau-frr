@@ -34,6 +34,37 @@ def test_collect_refuses_command_outside_whitelist_without_connecting(monkeypatc
     connect.assert_not_called()
 
 
+class _FakeDriver(Driver):
+    """Driver minimal pour vérifier ce que collect() fait de state.driver (Phase D2), sans
+    ouvrir de vraie connexion SSH."""
+    REQUIRED_COMMANDS = ["show running-config"]
+
+    def parse(self, raw, name, host) -> DeviceState:
+        return DeviceState(name=name, host=host, timestamp="t", reachable=True)
+
+
+def test_collect_sets_state_driver_from_router_inventory_field(monkeypatch):
+    """Phase D2 : compliance.py filtre les règles par DeviceState.driver -- collect() doit le
+    renseigner d'après le champ "driver" de l'inventaire, pas d'après le type de l'instance
+    driver reçue (utile quand un appelant impose un driver explicite, ex. les tests)."""
+    fake_conn = MagicMock()
+    fake_conn.send_command.return_value = "{}"
+    monkeypatch.setattr(collector, "ConnectHandler", MagicMock(return_value=fake_conn))
+
+    router = {**_router(), "driver": "srlinux"}
+    state = collector.collect(router, _FakeDriver())
+    assert state.driver == "srlinux"
+
+
+def test_collect_defaults_state_driver_to_frr_when_field_absent(monkeypatch):
+    fake_conn = MagicMock()
+    fake_conn.send_command.return_value = "{}"
+    monkeypatch.setattr(collector, "ConnectHandler", MagicMock(return_value=fake_conn))
+
+    state = collector.collect(_router(), _FakeDriver())  # pas de champ "driver"
+    assert state.driver == "frr"
+
+
 def test_ensure_allowed_accepts_known_commands():
     collector._ensure_allowed(["show ip route json", "show running-config"])  # ne lève rien
 

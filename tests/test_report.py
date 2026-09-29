@@ -4,8 +4,10 @@ Le contexte : les messages des constats contiennent du texte venant des équipem
 de config, noms d'interface...), jamais de confiance. Une description d'interface malveillante
 du type '<script>alert(1)</script>' doit ressortir échappée, jamais exécutable.
 """
+from rich.console import Console
+
 from netcheck import report
-from netcheck.compliance import Rule, Violation
+from netcheck.compliance import NotApplicable, Rule, Violation
 from netcheck.diff import Finding, Severity
 
 
@@ -104,3 +106,60 @@ def test_compliance_html_conforme_still_renders():
     html = report.render_compliance_html([], compliant=True, rules_path="rules/default.yml")
     assert "CONFORME" in html
     assert "Aucune non-conformité." in html
+
+
+# -- "Non applicable" (Phase D2) : présent dans les 3 sorties, jamais compté comme violation --
+
+def test_not_applicable_appears_in_html():
+    rule = Rule(id="frr-only", description="d", severity="haute", applies_to="all",
+                drivers=["frr"], kind="line_present")
+    na = [NotApplicable(rule=rule, device="r5", reason="driver 'srlinux' non couvert")]
+    html = report.render_compliance_html(
+        [], compliant=True, rules_path="rules/default.yml", not_applicable=na)
+    assert "Non applicable" in html
+    assert "r5" in html
+    assert "frr-only" in html
+
+
+def test_not_applicable_is_xss_escaped_in_html():
+    payload = "<script>alert(1)</script>"
+    rule = Rule(id="r", description="d", severity="haute", applies_to="all",
+                drivers=["frr"], kind="line_present")
+    na = [NotApplicable(rule=rule, device=payload, reason=payload)]
+    html = report.render_compliance_html(
+        [], compliant=True, rules_path="rules/default.yml", not_applicable=na)
+    assert payload not in html
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+
+
+def test_not_applicable_absent_when_empty():
+    html = report.render_compliance_html([], compliant=True, rules_path="rules/default.yml")
+    assert "Non applicable" not in html
+
+
+def test_not_applicable_appears_in_json():
+    rule = Rule(id="frr-only", description="d", severity="haute", applies_to="all",
+                drivers=["frr"], kind="line_present")
+    na = [NotApplicable(rule=rule, device="r5", reason="driver 'srlinux' non couvert")]
+    d = report.compliance_to_dict([], compliant=True, not_applicable=na)
+    assert d["not_applicable"] == [
+        {"rule_id": "frr-only", "device": "r5", "reason": "driver 'srlinux' non couvert"}
+    ]
+    assert d["violations"] == []  # jamais mélangé aux violations
+
+
+def test_not_applicable_empty_list_in_json_when_omitted():
+    d = report.compliance_to_dict([], compliant=True)
+    assert d["not_applicable"] == []
+
+
+def test_not_applicable_appears_in_terminal():
+    rule = Rule(id="frr-only", description="d", severity="haute", applies_to="all",
+                drivers=["frr"], kind="line_present")
+    na = [NotApplicable(rule=rule, device="r5", reason="driver 'srlinux' non couvert")]
+    console = Console(record=True, width=120)
+    report.print_compliance_terminal([], compliant=True, not_applicable=na, console=console)
+    text = console.export_text()
+    assert "Non applicable" in text
+    assert "r5" in text
+    assert "1 non applicable" in text

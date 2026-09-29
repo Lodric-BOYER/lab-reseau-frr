@@ -25,6 +25,7 @@ from typing import Any
 import yaml
 
 from netcheck import management
+from netcheck.collector import DRIVER_REGISTRY
 from netcheck.model import DeviceState
 
 KNOWN_KINDS = {
@@ -34,8 +35,11 @@ KNOWN_KINDS = {
     "bgp_neighbor_outbound_policy",
     "ospf_passive_on_interfaces",
     "interface_description_required",
+    "srlinux_interface_mtu_margin",
+    "srlinux_ospf_interface_type_point_to_point",
 }
 KNOWN_SEVERITIES = {"critique", "haute", "moyenne", "basse"}
+KNOWN_DRIVERS = set(DRIVER_REGISTRY)  # Phase D2 : validation du champ optionnel "drivers"
 _SEVERITY_ORDER = {"critique": 4, "haute": 3, "moyenne": 2, "basse": 1}
 REQUIRED_FIELDS = {"id", "description", "severity", "applies_to", "kind"}
 
@@ -47,6 +51,10 @@ class Rule:
     severity: str
     applies_to: list[str] | str  # "all" ou liste explicite de noms d'équipements
     kind: str
+    # None = tous les drivers (Phase D2). Une liste restreint la règle aux équipements dont
+    # DeviceState.driver y figure ; les autres deviennent "non applicable" (evaluate()), pas
+    # "conformes" et jamais une violation.
+    drivers: list[str] | None = None
     params: dict[str, Any] = field(default_factory=dict)
 
     def applies(self, device_name: str) -> bool:
@@ -58,6 +66,15 @@ class Violation:
     rule: Rule
     device: str
     detail: str
+
+
+@dataclass
+class NotApplicable:
+    """Une règle qui ne concerne pas le driver de cet équipement (Phase D2) : ni conforme, ni
+    violation, un troisième état à part entière -- voir evaluate() et verdict()."""
+    rule: Rule
+    device: str
+    reason: str
 
 
 # ------------------------------------------------------------------------------------------
@@ -108,9 +125,20 @@ def _validate_rule(raw: Any, index: int, path: Path) -> Rule:
     if applies_to != "all" and not isinstance(applies_to, list):
         raise ValueError(f"{path} : {label} : applies_to doit être 'all' ou une liste d'équipements")
 
-    params = {k: v for k, v in raw.items() if k not in REQUIRED_FIELDS}
+    drivers = raw.get("drivers")  # optionnel (Phase D2) : absent = tous les drivers
+    if drivers is not None:
+        if not isinstance(drivers, list) or not drivers:
+            raise ValueError(f"{path} : {label} : drivers doit être une liste non vide de noms de driver")
+        unknown = set(drivers) - KNOWN_DRIVERS
+        if unknown:
+            raise ValueError(
+                f"{path} : {label} : driver(s) inconnu(s) dans 'drivers' : {sorted(unknown)} "
+                f"(disponibles : {sorted(KNOWN_DRIVERS)})"
+            )
+
+    params = {k: v for k, v in raw.items() if k not in REQUIRED_FIELDS and k != "drivers"}
     return Rule(id=raw["id"], description=raw["description"], severity=raw["severity"],
-                applies_to=applies_to, kind=raw["kind"], params=params)
+                applies_to=applies_to, kind=raw["kind"], drivers=drivers, params=params)
 
 
 def _check_unique_ids(rules: list[Rule], path: Path) -> None:
@@ -129,17 +157,27 @@ def evaluate(
     rules: list[Rule],
     devices: dict[str, DeviceState],
     management_interfaces: set[str] | None = None,
-) -> list[Violation]:
-    """Applique chaque règle à chaque équipement concerné (rule.applies_to)."""
+) -> tuple[list[Violation], list[NotApplicable]]:
+    """Applique chaque règle à chaque équipement concerné (rule.applies_to).
+
+    Renvoie (violations, non_applicables). Phase D2 : une règle dont `rule.drivers` ne couvre
+    pas le driver de l'équipement (DeviceState.driver) ne produit ni conformité ni violation --
+    "non applicable" est un troisième état à part entière (jamais "conforme", jamais compté
+    dans `verdict()`, qui ne prend que `violations`)."""
     mgmt = set(management_interfaces or ())
     violations: list[Violation] = []
+    not_applicable: list[NotApplicable] = []
     for rule in rules:
         evaluator = _EVALUATORS[rule.kind]
         for name, state in devices.items():
             if not rule.applies(name) or not state.reachable:
                 continue
+            if rule.drivers is not None and state.driver not in rule.drivers:
+                not_applicable.append(NotApplicable(rule, name,
+                    f"driver '{state.driver}' non couvert par cette règle (drivers: {rule.drivers})"))
+                continue
             violations += evaluator(rule, management.filtered(state, mgmt))
-    return violations
+    return violations, not_applicable
 
 
 def verdict(violations: list[Violation]) -> tuple[bool, int]:
@@ -183,6 +221,53 @@ def _bgp_block(running_config: str) -> tuple[str, str] | None:
     while end < len(lines) and lines[end].strip() != "exit":
         end += 1
     return local_as, "\n".join(lines[start:end + 1])
+
+
+# ------------------------------------------------------------------------------------------
+# Aides de parsing de la running-config SR Linux (accolades imbriquées, Phase D2)
+# ------------------------------------------------------------------------------------------
+
+def _srlinux_section(running_config: str, marker: str) -> str:
+    """Isole la section qui suit '# --- <marker> ---' jusqu'au marqueur suivant (ou la fin).
+
+    drivers/srlinux.py concatène deux commandes distinctes (config des interfaces, config
+    OSPF) séparées par ces marqueurs plutôt que bout à bout : les deux réutilisent la même
+    syntaxe de bloc "interface <nom> { ... }" avec un sens différent (interface physique d'un
+    côté, sous-interface dans une zone OSPF de l'autre) -- sans cette séparation explicite, un
+    évaluateur pourrait confondre les deux. Renvoie "" si le marqueur est absent (ex. un
+    running_config FRR, qui n'a jamais ce format) : rien à trouver, pas une erreur.
+    """
+    start = running_config.find(f"# --- {marker} ---")
+    if start == -1:
+        return ""
+    start = running_config.find("\n", start) + 1
+    next_marker = running_config.find("# --- ", start)
+    return running_config[start:] if next_marker == -1 else running_config[start:next_marker]
+
+
+def _srlinux_brace_blocks(text: str, header_prefix: str) -> dict[str, str]:
+    """{nom: texte_du_bloc} pour des blocs '<header_prefix><nom> { ... }' à accolades
+    imbriquées (syntaxe SR Linux "info from running"). Suit la profondeur d'accolades pour
+    capturer le bloc complet, contrairement à une simple recherche ligne à ligne (nécessaire
+    ici : une zone OSPF contient elle-même des sous-blocs "interface <nom> { ... }")."""
+    blocks: dict[str, str] = {}
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        stripped = lines[i].strip()
+        if stripped.startswith(header_prefix) and stripped.endswith("{"):
+            name = stripped[len(header_prefix):-1].strip()
+            depth = 1
+            block_lines = [lines[i]]
+            i += 1
+            while i < len(lines) and depth > 0:
+                block_lines.append(lines[i])
+                depth += lines[i].count("{") - lines[i].count("}")
+                i += 1
+            blocks[name] = "\n".join(block_lines)
+        else:
+            i += 1
+    return blocks
 
 
 # ------------------------------------------------------------------------------------------
@@ -293,6 +378,58 @@ def _check_interface_description_required(rule: Rule, device: DeviceState) -> li
     return violations
 
 
+# -- Règles propres à SR Linux (Phase D2) --------------------------------------------------
+
+def _check_srlinux_interface_mtu_margin(rule: Rule, device: DeviceState) -> list[Violation]:
+    """SR Linux exige que l'ip-mtu d'une sous-interface reste strictement inférieur au mtu L2
+    de l'interface porteuse -- constaté et corrigé en direct sur ce lab (Phase C) : sans une
+    marge d'au moins 14 octets (la taille d'un en-tête Ethernet), la sous-interface reste
+    "down, reason ip-mtu-too-large" et une adjacence OSPF ne peut jamais s'y établir. Bonne
+    pratique de conformité pour éviter de reproduire cette panne après une future
+    reconfiguration de MTU. `rule.params["margin"]` (défaut 14) est la marge minimale exigée.
+
+    Ne vérifie que les interfaces où mtu ET ip-mtu sont *explicitement* positionnés dans la
+    config : une valeur absente prend le défaut de la plateforme, qu'on ne devine pas ici.
+    """
+    margin = rule.params.get("margin", 14)
+    section = _srlinux_section(device.running_config, "interface")
+    violations = []
+    for name, block in _srlinux_brace_blocks(section, "interface ").items():
+        mtu_match = re.search(r"^\s*mtu (\d+)\s*$", block, re.MULTILINE)
+        if not mtu_match:
+            continue
+        mtu = int(mtu_match.group(1))
+        for ip_mtu_match in re.finditer(r"^\s*ip-mtu (\d+)\s*$", block, re.MULTILINE):
+            ip_mtu = int(ip_mtu_match.group(1))
+            if mtu - ip_mtu < margin:
+                violations.append(Violation(rule, device.name,
+                    f"interface {name} : mtu {mtu} - ip-mtu {ip_mtu} = {mtu - ip_mtu} "
+                    f"< marge minimale {margin} (cf. Phase C : ip-mtu-too-large)"))
+    return violations
+
+
+def _check_srlinux_ospf_interface_type_point_to_point(rule: Rule, device: DeviceState) -> list[Violation]:
+    """Toute interface OSPF active (non passive) doit être en interface-type point-to-point.
+
+    Bonne pratique réseau standard sur un lien qui n'a jamais qu'un seul voisin possible :
+    évite une élection DR/BDR inutile (temps de convergence et trafic de contrôle superflus),
+    et le comportement par défaut de SR Linux sur Ethernet est justement l'inverse
+    ("broadcast"), d'où l'intérêt de le vérifier explicitement plutôt que de compter sur la
+    valeur par défaut. Les interfaces passives (LAN, loopback) sont hors de propos : sans
+    adjacence, DR/BDR ne s'y applique jamais.
+    """
+    section = _srlinux_section(device.running_config, "network-instance default protocols ospf")
+    violations = []
+    for name, block in _srlinux_brace_blocks(section, "interface ").items():
+        if re.search(r"^\s*passive true\s*$", block, re.MULTILINE):
+            continue
+        if not re.search(r"^\s*interface-type point-to-point\s*$", block, re.MULTILINE):
+            violations.append(Violation(rule, device.name,
+                f"interface OSPF {name} active (non passive) sans interface-type "
+                f"point-to-point : risque d'élection DR/BDR inutile"))
+    return violations
+
+
 _EVALUATORS = {
     "line_present": _check_line_present,
     "line_absent": _check_line_absent,
@@ -300,4 +437,6 @@ _EVALUATORS = {
     "bgp_neighbor_outbound_policy": _check_bgp_neighbor_outbound_policy,
     "ospf_passive_on_interfaces": _check_ospf_passive_on_interfaces,
     "interface_description_required": _check_interface_description_required,
+    "srlinux_interface_mtu_margin": _check_srlinux_interface_mtu_margin,
+    "srlinux_ospf_interface_type_point_to_point": _check_srlinux_ospf_interface_type_point_to_point,
 }

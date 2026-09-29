@@ -24,7 +24,12 @@ d'architecture SR Linux (pas des choix arbitraires) :
   bgp_prefixes sont toujours vides, comme le prévoit Driver pour un équipement sans le protocole.
 - "info from running" ne peut pas combiner "interface" et "network-instance" en une seule
   commande (chaque branche racine exige sa propre requête, vérifié en direct) : running_config
-  se limite donc à la configuration des interfaces, pas à OSPF/BGP.
+  concatène donc DEUX commandes ("show running-config" pour les interfaces, "show ospf
+  running-config" pour network-instance/protocols/ospf, Phase D2), séparées par un marqueur de
+  section ("# --- <nom> ---") plutôt que bout à bout. Nécessaire car les deux branches
+  réutilisent la même syntaxe de bloc "interface <nom> { ... }" avec un sens différent (une
+  interface physique d'un côté, une sous-interface dans une zone OSPF de l'autre) : sans
+  séparateur explicite, un parseur de règle de conformité pourrait confondre les deux.
 """
 from __future__ import annotations
 
@@ -45,6 +50,7 @@ class SrlinuxDriver(Driver):
         "show ip route json",
         "show ip ospf neighbor json",
         "show running-config",
+        "show ospf running-config",
     ]
 
     _TRANSLATION = {
@@ -52,12 +58,17 @@ class SrlinuxDriver(Driver):
         "show ip route json": "info from state network-instance default route-table | as json",
         "show ip ospf neighbor json": "show network-instance default protocols ospf neighbor | as json",
         "show running-config": "info from running interface *",
+        "show ospf running-config": "info from running network-instance default protocols ospf",
     }
 
     def translate(self, command: str) -> str:
         return self._TRANSLATION[command]
 
     def parse(self, raw: dict[str, str], name: str, host: str) -> DeviceState:
+        running_config = (
+            "# --- interface ---\n" + raw["show running-config"] + "\n"
+            "# --- network-instance default protocols ospf ---\n" + raw["show ospf running-config"]
+        )
         return DeviceState(
             name=name,
             host=host,
@@ -68,7 +79,7 @@ class SrlinuxDriver(Driver):
             ospf_neighbors=self._parse_ospf(raw["show ip ospf neighbor json"]),
             bgp_peers=[],
             bgp_prefixes=[],
-            running_config=raw["show running-config"],
+            running_config=running_config,
         )
 
     # -- Interfaces -----------------------------------------------------------------------

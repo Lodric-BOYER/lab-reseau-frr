@@ -87,6 +87,12 @@ class DeviceState:
     bgp_peers: list[BgpPeer] = field(default_factory=list)
     bgp_prefixes: list[BgpPrefix] = field(default_factory=list)
     running_config: str = ""
+    # Nom du driver ayant produit cet état (registre collector.DRIVER_REGISTRY), utilisé par
+    # compliance.py pour filtrer les règles par driver (Phase D2). Défaut "frr" : un snapshot
+    # écrit avant l'ajout de ce champ (ou tout appelant qui construit un DeviceState à la
+    # main, comme les tests) reste valide sans le renseigner -- même logique de compatibilité
+    # ascendante que is_loopback (v2, O3).
+    driver: str = "frr"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -112,4 +118,5 @@ class DeviceState:
             bgp_peers=[BgpPeer(**p) for p in data.get("bgp_peers", [])],
             bgp_prefixes=[BgpPrefix(**b) for b in data.get("bgp_prefixes", [])],
             running_config=data.get("running_config", ""),
+            driver=data.get("driver", "frr"),
         )

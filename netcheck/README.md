@@ -49,7 +49,11 @@ donnée séparément (`diff.py`), classe les constats par gravité, produit un r
 
 **Flux d'une commande `check`** : `cli.py` charge les règles YAML (`compliance.py`, validées
 avant tout usage), collecte en direct ou charge un snapshot, applique chaque règle à chaque
-équipement concerné, produit un rapport.
+équipement concerné, produit un rapport. Trois états possibles par (règle, équipement), Phase
+D2 : conforme (aucun `Violation`), non-conforme (`Violation`), ou **non applicable**
+(`NotApplicable` -- le champ optionnel `drivers:` de la règle ne couvre pas le driver de cet
+équipement). "Non applicable" n'est ni conforme ni une violation : il apparaît dans les 3
+sorties (terminal, JSON, HTML) mais n'entre jamais dans `verdict()` ni le code retour.
 
 ## Sécurité
 

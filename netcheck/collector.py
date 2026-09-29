@@ -24,8 +24,11 @@ if str(AUTOMATION_DIR) not in sys.path:
     sys.path.insert(0, str(AUTOMATION_DIR))
 from labtools import run_parallel  # noqa: E402  (import après modification de sys.path)
 
-# Commandes logiques autorisées (tableau §4 du cahier des charges). Un driver ne peut pas en
-# demander d'autres : toute commande de configuration est refusée avant même la connexion SSH.
+# Commandes logiques autorisées (tableau §4 du cahier des charges, complété en Phase D2 pour
+# le driver SR Linux : "show ospf running-config" récupère la config OSPF séparément, la
+# syntaxe SR Linux ne permettant pas de la combiner avec "show running-config" en une seule
+# requête -- voir drivers/srlinux.py). Un driver ne peut pas en demander d'autres : toute
+# commande de configuration est refusée avant même la connexion SSH.
 ALLOWED_COMMANDS = {
     "show interface json",
     "show ip route json",
@@ -33,6 +36,7 @@ ALLOWED_COMMANDS = {
     "show bgp ipv4 unicast summary json",
     "show bgp ipv4 unicast json",
     "show running-config",
+    "show ospf running-config",
 }
 
 # Registre des drivers disponibles, indexé par le champ "driver" de l'inventaire (Phase D1).
@@ -99,7 +103,13 @@ def collect(router: dict, driver: Driver | None = None) -> DeviceState:
             raw[command] = driver.clean_output(out)
     finally:
         conn.disconnect()
-    return driver.parse(raw, router["name"], router["host"])
+    state = driver.parse(raw, router["name"], router["host"])
+    # Champ lu par compliance.py pour filtrer les règles par driver (Phase D2). Le nom du
+    # routeur dans l'inventaire fait foi (pas le type de l'instance `driver` reçue), pour que
+    # ça marche aussi quand un appelant impose un driver explicite (tests, guard/wait_for_
+    # convergence) sans passer par _resolve_driver.
+    state.driver = router.get("driver", "frr")
+    return state
 
 
 def collect_all(routers: dict, driver: Driver | None = None, workers: int = 5) -> dict:

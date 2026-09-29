@@ -108,14 +108,22 @@ def test_parse_full_device_state_no_bgp():
             "show ip route json": "route.json",
             "show ip ospf neighbor json": "ospf_neighbor.json",
             "show running-config": "running_config.txt",
+            "show ospf running-config": "ospf_running_config.txt",
         }.items()
     }
     state = driver.parse(raw, name="r5", host="172.20.21.15")
 
     assert state.reachable is True
     assert state.name == "r5"
+    # state.driver reste "frr" (défaut du modèle) ici : c'est collector.collect() qui le
+    # renseigne d'après l'inventaire, pas driver.parse() -- voir test_collector.py.
     assert any(n.is_full for n in state.ospf_neighbors)
     # r5 ne parle pas BGP dans ce lab : listes vides, jamais une erreur (contrat de Driver).
     assert state.bgp_peers == []
     assert state.bgp_prefixes == []
     assert "interface ethernet-1/1" in state.running_config
+    # Phase D2 : deux commandes concaténées avec des marqueurs de section (jamais bout à bout,
+    # les deux réutilisent la syntaxe "interface <nom> { ... }" avec un sens différent).
+    assert "# --- interface ---" in state.running_config
+    assert "# --- network-instance default protocols ospf ---" in state.running_config
+    assert "interface-type point-to-point" in state.running_config

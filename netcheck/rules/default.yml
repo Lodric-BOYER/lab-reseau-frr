@@ -5,8 +5,18 @@
 #     description: "phrase humaine expliquant la règle"
 #     severity: critique | haute | moyenne | basse
 #     applies_to: all                      # ou une liste explicite : [r3, r4]
-#     kind: <un des 6 types ci-dessous>
+#     drivers: [frr]                       # optionnel (Phase D2) : absent = tous les drivers
+#     kind: <un des 8 types ci-dessous>
 #     ...                                  # paramètres propres au kind
+#
+# Champ "drivers" (Phase D2) : une règle qui lit le TEXTE de la running-config (line_present,
+# line_absent, bgp_neighbor_*, ospf_passive_on_interfaces) est forcément écrite pour la syntaxe
+# d'UN seul constructeur -- ces règles doivent porter "drivers: [<ce constructeur>]", sinon
+# elles produisent de fausses non-conformités sur tout autre driver (aucune ligne FRR à
+# trouver dans une config SR Linux, par exemple). Une règle qui lit uniquement le modèle
+# normalisé (interface_description_required) n'a pas ce problème : elle reste universelle,
+# sans "drivers". Sur un équipement dont le driver n'est pas couvert par "drivers", la règle
+# devient "non applicable" (ni conforme, ni non-conformité, sans effet sur le verdict).
 #
 # Types (kind) disponibles et leurs paramètres :
 #   line_present                     pattern: <regex recherchée dans la running-config>
@@ -21,16 +31,24 @@
 #                                    plus des interfaces de management déjà filtrées] :
 #                                    toute interface avec une adresse IP, hors loopback,
 #                                    doit avoir une description
+#   srlinux_interface_mtu_margin    margin: <entier, défaut 14> : l'ip-mtu d'une sous-interface
+#                                    SR Linux doit rester inférieur au mtu L2 de cette marge au
+#                                    moins (Phase C : sans ça, "ip-mtu-too-large", jamais Full)
+#   srlinux_ospf_interface_type_point_to_point   (aucun paramètre) : toute interface OSPF SR
+#                                    Linux active (non passive) doit être en interface-type
+#                                    point-to-point (évite une élection DR/BDR inutile)
 #
 # Chaque règle est évaluée sur chaque équipement listé dans applies_to (ou tous les
-# équipements joignables, si applies_to vaut "all"). Toujours chargé avec yaml.safe_load :
-# aucun tag Python (!!python/...) n'est accepté, un tel fichier est refusé au chargement.
+# équipements joignables, si applies_to vaut "all") ET couvert par drivers (ou tous les
+# drivers, si absent). Toujours chargé avec yaml.safe_load : aucun tag Python (!!python/...)
+# n'est accepté, un tel fichier est refusé au chargement.
 
 rules:
   - id: syslog-actif
     description: "Le journal système (syslog) doit être actif sur tous les routeurs."
     severity: basse
     applies_to: all
+    drivers: [frr]
     kind: line_present
     pattern: "^log syslog informational$"
 
@@ -38,6 +56,7 @@ rules:
     description: "Aucun mot de passe local en clair dans la configuration (password / enable password)."
     severity: critique
     applies_to: all
+    drivers: [frr]
     kind: line_absent
     pattern: "^\\s*(enable )?password\\s"
 
@@ -45,18 +64,21 @@ rules:
     description: "Chaque voisin eBGP doit avoir une route-map ou une prefix-list appliquée en entrée."
     severity: haute
     applies_to: [r3, r4]
+    drivers: [frr]
     kind: bgp_neighbor_inbound_policy
 
   - id: ebgp-politique-sortante
     description: "Chaque voisin eBGP doit avoir une route-map ou une prefix-list appliquée en sortie."
     severity: haute
     applies_to: [r3, r4]
+    drivers: [frr]
     kind: bgp_neighbor_outbound_policy
 
   - id: lan-en-ospf-passif
     description: "Les interfaces LAN (description contenant 'LAN') doivent être en ip ospf passive."
     severity: moyenne
     applies_to: all
+    drivers: [frr]
     kind: ospf_passive_on_interfaces
     pattern: "LAN"
 
@@ -65,6 +87,7 @@ rules:
     description: "La journalisation syslog doit être activée (traçabilité des événements)."
     severity: moyenne
     applies_to: all
+    drivers: [frr]
     kind: line_present
     pattern: '^log syslog'
 
@@ -72,6 +95,7 @@ rules:
     description: "Aucune route par défaut statique codée en dur (elle contournerait le routage dynamique)."
     severity: haute
     applies_to: all
+    drivers: [frr]
     kind: line_absent
     pattern: '^ip route 0\.0\.0\.0/0'
 
@@ -79,5 +103,22 @@ rules:
     description: "Chaque routeur doit fixer son router-id OSPF (identifiant stable et prévisible)."
     severity: basse
     applies_to: all
+    drivers: [frr]
     kind: line_present
     pattern: '^\s*ospf router-id \d+\.\d+\.\d+\.\d+'
+
+  # --- Règles SR Linux (Phase D2) ---------------------------------------------------------
+  - id: srlinux-mtu-marge-suffisante
+    description: "L'ip-mtu d'une sous-interface SR Linux doit rester au moins 14 octets sous le mtu L2 (évite l'échec ip-mtu-too-large constaté en Phase C)."
+    severity: haute
+    applies_to: all
+    drivers: [srlinux]
+    kind: srlinux_interface_mtu_margin
+    margin: 14
+
+  - id: srlinux-ospf-point-to-point
+    description: "Toute interface OSPF SR Linux active (non passive) doit être en interface-type point-to-point."
+    severity: moyenne
+    applies_to: all
+    drivers: [srlinux]
+    kind: srlinux_ospf_interface_type_point_to_point

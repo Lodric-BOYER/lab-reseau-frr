@@ -82,15 +82,16 @@ def cmd_check(args: argparse.Namespace) -> int:
             else:
                 print(f"  {name:<8} INJOIGNABLE : {value}", file=sys.stderr)
 
-    violations = compliance.evaluate(rules, devices, management_interfaces=set(inv.management_interfaces))
+    violations, not_applicable = compliance.evaluate(
+        rules, devices, management_interfaces=set(inv.management_interfaces))
     compliant, code = compliance.verdict(violations)
 
-    report.print_compliance_terminal(violations, compliant)
+    report.print_compliance_terminal(violations, compliant, not_applicable)
     if args.json:
-        report.write_compliance_json(violations, compliant, args.json)
+        report.write_compliance_json(violations, compliant, args.json, not_applicable)
         print(f"Constats écrits (JSON) : {args.json}")
     if args.html:
-        report.write_compliance_html(violations, compliant, rules_path, args.html)
+        report.write_compliance_html(violations, compliant, rules_path, args.html, not_applicable)
         print(f"Rapport HTML écrit : {args.html}")
     return code
 
