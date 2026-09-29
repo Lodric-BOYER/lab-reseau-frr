@@ -1,0 +1,340 @@
+{
+  "compliant": false,
+  "violations": [
+    {
+      "severity": "haute",
+      "rule_id": "ospf-authentification-message-digest",
+      "device": "r1",
+      "detail": "interface eth1 : adjacence OSPF active sans authentification message-digest",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "severity": "haute",
+      "rule_id": "ospf-authentification-message-digest",
+      "device": "r1",
+      "detail": "interface eth2 : adjacence OSPF active sans authentification message-digest",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "severity": "haute",
+      "rule_id": "ospf-authentification-message-digest",
+      "device": "r2",
+      "detail": "interface eth1 : adjacence OSPF active sans authentification message-digest",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "severity": "haute",
+      "rule_id": "ospf-authentification-message-digest",
+      "device": "r2",
+      "detail": "interface eth2 : adjacence OSPF active sans authentification message-digest",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "severity": "haute",
+      "rule_id": "ospf-authentification-message-digest",
+      "device": "r3",
+      "detail": "interface eth1 : adjacence OSPF active sans authentification message-digest",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "severity": "haute",
+      "rule_id": "ospf-authentification-message-digest",
+      "device": "r3",
+      "detail": "interface eth2 : adjacence OSPF active sans authentification message-digest",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "severity": "haute",
+      "rule_id": "ospf-authentification-message-digest",
+      "device": "r4",
+      "detail": "interface eth2 : adjacence OSPF active sans authentification message-digest",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "severity": "haute",
+      "rule_id": "srlinux-ospf-authentification-keychain",
+      "device": "r5",
+      "detail": "interface OSPF ethernet-1/1.0 active (non passive) sans authentification (aucune keychain référencée)",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "severity": "haute",
+      "rule_id": "ebgp-authentification-tcp-md5",
+      "device": "r3",
+      "detail": "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+      "category": "bgp",
+      "references": [
+        {
+          "title": "RFC 2385 — Protection of BGP Sessions via the TCP MD5 Signature Option",
+          "url": "https://www.rfc-editor.org/rfc/rfc2385.html"
+        },
+        {
+          "title": "RFC 7454 — BGP Operations and Security",
+          "url": "https://www.rfc-editor.org/rfc/rfc7454.html"
+        }
+      ]
+    },
+    {
+      "severity": "haute",
+      "rule_id": "ebgp-authentification-tcp-md5",
+      "device": "r4",
+      "detail": "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+      "category": "bgp",
+      "references": [
+        {
+          "title": "RFC 2385 — Protection of BGP Sessions via the TCP MD5 Signature Option",
+          "url": "https://www.rfc-editor.org/rfc/rfc2385.html"
+        },
+        {
+          "title": "RFC 7454 — BGP Operations and Security",
+          "url": "https://www.rfc-editor.org/rfc/rfc7454.html"
+        }
+      ]
+    },
+    {
+      "severity": "moyenne",
+      "rule_id": "ebgp-maximum-prefix",
+      "device": "r3",
+      "detail": "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+      "category": "bgp",
+      "references": [
+        {
+          "title": "RFC 7454 — BGP Operations and Security",
+          "url": "https://www.rfc-editor.org/rfc/rfc7454.html"
+        }
+      ]
+    },
+    {
+      "severity": "moyenne",
+      "rule_id": "ebgp-maximum-prefix",
+      "device": "r4",
+      "detail": "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+      "category": "bgp",
+      "references": [
+        {
+          "title": "RFC 7454 — BGP Operations and Security",
+          "url": "https://www.rfc-editor.org/rfc/rfc7454.html"
+        }
+      ]
+    },
+    {
+      "severity": "moyenne",
+      "rule_id": "ebgp-gtsm-ttl-security",
+      "device": "r3",
+      "detail": "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+      "category": "bgp",
+      "references": [
+        {
+          "title": "RFC 5082 — The Generalized TTL Security Mechanism (GTSM)",
+          "url": "https://www.rfc-editor.org/rfc/rfc5082.html"
+        },
+        {
+          "title": "RFC 7454 — BGP Operations and Security",
+          "url": "https://www.rfc-editor.org/rfc/rfc7454.html"
+        }
+      ]
+    },
+    {
+      "severity": "moyenne",
+      "rule_id": "ebgp-gtsm-ttl-security",
+      "device": "r4",
+      "detail": "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+      "category": "bgp",
+      "references": [
+        {
+          "title": "RFC 5082 — The Generalized TTL Security Mechanism (GTSM)",
+          "url": "https://www.rfc-editor.org/rfc/rfc5082.html"
+        },
+        {
+          "title": "RFC 7454 — BGP Operations and Security",
+          "url": "https://www.rfc-editor.org/rfc/rfc7454.html"
+        }
+      ]
+    },
+    {
+      "severity": "basse",
+      "rule_id": "srlinux-banniere-de-connexion",
+      "device": "r5",
+      "detail": "aucune ligne ne correspond à /^\\s*login-banner\\s/",
+      "category": "acces",
+      "references": [
+        {
+          "title": "SR Linux — CLI interface (login-banner / motd-banner)",
+          "url": "https://documentation.nokia.com/srlinux/26-3/books/system-mgmt/cli-interface.html"
+        }
+      ]
+    }
+  ],
+  "not_applicable": [
+    {
+      "rule_id": "ospf-authentification-message-digest",
+      "device": "r5",
+      "reason": "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "srlinux-ospf-authentification-keychain",
+      "device": "r1",
+      "reason": "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "srlinux-ospf-authentification-keychain",
+      "device": "r2",
+      "reason": "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "srlinux-ospf-authentification-keychain",
+      "device": "r3",
+      "reason": "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "srlinux-ospf-authentification-keychain",
+      "device": "r4",
+      "reason": "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "securite-pas-de-mot-de-passe-en-clair",
+      "device": "r5",
+      "reason": "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])",
+      "category": "acces",
+      "references": null
+    },
+    {
+      "rule_id": "srlinux-banniere-de-connexion",
+      "device": "r1",
+      "reason": "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])",
+      "category": "acces",
+      "references": [
+        {
+          "title": "SR Linux — CLI interface (login-banner / motd-banner)",
+          "url": "https://documentation.nokia.com/srlinux/26-3/books/system-mgmt/cli-interface.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "srlinux-banniere-de-connexion",
+      "device": "r2",
+      "reason": "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])",
+      "category": "acces",
+      "references": [
+        {
+          "title": "SR Linux — CLI interface (login-banner / motd-banner)",
+          "url": "https://documentation.nokia.com/srlinux/26-3/books/system-mgmt/cli-interface.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "srlinux-banniere-de-connexion",
+      "device": "r3",
+      "reason": "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])",
+      "category": "acces",
+      "references": [
+        {
+          "title": "SR Linux — CLI interface (login-banner / motd-banner)",
+          "url": "https://documentation.nokia.com/srlinux/26-3/books/system-mgmt/cli-interface.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "srlinux-banniere-de-connexion",
+      "device": "r4",
+      "reason": "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])",
+      "category": "acces",
+      "references": [
+        {
+          "title": "SR Linux — CLI interface (login-banner / motd-banner)",
+          "url": "https://documentation.nokia.com/srlinux/26-3/books/system-mgmt/cli-interface.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "securite-journalisation-active",
+      "device": "r5",
+      "reason": "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])",
+      "category": "journalisation",
+      "references": null
+    }
+  ]
+}

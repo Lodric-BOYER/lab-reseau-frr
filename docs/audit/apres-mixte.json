@@ -1,0 +1,128 @@
+{
+  "compliant": true,
+  "violations": [],
+  "not_applicable": [
+    {
+      "rule_id": "ospf-authentification-message-digest",
+      "device": "r5",
+      "reason": "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "srlinux-ospf-authentification-keychain",
+      "device": "r1",
+      "reason": "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "srlinux-ospf-authentification-keychain",
+      "device": "r2",
+      "reason": "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "srlinux-ospf-authentification-keychain",
+      "device": "r3",
+      "reason": "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "srlinux-ospf-authentification-keychain",
+      "device": "r4",
+      "reason": "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])",
+      "category": "ospf",
+      "references": [
+        {
+          "title": "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)",
+          "url": "https://www.rfc-editor.org/rfc/rfc2328.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "securite-pas-de-mot-de-passe-en-clair",
+      "device": "r5",
+      "reason": "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])",
+      "category": "acces",
+      "references": null
+    },
+    {
+      "rule_id": "srlinux-banniere-de-connexion",
+      "device": "r1",
+      "reason": "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])",
+      "category": "acces",
+      "references": [
+        {
+          "title": "SR Linux — CLI interface (login-banner / motd-banner)",
+          "url": "https://documentation.nokia.com/srlinux/26-3/books/system-mgmt/cli-interface.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "srlinux-banniere-de-connexion",
+      "device": "r2",
+      "reason": "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])",
+      "category": "acces",
+      "references": [
+        {
+          "title": "SR Linux — CLI interface (login-banner / motd-banner)",
+          "url": "https://documentation.nokia.com/srlinux/26-3/books/system-mgmt/cli-interface.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "srlinux-banniere-de-connexion",
+      "device": "r3",
+      "reason": "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])",
+      "category": "acces",
+      "references": [
+        {
+          "title": "SR Linux — CLI interface (login-banner / motd-banner)",
+          "url": "https://documentation.nokia.com/srlinux/26-3/books/system-mgmt/cli-interface.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "srlinux-banniere-de-connexion",
+      "device": "r4",
+      "reason": "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])",
+      "category": "acces",
+      "references": [
+        {
+          "title": "SR Linux — CLI interface (login-banner / motd-banner)",
+          "url": "https://documentation.nokia.com/srlinux/26-3/books/system-mgmt/cli-interface.html"
+        }
+      ]
+    },
+    {
+      "rule_id": "securite-journalisation-active",
+      "device": "r5",
+      "reason": "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])",
+      "category": "journalisation",
+      "references": null
+    }
+  ]
+}

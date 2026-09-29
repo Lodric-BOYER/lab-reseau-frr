@@ -155,6 +155,72 @@ def test_not_applicable_empty_list_in_json_when_omitted():
 
 
 # ------------------------------------------------------------------------------------------
+# Masquage des secrets (Phase A, suite -- avant la Phase B) : les trois sorties, pour les deux
+# familles de rapport (diff et conformité). netcheck.secrets a ses propres tests unitaires
+# (tests/test_secrets.py) ; ceux-ci vérifient seulement que report.py l'applique bien partout.
+# ------------------------------------------------------------------------------------------
+
+def test_diff_html_masks_secret_in_config_diff():
+    findings = [Finding(Severity.INFO, "config",
+                         "r1", "+ ip ospf message-digest-key 1 md5 CleDeLabUniquement")]
+    html = report.render_html(findings, "OK", "avant", "apres")
+    assert "CleDeLabUniquement" not in html
+    assert "message-digest-key 1 md5 ****" in html
+
+
+def test_diff_terminal_masks_secret():
+    findings = [Finding(Severity.INFO, "config", "r1", "+ neighbor 172.16.34.2 password Secret")]
+    console = Console(record=True, width=120)
+    report.print_terminal(findings, "OK", console=console)
+    text = console.export_text()
+    assert "Secret" not in text
+    assert "password ****" in text
+
+
+def test_diff_json_masks_secret():
+    findings = [Finding(Severity.INFO, "config", "r1", "+ key-string SecretDeKeyChain")]
+    d = report.to_dict(findings, "OK")
+    assert "SecretDeKeyChain" not in d["findings"][0]["message"]
+    assert "key-string ****" in d["findings"][0]["message"]
+
+
+def test_compliance_html_masks_secret_in_violation_detail():
+    rule = Rule(id="x", description="d", severity="critique", applies_to="all", kind="line_absent")
+    violations = [Violation(rule=rule, device="r1", detail="ligne interdite trouvée : 'password secret123'")]
+    html = report.render_compliance_html(violations, compliant=False, rules_path="rules/security.yml")
+    assert "secret123" not in html
+    assert "password ****" in html
+
+
+def test_compliance_terminal_masks_secret():
+    rule = Rule(id="x", description="d", severity="critique", applies_to="all", kind="line_absent")
+    violations = [Violation(rule=rule, device="r1", detail="ligne interdite trouvée : 'password secret123'")]
+    console = Console(record=True, width=120)
+    report.print_compliance_terminal(violations, compliant=False, console=console)
+    text = console.export_text()
+    assert "secret123" not in text
+    assert "password ****" in text
+
+
+def test_compliance_json_masks_secret():
+    rule = Rule(id="x", description="d", severity="critique", applies_to="all", kind="line_absent")
+    violations = [Violation(rule=rule, device="r1", detail="ligne interdite trouvée : 'password secret123'")]
+    d = report.compliance_to_dict(violations, compliant=False)
+    assert "secret123" not in d["violations"][0]["detail"]
+    assert "password ****" in d["violations"][0]["detail"]
+
+
+def test_compliance_masking_does_not_mutate_the_original_violation():
+    # report.py travaille sur une copie (dataclasses.replace) : l'objet Violation d'origine,
+    # potentiellement réutilisé ailleurs (JSON écrit en plus du terminal, par ex.), garde son
+    # detail complet.
+    rule = Rule(id="x", description="d", severity="critique", applies_to="all", kind="line_absent")
+    original = Violation(rule=rule, device="r1", detail="ligne interdite trouvée : 'password secret123'")
+    report.compliance_to_dict([original], compliant=False)
+    assert original.detail == "ligne interdite trouvée : 'password secret123'"
+
+
+# ------------------------------------------------------------------------------------------
 # Références et catégorie (Phase A, sécurité, C14)
 # ------------------------------------------------------------------------------------------
 

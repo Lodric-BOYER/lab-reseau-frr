@@ -11,6 +11,7 @@ aucune donnée n'est réinjectée via innerHTML.
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -21,6 +22,7 @@ from rich.table import Table
 from netcheck import __version__
 from netcheck.compliance import NotApplicable, Violation
 from netcheck.diff import Finding, Severity
+from netcheck.secrets import mask_secrets
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 
@@ -34,8 +36,27 @@ _COMPLIANCE_STYLE = {"critique": "bold red", "haute": "red", "moyenne": "yellow"
 _COMPLIANCE_ORDER = {"critique": 4, "haute": 3, "moyenne": 2, "basse": 1}
 
 
+# ------------------------------------------------------------------------------------------
+# Masquage des secrets (Phase A, suite) : un seul point d'entrée par type de rapport, appliqué
+# avant toute autre transformation (tri, comptage, gabarit) -- jamais oublié dans l'une des
+# trois sorties puisque les trois fonctions de chaque rapport partent des mêmes objets masqués.
+# ------------------------------------------------------------------------------------------
+
+def _masked_findings(findings: list[Finding]) -> list[Finding]:
+    return [replace(f, message=mask_secrets(f.message)) for f in findings]
+
+
+def _masked_violations(violations: list[Violation]) -> list[Violation]:
+    return [replace(v, detail=mask_secrets(v.detail)) for v in violations]
+
+
+def _masked_not_applicable(not_applicable: list[NotApplicable]) -> list[NotApplicable]:
+    return [replace(n, reason=mask_secrets(n.reason)) for n in not_applicable]
+
+
 def print_terminal(findings: list[Finding], verdict_label: str, console: Console | None = None) -> None:
     console = console or Console()
+    findings = _masked_findings(findings)
 
     if findings:
         table = Table(show_lines=False)
@@ -58,6 +79,7 @@ def print_terminal(findings: list[Finding], verdict_label: str, console: Console
 
 
 def to_dict(findings: list[Finding], verdict_label: str) -> dict:
+    findings = _masked_findings(findings)
     return {
         "verdict": verdict_label,
         "findings": [
@@ -75,6 +97,7 @@ def write_json(findings: list[Finding], verdict_label: str, path: str) -> None:
 
 def render_html(findings: list[Finding], verdict_label: str, before_name: str, after_name: str) -> str:
     """Rend le rapport HTML autonome (aucune ressource externe, CSS/JS intégrés)."""
+    findings = _masked_findings(findings)
     template = _ENV.get_template("report.html.j2")
     counts = {s.name: sum(1 for f in findings if f.severity == s) for s in Severity}
     devices = sorted({f.device for f in findings})
@@ -106,7 +129,8 @@ def print_compliance_terminal(
     console: Console | None = None,
 ) -> None:
     console = console or Console()
-    not_applicable = not_applicable or []
+    violations = _masked_violations(violations)
+    not_applicable = _masked_not_applicable(not_applicable or [])
 
     if violations:
         table = Table(show_lines=False)
@@ -150,6 +174,8 @@ def print_compliance_terminal(
 def compliance_to_dict(
     violations: list[Violation], compliant: bool, not_applicable: list[NotApplicable] | None = None,
 ) -> dict:
+    violations = _masked_violations(violations)
+    not_applicable = _masked_not_applicable(not_applicable or [])
     return {
         "compliant": compliant,
         "violations": [
@@ -185,7 +211,8 @@ def render_compliance_html(
 ) -> str:
     """Rend le rapport HTML de conformité, autonome (aucune ressource externe)."""
     template = _ENV.get_template("compliance.html.j2")
-    not_applicable = not_applicable or []
+    violations = _masked_violations(violations)
+    not_applicable = _masked_not_applicable(not_applicable or [])
     counts = {sev: sum(1 for v in violations if v.rule.severity == sev) for sev in _COMPLIANCE_ORDER}
     devices = sorted({v.device for v in violations} | {n.device for n in not_applicable})
     # Regroupement par catégorie (Phase A, C14) : None -> "(sans catégorie)" pour les règles

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rapport de conformité netcheck — CONFORME</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 2rem; max-width: 960px; }
+  h1 { margin-bottom: 0.2em; font-size: 1.4em; }
+  .meta { color: #57606a; font-size: 0.9em; }
+  .verdict-conforme { color: #1a7f37; }
+  .verdict-non-conforme { color: #cf222e; }
+  .counters { margin: 1em 0; }
+  .badge { display: inline-block; padding: 0.15em 0.6em; border-radius: 1em; font-size: 0.85em; margin-right: 0.4em; white-space: nowrap; }
+  .badge-critique { background: #ffebe9; color: #cf222e; border: 1px solid #cf222e55; }
+  .badge-haute { background: #fff1e5; color: #bc4c00; border: 1px solid #bc4c0055; }
+  .badge-moyenne { background: #fff8c5; color: #9a6700; border: 1px solid #9a670055; }
+  .badge-basse { background: #ddf4ff; color: #0969da; border: 1px solid #0969da55; }
+  table { border-collapse: collapse; width: 100%; margin-top: 1em; }
+  th, td { text-align: left; padding: 0.5em 0.7em; border-bottom: 1px solid #d0d7de; vertical-align: top; }
+  th { background: #f6f8fa; }
+  tr[hidden] { display: none; }
+  .filters { margin: 1em 0; display: flex; gap: 1.2em; flex-wrap: wrap; align-items: center; font-size: 0.9em; }
+  footer { margin-top: 2em; font-size: 0.8em; color: #57606a; border-top: 1px solid #d0d7de; padding-top: 1em; }
+</style>
+</head>
+<body>
+
+<h1>Rapport de conformité netcheck</h1>
+<p class="meta">Généré le 2026-09-29 16:06 — règles : <code>netcheck/rules/security.yml</code></p>
+<p class="verdict-conforme">
+  <strong>CONFORME</strong>
+</p>
+
+<div class="counters">
+  
+  <span class="badge badge-critique">0 critique</span>
+  
+  <span class="badge badge-haute">0 haute</span>
+  
+  <span class="badge badge-moyenne">0 moyenne</span>
+  
+  <span class="badge badge-basse">0 basse</span>
+  
+</div>
+
+<div class="filters">
+  <span>
+    
+    <label><input type="checkbox" class="f-sev" value="critique" checked> critique</label>
+    
+    <label><input type="checkbox" class="f-sev" value="haute" checked> haute</label>
+    
+    <label><input type="checkbox" class="f-sev" value="moyenne" checked> moyenne</label>
+    
+    <label><input type="checkbox" class="f-sev" value="basse" checked> basse</label>
+    
+  </span>
+  <label>Équipement :
+    <select id="f-device">
+      <option value="">Tous</option>
+      
+      <option value="r1">r1</option>
+      
+      <option value="r2">r2</option>
+      
+      <option value="r3">r3</option>
+      
+      <option value="r4">r4</option>
+      
+      <option value="r5">r5</option>
+      
+    </select>
+  </label>
+  <label>Catégorie :
+    <select id="f-category">
+      <option value="">Toutes</option>
+      
+    </select>
+  </label>
+</div>
+
+<table id="violations">
+  <thead>
+    <tr><th>Gravité</th><th>Équipement</th><th>Catégorie</th><th>Règle</th><th>Détail</th></tr>
+  </thead>
+  <tbody>
+    
+  </tbody>
+</table>
+
+<p id="no-match" hidden>Aucune non-conformité ne correspond aux filtres sélectionnés.</p>
+
+<p>Aucune non-conformité.</p>
+
+
+
+<h2>Non applicable</h2>
+<p class="meta">Règle(s) qui ne concernent pas le driver de l'équipement (Phase D2) — ni
+conforme, ni non-conformité, sans effet sur le verdict ni le code retour.</p>
+<table id="not-applicable">
+  <thead>
+    <tr><th>Équipement</th><th>Règle</th><th>Raison</th></tr>
+  </thead>
+  <tbody>
+    
+    <tr>
+      <td>r1</td>
+      <td>srlinux-banniere-de-connexion<br><small>Une bannière de connexion (login-banner) doit être configurée.</small></td>
+      <td>driver &#39;frr&#39; non couvert par cette règle (drivers: [&#39;srlinux&#39;])</td>
+    </tr>
+    
+    <tr>
+      <td>r1</td>
+      <td>srlinux-ospf-authentification-keychain<br><small>Chaque interface OSPF SR Linux active doit référencer une keychain d&#39;authentification existante, de type ospf.</small></td>
+      <td>driver &#39;frr&#39; non couvert par cette règle (drivers: [&#39;srlinux&#39;])</td>
+    </tr>
+    
+    <tr>
+      <td>r2</td>
+      <td>srlinux-banniere-de-connexion<br><small>Une bannière de connexion (login-banner) doit être configurée.</small></td>
+      <td>driver &#39;frr&#39; non couvert par cette règle (drivers: [&#39;srlinux&#39;])</td>
+    </tr>
+    
+    <tr>
+      <td>r2</td>
+      <td>srlinux-ospf-authentification-keychain<br><small>Chaque interface OSPF SR Linux active doit référencer une keychain d&#39;authentification existante, de type ospf.</small></td>
+      <td>driver &#39;frr&#39; non couvert par cette règle (drivers: [&#39;srlinux&#39;])</td>
+    </tr>
+    
+    <tr>
+      <td>r3</td>
+      <td>srlinux-banniere-de-connexion<br><small>Une bannière de connexion (login-banner) doit être configurée.</small></td>
+      <td>driver &#39;frr&#39; non couvert par cette règle (drivers: [&#39;srlinux&#39;])</td>
+    </tr>
+    
+    <tr>
+      <td>r3</td>
+      <td>srlinux-ospf-authentification-keychain<br><small>Chaque interface OSPF SR Linux active doit référencer une keychain d&#39;authentification existante, de type ospf.</small></td>
+      <td>driver &#39;frr&#39; non couvert par cette règle (drivers: [&#39;srlinux&#39;])</td>
+    </tr>
+    
+    <tr>
+      <td>r4</td>
+      <td>srlinux-banniere-de-connexion<br><small>Une bannière de connexion (login-banner) doit être configurée.</small></td>
+      <td>driver &#39;frr&#39; non couvert par cette règle (drivers: [&#39;srlinux&#39;])</td>
+    </tr>
+    
+    <tr>
+      <td>r4</td>
+      <td>srlinux-ospf-authentification-keychain<br><small>Chaque interface OSPF SR Linux active doit référencer une keychain d&#39;authentification existante, de type ospf.</small></td>
+      <td>driver &#39;frr&#39; non couvert par cette règle (drivers: [&#39;srlinux&#39;])</td>
+    </tr>
+    
+    <tr>
+      <td>r5</td>
+      <td>srlinux-banniere-de-connexion<br><small>Une bannière de connexion (login-banner) doit être configurée.</small></td>
+      <td>driver &#39;frr&#39; non couvert par cette règle (drivers: [&#39;srlinux&#39;])</td>
+    </tr>
+    
+    <tr>
+      <td>r5</td>
+      <td>srlinux-ospf-authentification-keychain<br><small>Chaque interface OSPF SR Linux active doit référencer une keychain d&#39;authentification existante, de type ospf.</small></td>
+      <td>driver &#39;frr&#39; non couvert par cette règle (drivers: [&#39;srlinux&#39;])</td>
+    </tr>
+    
+  </tbody>
+</table>
+
+
+<footer>
+  netcheck v0.2.0 — outil en lecture seule. À n'utiliser sur un réseau réel
+  qu'avec une autorisation écrite.
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var sevBoxes = Array.prototype.slice.call(document.querySelectorAll(".f-sev"));
+  var deviceSelect = document.getElementById("f-device");
+  var categorySelect = document.getElementById("f-category");
+  var rows = Array.prototype.slice.call(document.querySelectorAll("#violations tbody tr"));
+  var noMatch = document.getElementById("no-match");
+
+  // Filtrage pur DOM, comme le rapport de diff : on montre/cache des lignes déjà rendues et
+  // échappées côté serveur (attribut "hidden"), sans jamais reconstruire de texte.
+  function apply() {
+    var activeSeverities = sevBoxes.filter(function (box) { return box.checked; })
+      .map(function (box) { return box.value; });
+    var activeDevice = deviceSelect.value;
+    var activeCategory = categorySelect.value;
+    var visibleCount = 0;
+
+    rows.forEach(function (row) {
+      var show = activeSeverities.indexOf(row.getAttribute("data-severity")) !== -1
+        && (activeDevice === "" || row.getAttribute("data-device") === activeDevice)
+        && (activeCategory === "" || row.getAttribute("data-category") === activeCategory);
+      row.hidden = !show;
+      if (show) { visibleCount += 1; }
+    });
+
+    noMatch.hidden = visibleCount !== 0;
+  }
+
+  sevBoxes.forEach(function (box) { box.addEventListener("change", apply); });
+  deviceSelect.addEventListener("change", apply);
+  categorySelect.addEventListener("change", apply);
+  apply();
+})();
+</script>
+
+</body>
+</html>

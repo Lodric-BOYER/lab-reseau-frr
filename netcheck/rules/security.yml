@@ -83,7 +83,7 @@ rules:
         url: "https://www.rfc-editor.org/rfc/rfc7454.html"
 
   - id: ebgp-maximum-prefix
-    description: "Chaque voisin eBGP doit avoir une limite maximum-prefix (protection contre une fuite de routes massive)."
+    description: "Chaque voisin eBGP doit avoir une limite maximum-prefix (protection contre une fuite de routes massive). Valeur retenue : 10 (marge x5 sur les 2 préfixes réels échangés). Comportement vérifié en direct en cas de dépassement : la session passe immédiatement en Idle (PfxCt), sans redémarrage automatique même après relèvement de la limite -- rétablissement uniquement par un 'clear bgp <voisin>' explicite."
     severity: moyenne
     applies_to: [r3, r4]
     drivers: [frr]

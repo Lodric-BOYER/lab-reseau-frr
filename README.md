@@ -13,6 +13,7 @@ Il tourne sur un simple PC portable sous WSL2, sans aucun matériel réseau.
 | **Automatisation** | `health.py` (état OSPF/BGP) · `backup.py` (sauvegardes + baseline) · `drift.py` (diff vs baseline, rapport Markdown) |
 | **netcheck** | Validation de changements (état avant/après : routes, OSPF, BGP) · audit de conformité par règles YAML · rapports HTML · 2 drivers (FRR, SR Linux) |
 | **v2 (multi-constructeurs)** | `lab-multivendor.clab.yml` : mêmes r1-r4, r5 = Nokia SR Linux 26.7.2 · registre de drivers + champ `drivers:` par règle de conformité + identifiants par driver |
+| **v3 (audit de sécurité)** | `netcheck/rules/security.yml` : authentification OSPF (message-digest / keychain SR Linux) + TCP-MD5/GTSM/`maximum-prefix` sur eBGP + bannière SR Linux · rapports avant/après dans `docs/audit/` · secrets masqués dans les 3 sorties (`netcheck/secrets.py`) |
 | **Sécurité** | Commandes en lecture seule (liste blanche) · YAML chargé en `safe_load` · rapports protégés contre le XSS (testé) |
 
 ## Topologie
@@ -479,6 +480,68 @@ python -m netcheck check -i automation/inventory-multivendor.yml
 tests/integration_multivendor.sh` (netcheck sur les deux drivers à la fois : diff, coupure du
 lien r4↔r5 vue des deux côtés, conformité, 13/13) couvrent ce lab de bout en bout -- voir
 [netcheck/README.md](netcheck/README.md) pour le détail du registre de drivers.
+
+## Audit de sécurité (v3)
+
+`netcheck/rules/security.yml` durcit les deux labs (authentification OSPF, TCP-MD5 + GTSM +
+`maximum-prefix` sur eBGP, bannière SR Linux), distinct de `default.yml` (bonnes pratiques de
+conception, inchangé). Rapports avant/après dans [`docs/audit/`](docs/audit/) : `avant-*`
+(lab non durci, Phase A -- **non conforme** volontairement, c'est le point de départ) et
+`apres-*` (lab durci, Phase B -- **conforme** sur les deux labs).
+
+```bash
+python -m netcheck check --rules netcheck/rules/security.yml
+python -m netcheck check --rules netcheck/rules/security.yml -i automation/inventory-multivendor.yml
+```
+
+### Ce que l'authentification OSPF et TCP-MD5 protègent réellement (et ce qu'elles ne protègent pas)
+
+Les deux mécanismes (authentification OSPF message-digest, RFC 2328 Annexe D ; TCP-MD5 pour
+BGP, RFC 2385) prouvent qu'un paquet vient bien d'un pair qui connaît le secret partagé -- ils
+empêchent un tiers sans la clé d'injecter de fausses routes ou de couper une session en
+usurpant l'adresse IP d'un routeur légitime (spoofing). **Ils ne chiffrent pas le trafic** : les
+routes elles-mêmes (préfixes, next-hops) continuent de circuler en clair, visibles à quiconque
+peut observer le lien -- ce n'est pas de la confidentialité, seulement de l'authentification
+d'origine. Le MD5 utilisé par les deux est en outre cryptographiquement faible pour un usage
+moderne (collisions connues) : c'est pourquoi TCP-AO (RFC 5925), qui corrige ce point, existe --
+mais il est hors de portée de ce lab (voir plus bas). Ces mécanismes ne protègent pas non plus
+contre un routeur légitime mal configuré ou compromis : une fois authentifié, il reste un pair
+de confiance.
+
+### Limites vérifiées en direct (pas supposées)
+
+- **TCP-AO (RFC 5925) hors de portée** : ni le kernel WSL2 de ce lab (`CONFIG_TCP_AO` absent de
+  `/proc/config.gz`) ni bgpd (FRRouting/frr#7240, jamais mergée) ne le supportent. TCP-MD5 est
+  la seule authentification eBGP réaliste ici.
+- **`service password-encryption` (FRR) ne chiffre rien** : accepté sans erreur mais la clé
+  OSPF et le mot de passe BGP restent en clair dans `show running-config`, vérifié en direct.
+  Les secrets de lab (`lab-ospf-*`, `lab-bgp-r3r4`) sont donc des valeurs de démonstration
+  uniquement, jamais réutilisables ailleurs -- et les snapshots netcheck, qui contiennent ces
+  clés en clair, restent hors Git (`.gitignore`). Les **rapports**, eux, les masquent
+  systématiquement (`netcheck/secrets.py`) : `password ****`, jamais la valeur.
+- **`banner motd` (FRR) absent de `security.yml`** : cette commande ne configure que la session
+  vtysh elle-même (jamais partagée avec zebra/bgpd/ospfd, jamais persistée sans `write`) -- elle
+  n'apparaît dans aucune sortie `show running-config`, donc netcheck ne peut pas la vérifier par
+  sa méthode de collecte actuelle. La bannière de connexion SSH du conteneur, elle, dépend de
+  `sshd` (Linux), hors du périmètre de netcheck. La bannière **SR Linux** (`login-banner`), elle,
+  est bien vérifiable : voir plus bas.
+- **`maximum-prefix` : comportement vérifié en direct en cas de dépassement.** La session passe
+  immédiatement en `Idle (PfxCt)` -- pas d'attente du hold-timer. Elle **ne se rétablit pas
+  automatiquement**, même après avoir relevé la limite au-dessus du nombre réel de préfixes :
+  seul un `clear bgp <voisin>` explicite force une nouvelle négociation. Valeur retenue : **10**
+  (marge ×5 sur les 2 préfixes réellement échangés aujourd'hui).
+- **Authentification OSPF FRR ↔ SR Linux (lien r4↔r5)** : modèles de configuration différents
+  (FRR : clé inline sur l'interface ; SR Linux : keychain nommée au niveau système, référencée
+  depuis l'interface -- `set / system authentication keychain ... type ospf`), mais même
+  mécanisme sur le fil. Seul le **MD5 classique** est commun aux deux constructeurs pour OSPF :
+  FRR n'implémente aucune variante HMAC-SHA (RFC 5709), et le schéma YANG SR Linux interdit
+  `hmac-md5`/`hmac-sha-*` pour une keychain de type `ospf` (réservés à `isis`) -- vérifié en
+  sondant le schéma en direct. Interopérabilité confirmée par un déploiement à froid complet
+  (adjacence Full des deux côtés en 15 secondes, sans intervention manuelle).
+- **Stockage de la clé côté SR Linux** : `show system authentication` révèle la clé sous une
+  forme obscurcie par la plateforme (`authentication-key $aes1$...$...$`), jamais en clair --
+  mais ce n'est pas documenté comme un chiffrement sûr pour autant, donc masqué comme les autres
+  secrets dans les rapports netcheck.
 
 ## Dépannage
 
