@@ -806,6 +806,80 @@ def test_cli_real_webhook_failure_does_not_change_the_exit_code(tmp_path, lab, m
     assert "SENTINEL-WEBHOOK-TOKEN" not in err
 
 
+DISCORD_URL = "https://discord.com/api/webhooks/123456789/SENTINEL-DISCORD-TOKEN"
+
+
+@pytest.fixture
+def fake_post(monkeypatch):
+    """Remplace l'envoi réel : aucun appel vers discord.com, jamais. Enregistre les corps."""
+    sent = []
+
+    def post(url, payload, **_kwargs):
+        sent.append(payload)
+        return webhook.SendResult(True, 1)
+    monkeypatch.setattr(webhook, "post", post)
+    return sent
+
+
+def test_cli_discord_url_selects_the_discord_format_automatically(lab, monkeypatch, fake_post, capsys):
+    monkeypatch.setenv(webhook.ENV_VAR, DISCORD_URL)
+    _cli()                                    # pas de --webhook-format
+    lab.results = ospf_lost()
+    assert _cli() == 2
+    payload = fake_post[0]
+    assert "embeds" in payload and payload["allowed_mentions"] == {"parse": []}
+    assert "source" not in payload, "le corps generic ne doit pas partir vers Discord"
+    captured = capsys.readouterr()
+    assert "avertissement" not in captured.err
+    assert "SENTINEL-DISCORD-TOKEN" not in captured.out + captured.err
+
+
+def test_cli_other_url_keeps_the_generic_format_by_default(lab, monkeypatch, fake_post):
+    monkeypatch.setenv(webhook.ENV_VAR, "https://hooks.example.org/services/x")
+    _cli()
+    lab.results = ospf_lost()
+    _cli()
+    assert fake_post[0]["source"] == "netcheck" and "embeds" not in fake_post[0]
+
+
+def test_cli_explicit_discord_is_still_honoured_for_any_url(lab, monkeypatch, fake_post):
+    monkeypatch.setenv(webhook.ENV_VAR, "https://hooks.example.org/services/x")
+    _cli("--webhook-format", "discord")
+    lab.results = ospf_lost()
+    _cli("--webhook-format", "discord")
+    assert "embeds" in fake_post[0]
+
+
+def test_cli_generic_forced_towards_discord_warns_but_obeys(lab, monkeypatch, fake_post, capsys):
+    monkeypatch.setenv(webhook.ENV_VAR, DISCORD_URL)
+    _cli("--webhook-format", "generic")
+    lab.results = ospf_lost()
+    _cli("--webhook-format", "generic")
+    err = capsys.readouterr().err
+    assert "avertissement" in err and "HTTP 400" in err
+    assert "SENTINEL-DISCORD-TOKEN" not in err
+    assert fake_post[0]["source"] == "netcheck"     # respecté tel que demandé
+
+
+def test_cli_dry_run_previews_the_discord_format_for_a_discord_url(lab, monkeypatch, capsys):
+    monkeypatch.setenv(webhook.ENV_VAR, DISCORD_URL)
+    lab.results = ospf_lost()
+    assert _cli("--dry-run") == 2
+    out = capsys.readouterr().out
+    assert '"embeds"' in out and "SENTINEL-DISCORD-TOKEN" not in out
+
+
+def test_cli_http_400_from_the_recipient_carries_the_format_hint(lab, monkeypatch, capsys):
+    with Recorder(status=400) as server:
+        monkeypatch.setenv(webhook.ENV_VAR, server.url)
+        _cli()
+        lab.results = ospf_lost()
+        assert _cli() == 2
+    err = capsys.readouterr().err
+    assert "HTTP 400, format refusé par le destinataire : vérifier --webhook-format" in err
+    assert "SENTINEL-WEBHOOK-TOKEN" not in err
+
+
 def test_cli_state_file_option(tmp_path, lab):
     state = tmp_path / "ailleurs" / "etat.json"
     assert _cli("--state-file", str(state)) == 0

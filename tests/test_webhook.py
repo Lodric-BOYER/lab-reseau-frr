@@ -93,7 +93,77 @@ def test_4xx_is_not_retried(code):
     with Recorder(status=code) as r:
         result = _post(r.url)
     assert not result.ok and result.attempts == 1 and r.count == 1
-    assert result.error == f"HTTP {code}"
+    assert result.error.startswith(f"HTTP {code}")
+
+
+def test_http_400_says_the_format_was_refused_without_quoting_the_url():
+    with Recorder(status=400) as r:
+        result = _post(r.url)
+    assert result.error == "HTTP 400, format refusé par le destinataire : vérifier --webhook-format"
+    assert SECRET_PATH not in result.error
+
+
+@pytest.mark.parametrize("code", [401, 404, 429, 500])
+def test_only_http_400_carries_the_format_hint(code):
+    with Recorder(status=code) as r:
+        result = _post(r.url)
+    assert "--webhook-format" not in result.error
+
+
+# ------------------------------------------------------------------------------------------
+# Détection automatique du format Discord
+# ------------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("url", [
+    "https://discord.com/api/webhooks/123456789/AbCdEf",
+    "https://discordapp.com/api/webhooks/123456789/AbCdEf",
+    "https://discord.com/api/v10/webhooks/123456789/AbCdEf?wait=true",
+    "https://canary.discord.com/api/webhooks/1/x",
+    "https://ptb.discord.com/api/webhooks/1/x",
+    "https://DISCORD.COM/api/webhooks/1/x",
+])
+def test_discord_urls_are_detected(url):
+    assert webhook.is_discord_url(url)
+
+
+@pytest.mark.parametrize("url", [
+    "https://discord.com.evil.example/api/webhooks/1/x",   # hôte piégé
+    "https://evildiscord.com/api/webhooks/1/x",
+    "https://notdiscord.com/api/webhooks/1/x",
+    "https://discord.com/channels/1/2",                      # une autre page de discord.com
+    "https://discord.com/api/users/1",
+    "https://hooks.slack.com/services/T0/B0/x",
+    "https://example.org/api/webhooks/1/x",                  # bon chemin, mauvais hôte
+    "http://127.0.0.1:8080/hook/x",
+    "https://discord.example.org@evil.example/api/webhooks/1/x",
+    "pas une url",
+    "",
+])
+def test_non_discord_urls_are_not_detected(url):
+    assert not webhook.is_discord_url(url)
+
+
+DISCORD = "https://discord.com/api/webhooks/123456789/SENTINEL-DISCORD-TOKEN"
+
+
+@pytest.mark.parametrize(("url", "requested", "expected"), [
+    (DISCORD, None, "discord"),                              # absent + Discord -> discord
+    ("https://discordapp.com/api/webhooks/1/x", None, "discord"),
+    ("https://example.org/hook", None, "generic"),           # absent + autre -> generic
+    (None, None, "generic"),                                 # pas d'URL du tout
+    (DISCORD, "discord", "discord"),
+    ("https://example.org/hook", "discord", "discord"),      # forcer discord ailleurs : respecté
+    ("https://example.org/hook", "generic", "generic"),
+])
+def test_format_resolution_without_warning(url, requested, expected):
+    assert webhook.resolve_format(url, requested) == (expected, None)
+
+
+def test_explicit_generic_towards_discord_is_respected_but_warned():
+    fmt, warning = webhook.resolve_format(DISCORD, "generic")
+    assert fmt == "generic"
+    assert "generic" in warning and "HTTP 400" in warning and "discord" in warning
+    assert "SENTINEL-DISCORD-TOKEN" not in warning and "discord.com" not in warning
 
 
 def test_timeout_is_reported_and_retried_once():

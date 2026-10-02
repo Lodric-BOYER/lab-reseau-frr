@@ -19,6 +19,7 @@ from __future__ import annotations
 import http.client
 import json
 import os
+import re
 import socket
 import ssl
 import time
@@ -65,6 +66,39 @@ def from_environment(environ: Mapping[str, str] | None = None) -> str | None:
     """URL validée de NETCHECK_WEBHOOK_URL, ou None si la variable est absente ou vide."""
     value = (os.environ if environ is None else environ).get(ENV_VAR, "").strip()
     return validate_url(value) if value else None
+
+
+FORMATS = ("generic", "discord")
+_DISCORD_HOSTS = ("discord.com", "discordapp.com")
+_DISCORD_PATH = re.compile(r"^/api(?:/v\d+)?/webhooks/")
+BAD_FORMAT_HINT = "format refusé par le destinataire : vérifier --webhook-format"
+
+
+def is_discord_url(url: str) -> bool:
+    """Vrai pour une URL de webhook Discord : hôte discord.com ou discordapp.com (ou un de leurs
+    sous-domaines, ex. canary.discord.com) ET chemin /api[/vN]/webhooks/... Les deux conditions :
+    « discord.com.evil.example » ou une autre page de discord.com ne sont pas un webhook."""
+    try:
+        parts = urllib.parse.urlsplit(url)
+        host = (parts.hostname or "").lower()
+    except ValueError:
+        return False
+    on_discord = any(host == d or host.endswith("." + d) for d in _DISCORD_HOSTS)
+    return on_discord and bool(_DISCORD_PATH.match(parts.path))
+
+
+def resolve_format(url: str | None, requested: str | None) -> tuple[str, str | None]:
+    """(format, avertissement) : --webhook-format absent -> `discord` si l'URL est un webhook Discord,
+    sinon `generic`. Un `generic` FORCÉ vers Discord est respecté mais averti : Discord refuse ce
+    corps (HTTP 400, constaté en réel). Aucun texte ne cite l'URL."""
+    if requested is None:
+        return ("discord" if url and is_discord_url(url) else "generic"), None
+    if requested == "generic" and url and is_discord_url(url):
+        return requested, (
+            "avertissement : --webhook-format generic est forcé vers une URL Discord ; Discord "
+            "refusera très probablement ce message (HTTP 400). Retire --webhook-format (détection "
+            "automatique) ou utilise --webhook-format discord")
+    return requested, None
 
 
 def redact(text: str, url: str | None = None) -> str:
@@ -123,6 +157,8 @@ def _attempt(opener: urllib.request.OpenerDirector, url: str, body: bytes,
         e.close()
         if 300 <= code < 400:
             return False, f"redirection refusée (HTTP {code})"
+        if code == 400:   # corps refusé : en pratique un format qui ne correspond pas au service
+            return False, f"HTTP 400, {BAD_FORMAT_HINT}"
         return code >= 500, f"HTTP {code}"
     except urllib.error.URLError as e:
         return True, _describe(e.reason)

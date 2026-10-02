@@ -741,7 +741,13 @@ Sans elle, monitor fonctionne et dit « alertes désactivées ».
   5 s** par opération réseau, **un seul réessai** (erreur réseau, délai dépassé ou 5xx ; jamais un 4xx).
   Tout 2xx vaut succès.
 - **Un échec d'envoi est journalisé** (« webhook : échec d'envoi (HTTP 500) après 2 tentative(s) »)
-  **sans changer le code retour** de monitor.
+  **sans changer le code retour** de monitor. Un **HTTP 400** ajoute une indication, sans l'URL :
+  « HTTP 400, format refusé par le destinataire : vérifier --webhook-format » (constaté en réel :
+  Discord refuse le format `generic` avec un 400).
+- **Format choisi automatiquement** : sans `--webhook-format`, une URL **Discord** (hôte `discord.com`
+  ou `discordapp.com`, chemin `/api/webhooks/…`) donne le format `discord`, toute autre URL le format
+  `generic`. Un `--webhook-format generic` **forcé** vers Discord est respecté mais affiche un
+  avertissement à chaque exécution (sur stderr, sans l'URL).
 - **L'URL n'apparaît jamais** : ni dans la sortie, ni dans l'état, ni dans les rapports, ni dans un
   message d'erreur (celles-ci sont construites à partir du type d'erreur et du code HTTP, jamais de
   `str(exception)`, qui peut citer l'URL). Les formats d'URL Discord, Slack et Teams sont de plus
@@ -753,7 +759,7 @@ tronqué à 200 caractères, puis « et N autres »), chemin **relatif** du rapp
 configuration (pour la conformité : l'identifiant et la description de la règle, jamais le détail
 qui peut citer une ligne de config) ; tout passe par le masquage des secrets.
 
-`--webhook-format generic` (défaut) :
+`--webhook-format generic` (défaut pour une URL qui n'est pas Discord) :
 
 ```json
 {"source": "netcheck", "netcheck_version": "0.2.0", "event": "status_change", "kind": "degradation",

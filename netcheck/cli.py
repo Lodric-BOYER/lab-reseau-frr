@@ -279,11 +279,15 @@ def cmd_monitor(args: argparse.Namespace) -> int:
         print(f"Erreur : {webhook.redact(str(e), url)}", file=sys.stderr)
         return monitor.EXIT_USAGE
 
+    webhook_format, format_warning = webhook.resolve_format(url, args.webhook_format)
+    if format_warning:
+        print(format_warning, file=sys.stderr)
+
     cfg = monitor.MonitorConfig(
         baseline_name=args.baseline, baseline=baseline, inventory=inv,
         state_file=Path(args.state_file) if args.state_file else REPORTS_DIR / monitor.STATE_FILENAME,
         reports_dir=REPORTS_DIR, intent=intent, intent_path=args.intent, rules=rules,
-        rules_path=args.rules, webhook_url=url, webhook_format=args.webhook_format,
+        rules_path=args.rules, webhook_url=url, webhook_format=webhook_format,
         confirm=args.confirm, dry_run=args.dry_run, repo_root=inventory.REPO_ROOT,
     )
     io = monitor.MonitorIO(
@@ -411,8 +415,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_monitor.add_argument("--rules", help="fichier de règles de conformité YAML ; absent : non exécuté")
     p_monitor.add_argument("--state-file", help="fichier d'état (défaut : reports/monitor_state.json)")
     p_monitor.add_argument(
-        "--webhook-format", choices=("generic", "discord"), default="generic",
-        help="format du message (défaut : generic ; l'URL vient de NETCHECK_WEBHOOK_URL)")
+        "--webhook-format", choices=webhook.FORMATS, default=None,
+        help="format du message (défaut : discord si l'URL est un webhook Discord, sinon generic ; "
+             "l'URL vient de NETCHECK_WEBHOOK_URL)")
     p_monitor.add_argument(
         "--confirm", type=int, default=1, metavar="N",
         help="un nouveau statut doit être observé N fois de suite avant d'alerter, dans les deux sens "
