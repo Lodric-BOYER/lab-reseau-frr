@@ -55,57 +55,118 @@ def _masked_not_applicable(not_applicable: list[NotApplicable]) -> list[NotAppli
     return [replace(n, reason=mask_secrets(n.reason)) for n in not_applicable]
 
 
-def print_terminal(findings: list[Finding], verdict_label: str, console: Console | None = None) -> None:
+def _severity_counts(findings: list[Finding]) -> dict[Severity, int]:
+    """Compteurs par gravité des constats NON prévus (les PRÉVUS sont comptés à part)."""
+    return {s: sum(1 for f in findings if f.severity == s and f.expected_by is None) for s in Severity}
+
+
+def _planned_count(findings: list[Finding]) -> int:
+    return sum(1 for f in findings if f.expected_by is not None)
+
+
+def _sort_key(f: Finding) -> tuple[bool, int]:
+    """Constats à traiter d'abord (non prévus, du plus grave au moins grave), PRÉVUS ensuite."""
+    return (f.expected_by is not None, -f.severity)
+
+
+def _after_list(after_results: list[AssertionResult]) -> list[dict]:
+    return [
+        {"id": r.assertion.id, "device": r.assertion.device, "type": r.assertion.type,
+         "status": r.status.value, "detail": r.detail}
+        for r in after_results
+    ]
+
+
+def print_terminal(
+    findings: list[Finding], verdict_label: str, console: Console | None = None,
+    after_results: list[AssertionResult] | None = None,
+) -> None:
     console = console or Console()
     findings = _masked_findings(findings)
 
     if findings:
+        any_planned = _planned_count(findings) > 0
         table = Table(show_lines=False)
         table.add_column("Gravité")
         table.add_column("Équipement")
         table.add_column("Catégorie")
         table.add_column("Message", overflow="fold")
-        for f in sorted(findings, key=lambda f: -f.severity):
-            table.add_row(f"[{_STYLE[f.severity]}]{f.severity.name}[/]", f.device, f.category, f.message)
+        if any_planned:
+            table.add_column("Prévu par")
+        for f in sorted(findings, key=_sort_key):
+            if f.expected_by is None:
+                label = f"[{_STYLE[f.severity]}]{f.severity.name}[/]"
+            else:
+                label = f"[green]PRÉVU[/] ({f.severity.name.lower()})"
+            row = [label, f.device, f.category, f.message]
+            if any_planned:
+                row.append(f.expected_by or "")
+            table.add_row(*row)
         console.print(table)
     else:
         console.print("Aucun constat.")
 
-    counts = {s: sum(1 for f in findings if f.severity == s) for s in Severity}
+    if after_results:
+        ok = sum(1 for r in after_results if r.status == Status.OK)
+        ko = sum(1 for r in after_results if r.status == Status.ECHEC)
+        ne = sum(1 for r in after_results if r.status == Status.NON_EVALUABLE)
+        console.print(f"États attendus : {ok} OK, {ko} échec(s), {ne} non évaluable(s)")
+
+    counts = _severity_counts(findings)
+    planned = _planned_count(findings)
+    extra = f", {planned} prévu(s)" if planned else ""
     console.print(
         f"Verdict : [bold]{verdict_label}[/bold]  "
         f"({counts[Severity.CRITIQUE]} critique(s), {counts[Severity.ATTENTION]} attention, "
-        f"{counts[Severity.INFO]} info)"
+        f"{counts[Severity.INFO]} info{extra})"
     )
 
 
-def to_dict(findings: list[Finding], verdict_label: str) -> dict:
+def to_dict(
+    findings: list[Finding], verdict_label: str, after_results: list[AssertionResult] | None = None,
+) -> dict:
     findings = _masked_findings(findings)
-    return {
+    data: dict = {
         "verdict": verdict_label,
         "findings": [
-            {"severity": f.severity.name, "category": f.category, "device": f.device, "message": f.message}
+            {
+                "severity": f.severity.name, "category": f.category, "device": f.device,
+                "message": f.message, "planned": f.expected_by is not None,
+                "expected_by": f.expected_by,
+            }
             for f in findings
         ],
     }
+    if after_results is not None:
+        data["after"] = _after_list(after_results)
+    return data
 
 
-def write_json(findings: list[Finding], verdict_label: str, path: str) -> None:
+def write_json(
+    findings: list[Finding], verdict_label: str, path: str,
+    after_results: list[AssertionResult] | None = None,
+) -> None:
     Path(path).write_text(
-        json.dumps(to_dict(findings, verdict_label), indent=2, ensure_ascii=False), encoding="utf-8",
+        json.dumps(to_dict(findings, verdict_label, after_results), indent=2, ensure_ascii=False),
+        encoding="utf-8",
     )
 
 
-def render_html(findings: list[Finding], verdict_label: str, before_name: str, after_name: str) -> str:
+def render_html(
+    findings: list[Finding], verdict_label: str, before_name: str, after_name: str,
+    after_results: list[AssertionResult] | None = None,
+) -> str:
     """Rend le rapport HTML autonome (aucune ressource externe, CSS/JS intégrés)."""
     findings = _masked_findings(findings)
     template = _ENV.get_template("report.html.j2")
-    counts = {s.name: sum(1 for f in findings if f.severity == s) for s in Severity}
+    counts = {s.name: n for s, n in _severity_counts(findings).items()}
     devices = sorted({f.device for f in findings})
     return template.render(
         verdict=verdict_label,
-        findings=sorted(findings, key=lambda f: -f.severity),
+        findings=sorted(findings, key=_sort_key),
         counts=counts,
+        planned_count=_planned_count(findings),
+        after_results=after_results or [],
         devices=devices,
         before_name=before_name,
         after_name=after_name,
@@ -116,8 +177,11 @@ def render_html(findings: list[Finding], verdict_label: str, before_name: str, a
 
 def write_html(
     findings: list[Finding], verdict_label: str, before_name: str, after_name: str, path: str,
+    after_results: list[AssertionResult] | None = None,
 ) -> None:
-    Path(path).write_text(render_html(findings, verdict_label, before_name, after_name), encoding="utf-8")
+    Path(path).write_text(
+        render_html(findings, verdict_label, before_name, after_name, after_results), encoding="utf-8",
+    )
 
 
 # ------------------------------------------------------------------------------------------

@@ -16,6 +16,7 @@
   .badge-CRITIQUE { background: #ffebe9; color: #cf222e; border: 1px solid #cf222e55; }
   .badge-ATTENTION { background: #fff8c5; color: #9a6700; border: 1px solid #9a670055; }
   .badge-INFO { background: #ddf4ff; color: #0969da; border: 1px solid #0969da55; }
+  .badge-PREVU { background: #dafbe1; color: #1a7f37; border: 1px solid #1a7f3755; }
   table { border-collapse: collapse; width: 100%; margin-top: 1em; }
   th, td { text-align: left; padding: 0.5em 0.7em; border-bottom: 1px solid #d0d7de; vertical-align: top; }
   th { background: #f6f8fa; }
@@ -37,13 +38,38 @@
   <span class="badge badge-CRITIQUE">{{ counts.CRITIQUE }} critique(s)</span>
   <span class="badge badge-ATTENTION">{{ counts.ATTENTION }} attention</span>
   <span class="badge badge-INFO">{{ counts.INFO }} info</span>
+  {% if planned_count %}
+  <span class="badge badge-PREVU">{{ planned_count }} prévu(s)</span>
+  {% endif %}
 </div>
+
+{% if after_results %}
+<h2>États attendus (après le changement)</h2>
+<table id="after-results">
+  <thead>
+    <tr><th>Statut</th><th>Équipement</th><th>Assertion</th><th>Détail</th></tr>
+  </thead>
+  <tbody>
+    {% for r in after_results %}
+    <tr>
+      <td>{{ r.status.value }}</td>
+      <td>{{ r.assertion.device }}</td>
+      <td>{{ r.assertion.id }}<br><small>{{ r.assertion.description }}</small></td>
+      <td>{{ r.detail }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
 
 <div class="filters">
   <span>
     <label><input type="checkbox" class="f-sev" value="CRITIQUE" checked> Critique</label>
     <label><input type="checkbox" class="f-sev" value="ATTENTION" checked> Attention</label>
     <label><input type="checkbox" class="f-sev" value="INFO" checked> Info</label>
+    {% if planned_count %}
+    <label><input type="checkbox" class="f-sev" value="PREVU" checked> Prévu</label>
+    {% endif %}
   </span>
   <label>Équipement :
     <select id="f-device">
@@ -61,8 +87,15 @@
   </thead>
   <tbody>
     {% for f in findings %}
-    <tr data-severity="{{ f.severity.name }}" data-device="{{ f.device }}">
-      <td><span class="badge badge-{{ f.severity.name }}">{{ f.severity.name }}</span></td>
+    <tr data-severity="{{ 'PREVU' if f.expected_by else f.severity.name }}" data-device="{{ f.device }}">
+      <td>
+        {% if f.expected_by %}
+        <span class="badge badge-PREVU">PRÉVU</span> ({{ f.severity.name | lower }})<br>
+        <small>critère : {{ f.expected_by }}</small>
+        {% else %}
+        <span class="badge badge-{{ f.severity.name }}">{{ f.severity.name }}</span>
+        {% endif %}
+      </td>
       <td>{{ f.device }}</td>
       <td>{{ f.category }}</td>
       <td>

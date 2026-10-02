@@ -83,9 +83,45 @@ def load_intent(path: str | Path) -> list[Assertion]:
     if not isinstance(raw_assertions, list):
         raise ValueError(f"{path} : 'assertions' doit être une liste")
 
+    return validate_assertions(raw_assertions, path)
+
+
+def validate_assertions(raw_assertions: list[Any], path: Path) -> list[Assertion]:
+    """Valide une liste brute d'assertions (déjà lue depuis du YAML) -- partagée avec la
+    section `after` d'un fichier --expect (Phase D1), pour que les deux formats ne divergent
+    jamais."""
     assertions = [_validate_assertion(raw, index=i, path=path) for i, raw in enumerate(raw_assertions)]
     _check_unique_ids(assertions, path)
     return assertions
+
+
+# Paramètres obligatoires par type, vérifiés AU CHARGEMENT (Phase D1) et non plus seulement à
+# l'évaluation : `guard --expect` ne doit jamais découvrir une assertion `after` mal formée
+# APRÈS avoir exécuté le script de changement.
+_REQUIRED_PARAMS = {
+    "bgp_session": ("neighbor",),
+    "ospf_neighbors": ("count",),
+    "route_present": ("prefix",),
+    "route_absent": ("prefix",),
+    "interface_up": ("interface",),
+    "path": ("prefix", "via"),
+}
+
+
+def _validate_params(raw: dict, label: str, path: Path) -> None:
+    missing = [p for p in _REQUIRED_PARAMS[raw["type"]] if raw.get(p) in (None, "")]
+    if missing:
+        raise ValueError(
+            f"{path} : {label} : paramètre(s) manquant(s) pour le type {raw['type']} : {missing}")
+    if raw["type"] == "path":
+        if raw.get("mode", "all") not in ("all", "any"):
+            raise ValueError(f"{path} : {label} : mode doit être 'all' ou 'any' (reçu : {raw['mode']!r})")
+        if not isinstance(raw["via"], list):
+            raise ValueError(f"{path} : {label} : 'via' doit être une liste d'équipements")
+        try:
+            ipaddress.ip_network(raw["prefix"])
+        except ValueError as e:
+            raise ValueError(f"{path} : {label} : prefix invalide ({raw['prefix']}) : {e}") from e
 
 
 def _validate_assertion(raw: Any, index: int, path: Path) -> Assertion:
@@ -101,6 +137,8 @@ def _validate_assertion(raw: Any, index: int, path: Path) -> Assertion:
         raise ValueError(
             f"{path} : {label} : type '{raw['type']}' inconnu (attendu : {sorted(KNOWN_TYPES)})"
         )
+
+    _validate_params(raw, label, path)
 
     params = {k: v for k, v in raw.items() if k not in REQUIRED_FIELDS}
     return Assertion(id=raw["id"], description=raw["description"], device=raw["device"],

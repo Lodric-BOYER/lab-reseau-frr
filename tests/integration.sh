@@ -159,6 +159,42 @@ grep -q '"category": "next_hop"' "$JSON_DIR/guard.json" && ok "constat next_hop 
 $NC list 2>/dev/null | grep -q "guard_" && ok "snapshots avant/après horodatés créés par guard" \
   || ko "aucun snapshot 'guard_*' trouvé"
 
+# ---------------------------------------------------------------- D1 : changement prévu (--expect)
+title "D1 : ip ospf cost 100 sur r1 eth2, avec son --expect -> OK (guard, puis rejeu hors ligne)"
+out=$($NC guard --change "$JSON_DIR/guard_change.sh" --expect tests/expect/ospf-cost-r1.yml --yes --wait 30 \
+  --json "$JSON_DIR/d1_guard.json" 2>&1); code=$?
+docker exec "$LAB-r1" vtysh -c "conf t" -c "interface eth2" -c "no ip ospf cost 100" >/dev/null
+wait_healthy && ok "retour à la normale (health.py)" || ko "health.py toujours KO après restauration"
+
+[[ "$code" == "0" ]] && ok "code retour = 0 (changement prévu, état attendu vérifié)" \
+  || { ko "code retour = $code (attendu 0)"; echo "$out"; }
+echo "$out" | grep -q "Verdict : OK" && ok "verdict = OK" || { ko "verdict inattendu"; echo "$out"; }
+echo "$out" | grep -q "PRÉVU" && ok "constats affichés comme PRÉVUS" || ko "aucun constat PRÉVU affiché"
+grep -q '"planned": true' "$JSON_DIR/d1_guard.json" && ! grep -q '"planned": false' "$JSON_DIR/d1_guard.json" \
+  && ok "JSON : tous les constats sont prévus" || { ko "JSON : constat non prévu"; cat "$JSON_DIR/d1_guard.json"; }
+grep -q '"status": "OK"' "$JSON_DIR/d1_guard.json" && ! grep -q '"status": "ÉCHEC"' "$JSON_DIR/d1_guard.json" \
+  && ok "JSON : assertions 'after' toutes OK (dont le chemin r1 r2 r3 r4 r5)" \
+  || { ko "JSON : assertion 'after' en échec"; cat "$JSON_DIR/d1_guard.json"; }
+
+# Rejeu hors ligne des snapshots de S2 (même changement) : "diff --expect".
+out=$($NC diff s2_avant s2_apres --expect tests/expect/ospf-cost-r1.yml 2>&1); code=$?
+[[ "$code" == "0" ]] && ok "rejeu hors ligne (diff --expect) : code retour = 0" \
+  || { ko "rejeu hors ligne : code retour = $code (attendu 0)"; echo "$out"; }
+
+# Garde-fou : le fichier qui oublie l'effet de bord sur r2 ne masque PAS ce constat.
+out=$($NC diff s2_avant s2_apres --expect tests/expect/ospf-cost-r1-sans-r2.yml --json "$JSON_DIR/d1_sans_r2.json" 2>&1); code=$?
+[[ "$code" == "1" ]] && ok "effet de bord oublié (r2) : code retour = 1 (ATTENTION)" \
+  || { ko "code retour = $code (attendu 1)"; echo "$out"; }
+grep -q '"planned": false' "$JSON_DIR/d1_sans_r2.json" && grep -q '"device": "r2"' "$JSON_DIR/d1_sans_r2.json" \
+  && ok "le constat de r2 reste NON prévu" || ko "constat r2 absent ou masqué"
+
+# Garde-fou : un critère trop large est refusé avant toute action (code 3).
+printf 'findings:\n  - id: tout\n    description: x\n    device: r1\n    category: next_hop\n    pattern: ".*"\n' \
+  > "$JSON_DIR/expect_trop_large.yml"
+out=$($NC diff s2_avant s2_apres --expect "$JSON_DIR/expect_trop_large.yml" 2>&1); code=$?
+[[ "$code" == "3" ]] && echo "$out" | grep -q "trop large" && ok "motif '.*' refusé (code 3)" \
+  || { ko "motif trop large non refusé (code $code)"; echo "$out"; }
+
 # ---------------------------------------------------------------- Bilan
 echo
 echo "=== Bilan : $PASS contrôles réussis, $FAIL échec(s) ==="

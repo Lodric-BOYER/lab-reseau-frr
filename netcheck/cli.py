@@ -10,9 +10,16 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from netcheck import assertions, collector, compliance, diff, inventory, report, snapshot
+from netcheck import assertions, collector, compliance, diff, expect, inventory, report, snapshot
 
 DEFAULT_RULES_PATH = Path(__file__).resolve().parent / "rules" / "default.yml"
+
+
+def _load_expectation(path: str | None) -> expect.Expectation | None:
+    """Charge --expect s'il est fourni. Lève ValueError/OSError : l'appelant renvoie le code 3,
+    avant toute action sur le réseau (un fichier d'attentes invalide ne doit jamais être
+    découvert après l'exécution d'un script de changement)."""
+    return expect.load_expect(path) if path else None
 
 
 def cmd_snapshot(args: argparse.Namespace) -> int:
@@ -38,22 +45,27 @@ def cmd_snapshot(args: argparse.Namespace) -> int:
 
 def cmd_diff(args: argparse.Namespace) -> int:
     try:
+        expectation = _load_expectation(args.expect)
         before = snapshot.load(args.before)
         after = snapshot.load(args.after)
-    except FileNotFoundError as e:
+    except (FileNotFoundError, ValueError, OSError) as e:
         print(f"Erreur : {e}", file=sys.stderr)
         return 3
 
     inv = inventory.load(path=args.inventory)
-    findings = diff.compare(before, after, management_interfaces=set(inv.management_interfaces))
+    mgmt = set(inv.management_interfaces)
+    findings = diff.compare(before, after, management_interfaces=mgmt)
+    after_results = None
+    if expectation:
+        findings, after_results = expect.apply(findings, expectation, after, mgmt)
     verdict_label, code = diff.verdict(findings)
 
-    report.print_terminal(findings, verdict_label)
+    report.print_terminal(findings, verdict_label, after_results=after_results)
     if args.json:
-        report.write_json(findings, verdict_label, args.json)
+        report.write_json(findings, verdict_label, args.json, after_results)
         print(f"Constats écrits (JSON) : {args.json}")
     if args.html:
-        report.write_html(findings, verdict_label, args.before, args.after, args.html)
+        report.write_html(findings, verdict_label, args.before, args.after, args.html, after_results)
         print(f"Rapport HTML écrit : {args.html}")
     return code
 
@@ -102,6 +114,11 @@ def cmd_guard(args: argparse.Namespace) -> int:
     if not change_script.is_file():
         print(f"Erreur : script introuvable : {change_script}", file=sys.stderr)
         return 3
+    try:
+        expectation = _load_expectation(args.expect)
+    except (ValueError, OSError) as e:
+        print(f"Erreur : {e}", file=sys.stderr)
+        return 3
 
     print(f"Ce script va être exécuté : {change_script}")
     print("--- contenu ---")
@@ -133,15 +150,19 @@ def cmd_guard(args: argparse.Namespace) -> int:
     snapshot.save(name_after, collector.collect_all(inv.routers))
 
     before, after = snapshot.load(name_before), snapshot.load(name_after)
-    findings = diff.compare(before, after, management_interfaces=set(inv.management_interfaces))
+    mgmt = set(inv.management_interfaces)
+    findings = diff.compare(before, after, management_interfaces=mgmt)
+    after_results = None
+    if expectation:
+        findings, after_results = expect.apply(findings, expectation, after, mgmt)
     verdict_label, code = diff.verdict(findings)
 
-    report.print_terminal(findings, verdict_label)
+    report.print_terminal(findings, verdict_label, after_results=after_results)
     if args.json:
-        report.write_json(findings, verdict_label, args.json)
+        report.write_json(findings, verdict_label, args.json, after_results)
         print(f"Constats écrits (JSON) : {args.json}")
     if args.html:
-        report.write_html(findings, verdict_label, name_before, name_after, args.html)
+        report.write_html(findings, verdict_label, name_before, name_after, args.html, after_results)
         print(f"Rapport HTML écrit : {args.html}")
     return code
 
@@ -209,6 +230,14 @@ def _add_inventory_arg(sub_parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_expect_arg(sub_parser: argparse.ArgumentParser) -> None:
+    """--expect : changements prévus (Phase D1) -- un constat prévu n'est plus une alerte, un
+    changement prévu mais absent en devient une. Voir netcheck/expect.py pour le format."""
+    sub_parser.add_argument(
+        "--expect", help="fichier YAML des changements attendus (constats prévus, états attendus)",
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="python -m netcheck", description=__doc__)
     sub = p.add_subparsers(dest="command", required=True)
@@ -228,6 +257,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_diff.add_argument("after", help="nom du snapshot après")
     p_diff.add_argument("--json", help="écrire les constats au format JSON dans ce fichier")
     p_diff.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
+    _add_expect_arg(p_diff)
     _add_inventory_arg(p_diff)
     p_diff.set_defaults(func=cmd_diff)
 
@@ -254,6 +284,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_guard.add_argument("--json", help="écrire les constats au format JSON dans ce fichier")
     p_guard.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
+    _add_expect_arg(p_guard)
     _add_inventory_arg(p_guard)
     p_guard.set_defaults(func=cmd_guard)
 

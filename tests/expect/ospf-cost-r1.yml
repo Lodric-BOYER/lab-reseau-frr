@@ -1,0 +1,52 @@
+# Changement prévu : « ip ospf cost 100 » sur l'interface eth2 de r1 (lien vers r3).
+# Exemple de référence du format --expect (netcheck/expect.py) ; tous les nombres ci-dessous
+# ont été MESURÉS sur le lab FRR durci, pas estimés (voir tests/integration.sh, scénario D1).
+#
+# Effet réel du changement : r1 renonce au lien direct vers r3 et passe par r2. Les constats
+# produits sont 5 next_hop + 2 metric + 1 config sur r1, ET 1 next_hop sur r2 (r2 perd son
+# chemin ECMP vers 10.1.13.0/30 via r1) : un critère limité à r1 laisserait cet effet de bord
+# en ATTENTION -- c'est précisément ce que le garde-fou doit faire remonter.
+#
+# `count` fixe le nombre exact de constats attendus : un reroutage de plus ou de moins que
+# prévu devient un constat ATTENTION « nombre de constats différent ».
+
+findings:
+  - id: r1-bascule-next-hop
+    description: "r1 abandonne le lien direct vers r3 et passe par r2 pour 5 préfixes"
+    device: r1
+    category: next_hop
+    count: 5
+
+  - id: r1-metriques
+    description: "Les métriques OSPF de 2 préfixes augmentent sur r1"
+    device: r1
+    category: metric
+    count: 2
+
+  - id: r1-config
+    description: "La ligne de configuration ajoutée est bien le coût OSPF voulu"
+    device: r1
+    category: config
+    pattern: "ip ospf cost 100"
+    count: 1
+
+  - id: r2-perd-le-chemin-via-r1
+    description: "Effet de bord attendu : r2 n'atteint plus 10.1.13.0/30 que via r3"
+    device: r2
+    category: next_hop
+    pattern: "10\\.1\\.13\\.0/30"
+    count: 1
+
+after:
+  - id: r1-garde-ses-2-voisins
+    description: "r1 garde ses deux voisins OSPF Full : seul le chemin a changé"
+    device: r1
+    type: ospf_neighbors
+    count: 2
+
+  - id: chemin-r1-lan-r5-via-r2
+    description: "Le trafic de r1 vers le LAN de pc2 passe désormais par r2, puis r3, r4, r5"
+    device: r1
+    type: path
+    prefix: 192.168.2.0/24
+    via: [r2, r3, r4, r5]

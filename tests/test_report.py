@@ -222,6 +222,60 @@ def test_compliance_masking_does_not_mutate_the_original_violation():
 
 
 # ------------------------------------------------------------------------------------------
+# Constats PRÉVUS (Phase D1, --expect) : terminal, JSON, HTML
+# ------------------------------------------------------------------------------------------
+
+def _planned_and_unplanned():
+    return [
+        Finding(Severity.ATTENTION, "next_hop", "r1", "next-hop modifié pour 10.1.23.0/30", expected_by="c1"),
+        Finding(Severity.CRITIQUE, "route", "r2", "préfixe injoignable : 10.9.0.0/16"),
+    ]
+
+
+def test_planned_finding_terminal_shows_prevu_original_severity_and_counts_separately():
+    console = Console(record=True, width=200)
+    report.print_terminal(_planned_and_unplanned(), "ÉCHEC", console=console)
+    text = console.export_text()
+    assert "PRÉVU" in text and "(attention)" in text and "c1" in text
+    assert "1 critique(s), 0 attention, 0 info, 1 prévu(s)" in text
+
+
+def test_no_planned_findings_terminal_output_is_unchanged():
+    console = Console(record=True, width=200)
+    findings = [Finding(Severity.INFO, "route", "r1", "nouvelle route : 1.1.1.0/24")]
+    report.print_terminal(findings, "OK", console=console)
+    text = console.export_text()
+    assert "prévu" not in text.lower() and "Prévu par" not in text
+
+
+def test_planned_finding_json_fields():
+    d = report.to_dict(_planned_and_unplanned(), "ÉCHEC")
+    assert d["findings"][0]["planned"] is True and d["findings"][0]["expected_by"] == "c1"
+    assert d["findings"][1]["planned"] is False and d["findings"][1]["expected_by"] is None
+    assert "after" not in d
+
+
+def test_json_includes_after_block_when_provided():
+    results = [AssertionResult(_assertion(), Status.OK)]
+    d = report.to_dict([], "OK", after_results=results)
+    assert d["after"] == [{"id": "test-id", "device": "r1", "type": "interface_up",
+                           "status": "OK", "detail": ""}]
+
+
+def test_planned_finding_html_badge_counter_and_after_section():
+    results = [AssertionResult(_assertion(), Status.ECHEC, "interface eth1 absente sur r1")]
+    html = report.render_html(_planned_and_unplanned(), "ÉCHEC", "avant", "apres", after_results=results)
+    assert "badge-PREVU" in html and "1 prévu(s)" in html and 'data-severity="PREVU"' in html
+    assert "critère : c1" in html
+    assert "États attendus" in html and "interface eth1 absente sur r1" in html
+
+
+def test_html_without_planned_has_no_planned_badge_in_body():
+    html = report.render_html([Finding(Severity.INFO, "route", "r1", "x")], "OK", "avant", "apres")
+    assert "prévu(s)" not in html and "États attendus" not in html
+
+
+# ------------------------------------------------------------------------------------------
 # Références et catégorie (Phase A, sécurité, C14)
 # ------------------------------------------------------------------------------------------
 

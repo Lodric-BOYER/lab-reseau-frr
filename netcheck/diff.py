@@ -30,12 +30,24 @@ class Severity(IntEnum):
     CRITIQUE = 3
 
 
+# Catégories de constats réellement produites par compare() ci-dessous. Un critère --expect
+# (netcheck/expect.py) ne peut cibler que celles-ci : une faute de frappe dans un fichier
+# d'attentes serait sinon un critère inopérant, jamais signalé.
+FINDING_CATEGORIES = frozenset({
+    "ospf_neighbor", "bgp_session", "bgp_prefix_count", "bgp_prefix", "as_path",
+    "next_hop", "route", "metric", "protocol", "interface", "config", "device",
+})
+
+
 @dataclass
 class Finding:
     severity: Severity
     category: str
     device: str
     message: str
+    # Phase D1 : identifiant du critère --expect qui a prévu ce constat (None = non prévu).
+    # Un constat PRÉVU garde sa gravité d'origine (affichée) mais n'entre plus dans le verdict.
+    expected_by: str | None = None
 
 
 # ------------------------------------------------------------------------------------------
@@ -75,10 +87,13 @@ def compare(
 
 
 def verdict(findings: list[Finding]) -> tuple[str, int]:
-    """Verdict global (§5.3) : OK/0, ATTENTION/1, ÉCHEC/2 (le pire constat l'emporte)."""
-    if any(f.severity == Severity.CRITIQUE for f in findings):
+    """Verdict global (§5.3) : OK/0, ATTENTION/1, ÉCHEC/2 (le pire constat l'emporte).
+
+    Les constats PRÉVUS (Phase D1, expected_by renseigné) sont affichés mais sans effet ici."""
+    active = [f for f in findings if f.expected_by is None]
+    if any(f.severity == Severity.CRITIQUE for f in active):
         return "ÉCHEC", 2
-    if any(f.severity == Severity.ATTENTION for f in findings):
+    if any(f.severity == Severity.ATTENTION for f in active):
         return "ATTENTION", 1
     return "OK", 0
 

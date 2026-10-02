@@ -1,0 +1,23 @@
+# Variante VOLONTAIREMENT incomplète de ospf-cost-r1.yml : elle « oublie » l'effet de bord sur
+# r2. Utilisée par tests/integration.sh (scénario D1) pour prouver que le garde-fou signale un
+# changement imprévu : le constat next_hop de r2 reste ATTENTION, non prévu.
+
+findings:
+  - id: r1-bascule-next-hop
+    description: "r1 abandonne le lien direct vers r3 et passe par r2 pour 5 préfixes"
+    device: r1
+    category: next_hop
+    count: 5
+
+  - id: r1-metriques
+    description: "Les métriques OSPF de 2 préfixes augmentent sur r1"
+    device: r1
+    category: metric
+    count: 2
+
+  - id: r1-config
+    description: "La ligne de configuration ajoutée est bien le coût OSPF voulu"
+    device: r1
+    category: config
+    pattern: "ip ospf cost 100"
+    count: 1
