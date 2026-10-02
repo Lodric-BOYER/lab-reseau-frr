@@ -5,14 +5,14 @@ Six sous-commandes : snapshot, list, diff, check, guard, assert.
 from __future__ import annotations
 
 import argparse
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 
-from netcheck import assertions, collector, compliance, diff, expect, inventory, report, snapshot
+from netcheck import assertions, collector, compliance, diff, expect, guard, inventory, report, snapshot
 
 DEFAULT_RULES_PATH = Path(__file__).resolve().parent / "rules" / "default.yml"
+REPORTS_DIR = inventory.REPO_ROOT / "reports"  # journaux de guard ; ignoré par Git (C4)
 
 
 def _load_expectation(path: str | None) -> expect.Expectation | None:
@@ -109,62 +109,101 @@ def cmd_check(args: argparse.Namespace) -> int:
 
 
 def cmd_guard(args: argparse.Namespace) -> int:
-    """Encadre une intervention : c'est le script --change qui modifie, jamais netcheck (§5.5)."""
+    """Encadre une intervention : ce sont les scripts --change / --rollback, fournis par
+    l'utilisateur, qui modifient -- jamais netcheck lui-même (§5.5, C13). Voir netcheck/guard.py
+    pour le déroulé et les codes retour (0 à 6)."""
     change_script = Path(args.change)
-    if not change_script.is_file():
-        print(f"Erreur : script introuvable : {change_script}", file=sys.stderr)
-        return 3
+    rollback_script = Path(args.rollback) if args.rollback else None
+
+    # --- Tout ce qui peut être refusé l'est ICI, avant la moindre action (code 3) -----------
+    for label, script in (("changement", change_script), ("annulation", rollback_script)):
+        if script is not None and not script.is_file():
+            print(f"Erreur : script de {label} introuvable : {script}", file=sys.stderr)
+            return guard.EXIT_USAGE
+    if args.rollback_on is not None and rollback_script is None:
+        print("Erreur : --rollback-on n'a de sens qu'avec --rollback", file=sys.stderr)
+        return guard.EXIT_USAGE
+    if args.script_timeout < 1 or args.wait < 1:
+        print("Erreur : --script-timeout et --wait doivent être >= 1 seconde", file=sys.stderr)
+        return guard.EXIT_USAGE
+    rollback_on = args.rollback_on or "echec"
     try:
         expectation = _load_expectation(args.expect)
     except (ValueError, OSError) as e:
         print(f"Erreur : {e}", file=sys.stderr)
-        return 3
+        return guard.EXIT_USAGE
 
-    print(f"Ce script va être exécuté : {change_script}")
-    print("--- contenu ---")
-    print(change_script.read_text(encoding="utf-8").rstrip())
-    print("---------------")
+    # --- Les deux scripts sont affichés ENSEMBLE, une seule confirmation, rien d'exécuté avant.
+    print("Scripts qui vont être exécutés (contenu affiché en clair : c'est votre fichier local) :")
+    to_show = (("CHANGEMENT", change_script), ("ANNULATION", rollback_script))
+    for number, (label, script) in enumerate(to_show, 1):
+        print(f"\n[{number}/2] {label}" + (f" : {script}" if script else ""))
+        if script is None:
+            print("      (aucun --rollback : pas de retour arrière automatique)")
+            continue
+        print("--- contenu ---")
+        print(script.read_text(encoding="utf-8", errors="replace").rstrip())
+        print("---------------")
+    if rollback_script is not None:
+        print(f"\nRetour arrière si : verdict >= {rollback_on.upper()} (--rollback-on), ou script de "
+              f"changement en échec/bloqué. Délai par script : {args.script_timeout}s.")
     if not args.yes:
-        reply = input("Confirmer l'exécution ? [o/N] ").strip().lower()
+        reply = input("\nConfirmer l'exécution de ces scripts ? [o/N] ").strip().lower()
         if reply not in ("o", "oui", "y", "yes"):
-            print("Annulé.")
-            return 3
+            print("Annulé : rien n'a été exécuté.")
+            return guard.EXIT_USAGE
 
     inv = inventory.load(path=args.inventory)
-    stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    name_before, name_after = f"guard_{stamp}_avant", f"guard_{stamp}_apres"
-
-    print(f"\nSnapshot avant : {name_before}")
-    snapshot.save(name_before, collector.collect_all(inv.routers))
-
-    print(f"Exécution de {change_script}...")
-    result = subprocess.run(["bash", str(change_script)])
-    if result.returncode != 0:
-        print(f"Attention : le script de changement a rendu le code {result.returncode}", file=sys.stderr)
-
-    print(f"Attente de convergence (max {args.wait}s)...")
-    if not collector.wait_for_convergence(inv.routers, timeout=args.wait):
-        print("Attention : convergence non confirmée dans le délai imparti", file=sys.stderr)
-
-    print(f"Snapshot après : {name_after}")
-    snapshot.save(name_after, collector.collect_all(inv.routers))
-
-    before, after = snapshot.load(name_before), snapshot.load(name_after)
     mgmt = set(inv.management_interfaces)
-    findings = diff.compare(before, after, management_interfaces=mgmt)
-    after_results = None
-    if expectation:
-        findings, after_results = expect.apply(findings, expectation, after, mgmt)
-    verdict_label, code = diff.verdict(findings)
+    stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    names = guard.SnapshotNames(f"guard_{stamp}_avant", f"guard_{stamp}_apres", f"guard_{stamp}_retour")
 
-    report.print_terminal(findings, verdict_label, after_results=after_results)
-    if args.json:
-        report.write_json(findings, verdict_label, args.json, after_results)
-        print(f"Constats écrits (JSON) : {args.json}")
-    if args.html:
-        report.write_html(findings, verdict_label, name_before, name_after, args.html, after_results)
-        print(f"Rapport HTML écrit : {args.html}")
-    return code
+    def do_diff(before_name: str, after_name: str, use_expect: bool) -> guard.DiffResult:
+        before, after = snapshot.load(before_name), snapshot.load(after_name)
+        findings = diff.compare(before, after, management_interfaces=mgmt)
+        after_results = None
+        if use_expect and expectation:
+            findings, after_results = expect.apply(findings, expectation, after, mgmt)
+        verdict_label, code = diff.verdict(findings)
+        return guard.DiffResult(findings, verdict_label, code, after_results)
+
+    ui = guard.UI()
+    io = guard.GuardIO(
+        snapshot=lambda name: snapshot.save(name, collector.collect_all(inv.routers), force=True),
+        wait_convergence=lambda t: collector.wait_for_convergence(inv.routers, timeout=t),
+        diff=do_diff,
+        run_script=lambda path, timeout: guard.run_script(path, timeout, echo=ui.script_output),
+    )
+    journal = guard.Journal(
+        REPORTS_DIR / f"guard_{stamp}.json",
+        {
+            "change_script": guard.script_record(change_script),
+            "rollback_script": guard.script_record(rollback_script) if rollback_script else None,
+            "options": {"rollback_on": rollback_on, "script_timeout": args.script_timeout,
+                        "wait": args.wait, "expect": args.expect, "inventory": args.inventory},
+            "snapshots": {"avant": names.before, "apres": names.after,
+                          "retour": names.back if rollback_script else None},
+        },
+    )
+    journal.write()
+
+    with guard.sigterm_as_interrupt():
+        result = guard.run_guard(
+            change=change_script, rollback=rollback_script, rollback_on=rollback_on,
+            wait=args.wait, script_timeout=args.script_timeout, io=io, ui=ui, journal=journal, names=names,
+        )
+
+    # Rapports --json/--html : le diff après changement (avec --expect), comme avant la phase D2.
+    if result.diff_after is not None:
+        d = result.diff_after
+        if args.json:
+            report.write_json(d.findings, d.verdict_label, args.json, d.after_results)
+            print(f"Constats écrits (JSON) : {args.json}")
+        if args.html:
+            report.write_html(d.findings, d.verdict_label, names.before, names.after, args.html,
+                              d.after_results)
+            print(f"Rapport HTML écrit : {args.html}")
+    return result.code
 
 
 def cmd_assert(args: argparse.Namespace) -> int:
@@ -269,10 +308,24 @@ def build_parser() -> argparse.ArgumentParser:
     _add_inventory_arg(p_check)
     p_check.set_defaults(func=cmd_check)
 
-    p_guard = sub.add_parser("guard", help="encadre une intervention (snapshot avant/après + diff)")
+    p_guard = sub.add_parser(
+        "guard", help="encadre une intervention (snapshot avant/après + diff, retour arrière optionnel)")
     p_guard.add_argument(
         "--change", required=True,
         help="script exécuté par guard (lui seul modifie, pas netcheck)",
+    )
+    p_guard.add_argument(
+        "--rollback", help="script d'annulation, lancé UNE fois si le seuil est atteint ou si le "
+                           "script de changement échoue ; le retour est ensuite prouvé par un diff vide",
+    )
+    p_guard.add_argument(
+        "--rollback-on", choices=("echec", "attention"), default=None,
+        help="verdict qui déclenche l'annulation (défaut : echec ; exige --rollback)",
+    )
+    p_guard.add_argument(
+        "--script-timeout", type=int, default=guard.DEFAULT_SCRIPT_TIMEOUT,
+        help=f"délai maximum par script, en secondes (défaut : {guard.DEFAULT_SCRIPT_TIMEOUT}) ; "
+             "un script bloqué est arrêté et compte comme un échec",
     )
     p_guard.add_argument(
         "--wait", type=int, default=30,

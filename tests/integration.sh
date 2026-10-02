@@ -195,6 +195,93 @@ out=$($NC diff s2_avant s2_apres --expect "$JSON_DIR/expect_trop_large.yml" 2>&1
 [[ "$code" == "3" ]] && echo "$out" | grep -q "trop large" && ok "motif '.*' refusé (code 3)" \
   || { ko "motif trop large non refusé (code $code)"; echo "$out"; }
 
+# ---------------------------------------------------------------- D2 : retour arrière
+# Scripts fournis par le test (guard n'exécute jamais que des scripts de l'utilisateur, C13).
+cat > "$JSON_DIR/break_change.sh" <<'EOF'
+#!/bin/bash
+docker exec clab-frr-lab-r1 ip link set eth2 down
+EOF
+cat > "$JSON_DIR/rollback_ok.sh" <<'EOF'
+#!/bin/bash
+docker exec clab-frr-lab-r1 ip link set eth2 up
+EOF
+cat > "$JSON_DIR/rollback_noop.sh" <<'EOF'
+#!/bin/bash
+echo "annulation qui ne répare rien"
+EOF
+cat > "$JSON_DIR/change_fails.sh" <<'EOF'
+#!/bin/bash
+echo "le changement échoue" >&2
+exit 7
+EOF
+cat > "$JSON_DIR/change_slow.sh" <<'EOF'
+#!/bin/bash
+sleep 60
+EOF
+printf '#!/bin/bash\ntouch %s\n' "$JSON_DIR/rollback_marker" > "$JSON_DIR/rollback_marker.sh"
+# Journal de guard le plus récent (par date de modification), sans parser la sortie de ls.
+latest_journal() {
+  local f newest=""
+  for f in reports/guard_*.json; do
+    [[ -e "$f" ]] || continue
+    [[ -z "$newest" || "$f" -nt "$newest" ]] && newest="$f"
+  done
+  echo "$newest"
+}
+
+title "D2a : coupure de r1 eth2 + rollback valide -> annulé avec succès (code 4), état initial prouvé"
+out=$($NC guard --change "$JSON_DIR/break_change.sh" --rollback "$JSON_DIR/rollback_ok.sh" --yes --wait 40 2>&1); code=$?
+wait_healthy && ok "retour à la normale (health.py)" || ko "health.py toujours KO après guard"
+[[ "$code" == "4" ]] && ok "code retour = 4 (échec annulé avec succès)" || { ko "code retour = $code (attendu 4)"; echo "$out"; }
+echo "$out" | grep -q "ANNULÉ AVEC SUCCÈS" && ok "message final : annulé avec succès" || ko "message final absent"
+journal=$(latest_journal)
+grep -q '"final_state": "ROLLED_BACK"' "$journal" && grep -q '"clean": true' "$journal" \
+  && ok "journal : ROLLED_BACK, preuve du retour propre ($journal)" || { ko "journal inattendu"; cat "$journal"; }
+avant=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['snapshots']['avant'])" "$journal")
+$NC snapshot d2a_maintenant --force >/dev/null
+out=$($NC diff "$avant" d2a_maintenant 2>&1); code=$?
+[[ "$code" == "0" ]] && echo "$out" | grep -q "Aucun constat" \
+  && ok "preuve indépendante : l'état actuel est identique à l'« avant » de guard (aucun constat)" \
+  || { ko "l'état actuel diffère de l'état initial (code $code)"; echo "$out"; }
+
+title "D2b : coupure de r1 eth2 + rollback qui ne répare rien -> annulation échouée (code 5)"
+out=$($NC guard --change "$JSON_DIR/break_change.sh" --rollback "$JSON_DIR/rollback_noop.sh" --yes --wait 15 2>&1); code=$?
+docker exec "$LAB-r1" ip link set eth2 up   # le test remet lui-même le lab en état
+wait_healthy && ok "retour à la normale (health.py, lien rétabli par le test)" || ko "health.py toujours KO"
+[[ "$code" == "5" ]] && ok "code retour = 5 (annulation échouée)" || { ko "code retour = $code (attendu 5)"; echo "$out"; }
+echo "$out" | grep -q "ANNULATION ÉCHOUÉE" && echo "$out" | grep -q "N'EST PAS DANS SON ÉTAT INITIAL" \
+  && ok "message final très visible (annulation échouée, réseau pas dans son état initial)" \
+  || { ko "message d'alarme absent"; echo "$out"; }
+grep -q '"final_state": "ROLLBACK_FAILED"' "$(latest_journal)" && ok "journal : ROLLBACK_FAILED" \
+  || ko "journal : état final inattendu"
+
+title "D2c : script de changement en échec, sans --rollback -> code 2 (changement de comportement v0.3)"
+out=$($NC guard --change "$JSON_DIR/change_fails.sh" --yes --wait 5 2>&1); code=$?
+[[ "$code" == "2" ]] && ok "code retour = 2" || { ko "code retour = $code (attendu 2)"; echo "$out"; }
+grep -q '"final_state": "FAILED_NO_ROLLBACK"' "$(latest_journal)" && ok "journal : FAILED_NO_ROLLBACK" \
+  || ko "journal : état final inattendu"
+
+title "D2d : SIGTERM pendant le script de changement -> INTERROMPU (code 6), AUCUNE annulation lancée"
+rm -f "$JSON_DIR/rollback_marker"
+touch "$JSON_DIR/d2d_debut"
+$NC guard --change "$JSON_DIR/change_slow.sh" --rollback "$JSON_DIR/rollback_marker.sh" --yes --wait 5 \
+  > "$JSON_DIR/d2d.out" 2>&1 &
+guard_pid=$!
+for _ in $(seq 1 30); do   # attend que guard soit réellement DANS le script de changement
+  journal=$(find reports -name 'guard_*.json' -newer "$JSON_DIR/d2d_debut" 2>/dev/null | head -1)
+  [[ -n "$journal" ]] && grep -q '"current_step": "script_changement"' "$journal" && break
+  sleep 1
+done
+kill -TERM "$guard_pid"; wait "$guard_pid"; code=$?
+[[ "$code" == "6" ]] && ok "code retour = 6 (interrompu)" || { ko "code retour = $code (attendu 6)"; cat "$JSON_DIR/d2d.out"; }
+grep -q "l'annulation n'a PAS été lancée" "$JSON_DIR/d2d.out" && ok "message : l'annulation n'a PAS été lancée" \
+  || { ko "message d'interruption absent"; cat "$JSON_DIR/d2d.out"; }
+[[ ! -e "$JSON_DIR/rollback_marker" ]] && ok "le script d'annulation n'a jamais tourné" \
+  || ko "le script d'annulation a tourné malgré l'interruption"
+grep -q '"final_state": "INTERRUPTED"' "$journal" && grep -q '"step": "script_changement"' "$journal" \
+  && ok "journal : INTERRUPTED, étape script_changement" || { ko "journal inattendu"; cat "$journal"; }
+wait_healthy && ok "réseau intact (le script bloqué n'a rien modifié)" || ko "health.py KO"
+
 # ---------------------------------------------------------------- Bilan
 echo
 echo "=== Bilan : $PASS contrôles réussis, $FAIL échec(s) ==="

@@ -17,6 +17,8 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 from rich.console import Console
+from rich.markup import escape
+from rich.panel import Panel
 from rich.table import Table
 
 from netcheck import __version__
@@ -382,3 +384,94 @@ def write_assert_html(
     results: list[AssertionResult], verdict_label: str, intent_path: str, path: str,
 ) -> None:
     Path(path).write_text(render_assert_html(results, verdict_label, intent_path), encoding="utf-8")
+
+
+# ------------------------------------------------------------------------------------------
+# Message final de `guard` (Phase D2) : l'annulation échouée et l'interruption doivent être
+# IMPOSSIBLES À RATER -- cadre rouge sur stderr, code retour dédié rappelé dans le message.
+# ------------------------------------------------------------------------------------------
+
+_GUARD_STEP_LABELS = {
+    "snapshot_avant": "le snapshot avant",
+    "script_changement": "le script de changement",
+    "convergence_apres": "l'attente de convergence après le changement",
+    "snapshot_apres": "le snapshot après",
+    "diff_apres": "le diff après changement",
+    "script_annulation": "le script d'annulation",
+    "convergence_retour": "l'attente de convergence après l'annulation",
+    "preuve_retour": "la preuve du retour (diff avant <-> retour)",
+}
+_GUARD_ALARM_STATES = {"FAILED_NO_ROLLBACK", "ROLLBACK_FAILED", "INTERRUPTED", "ERROR"}
+
+
+def guard_final_message(state: str, code: int, details: dict) -> tuple[str, list[str]]:
+    """(titre, lignes de détail) du message final de guard -- pur, donc testable sans console."""
+    reasons = list(details.get("reasons", []))
+    step = _GUARD_STEP_LABELS.get(details.get("step", ""), details.get("step", "?"))
+    lines: list[str] = []
+
+    if state == "SUCCESS":
+        title = "✅ CHANGEMENT RÉUSSI"
+    elif state == "ATTENTION":
+        title = "⚠️  CHANGEMENT TERMINÉ AVEC ATTENTION"
+        lines.append("aucun retour arrière déclenché (seuil non atteint, ou pas de --rollback)")
+    elif state == "FAILED_NO_ROLLBACK":
+        title = "❌ CHANGEMENT ÉCHOUÉ — AUCUN RETOUR ARRIÈRE LANCÉ"
+        lines += reasons
+        lines.append("pas de --rollback fourni : le réseau est resté dans l'état « après »")
+    elif state == "ROLLED_BACK":
+        title = "↩️  CHANGEMENT ÉCHOUÉ — ANNULÉ AVEC SUCCÈS"
+        lines += [f"déclenché par : {r}" for r in reasons]
+        lines.append("état initial PROUVÉ : le diff avant <-> retour ne contient aucun constat")
+    elif state == "ROLLBACK_FAILED":
+        title = "🚨 CHANGEMENT ÉCHOUÉ ET ANNULATION ÉCHOUÉE"
+        lines.append("LE RÉSEAU N'EST PAS DANS SON ÉTAT INITIAL")
+        lines += [f"déclenché par : {r}" for r in reasons]
+        if details.get("rollback_timed_out"):
+            lines.append("le script d'annulation était bloqué (arrêté après le délai)")
+        elif details.get("rollback_script_failed"):
+            lines.append(f"le script d'annulation a rendu le code {details.get('rollback_script_rc')}")
+        if not details.get("proven"):
+            lines.append(f"{details.get('remaining_findings', '?')} écart(s) restant(s) entre l'état "
+                         f"initial et l'état actuel (détail ci-dessus)")
+        lines.append("INTERVENTION MANUELLE REQUISE")
+    elif state == "INTERRUPTED":
+        # Titre COURT, phrase clé sur sa propre ligne : un titre de cadre trop long est tronqué
+        # à la largeur du terminal, et c'est justement la fin de la phrase qui se perdrait.
+        title = f"⛔ INTERROMPU pendant {step}"
+        lines.append("vérifie l'état du réseau : l'annulation n'a PAS été lancée")
+        if not details.get("change_started"):
+            lines.append("le script de changement n'avait pas démarré : guard n'a rien modifié")
+    else:  # ERROR
+        title = f"⛔ ERREUR INTERNE pendant {step}"
+        lines.append("état du réseau inconnu : l'annulation n'a PAS été lancée")
+        lines.append(str(details.get("error", "")))
+        if not details.get("change_started"):
+            lines.append("le script de changement n'avait pas démarré : guard n'a rien modifié")
+
+    if details.get("journal"):
+        lines.append(f"journal : {details['journal']}")
+    lines.append(f"code retour : {code}")
+    return title, lines
+
+
+def print_guard_final(
+    state: str, code: int, details: dict,
+    console: Console | None = None, err_console: Console | None = None,
+) -> None:
+    title, lines = guard_final_message(state, code, details)
+    out, err = console or Console(), err_console or Console(stderr=True)
+    remaining = details.get("remaining")
+    if remaining is not None:
+        out.print("\nÉcarts restants entre l'état initial (avant) et l'état actuel :")
+        print_terminal(remaining.findings, remaining.verdict_label, console=out)
+    # escape() : un message d'erreur ou un nom de script ne doit jamais être lu comme du balisage rich.
+    if state in _GUARD_ALARM_STATES:
+        style = "bold white on red" if state in {"ROLLBACK_FAILED", "INTERRUPTED", "ERROR"} else "bold red"
+        # Le message va dans le CORPS du cadre (replié proprement), pas dans son titre.
+        err.print(Panel(escape(title + "\n\n" + "\n".join(lines)), title=f"netcheck guard : code {code}",
+                        border_style="bold red", style=style, expand=True))
+    else:
+        out.print(f"\n[bold]{escape(title)}[/bold]")
+        for line in lines:
+            out.print(f"  {escape(line)}")

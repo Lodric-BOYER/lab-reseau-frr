@@ -13,7 +13,7 @@ Il tourne sur un simple PC portable sous WSL2, sans aucun matériel réseau.
 | **Automatisation** | `health.py` (état OSPF/BGP) · `backup.py` (sauvegardes + baseline) · `drift.py` (diff vs baseline, rapport Markdown) |
 | **netcheck** | Validation de changements (état avant/après : routes, OSPF, BGP) · audit de conformité par règles YAML · rapports HTML · 2 drivers (FRR, SR Linux) |
 | **v2 (multi-constructeurs)** | `lab-multivendor.clab.yml` : mêmes r1-r4, r5 = Nokia SR Linux 26.7.2 · registre de drivers + champ `drivers:` par règle de conformité + identifiants par driver |
-| **v3 (audit de sécurité)** | `netcheck/rules/security.yml` : authentification OSPF (message-digest / keychain SR Linux) + TCP-MD5/GTSM/`maximum-prefix` sur eBGP + bannière SR Linux · rapports avant/après dans `docs/audit/` · secrets masqués dans les 3 sorties (`netcheck/secrets.py`) |
+| **v3 (audit de sécurité)** | `netcheck/rules/security.yml` : authentification OSPF (message-digest / keychain SR Linux) + TCP-MD5/GTSM/`maximum-prefix` sur eBGP + bannière SR Linux · rapports avant/après dans `docs/audit/` · secrets masqués dans les 3 sorties (`netcheck/secrets.py`) · `assert` (état attendu) · `guard` : changements prévus (`--expect`) et retour arrière prouvé (`--rollback`) |
 | **Sécurité** | Commandes en lecture seule (liste blanche) · YAML chargé en `safe_load` · rapports protégés contre le XSS (testé) |
 
 ## Topologie
@@ -60,10 +60,14 @@ configs-multivendor/r5/         config de démarrage SR Linux (syntaxe "set", la
 automation/                     phase 2 : scripts Netmiko (health, backup, drift)
 automation/inventory.yml            inventaire du lab FRR
 automation/inventory-multivendor.yml inventaire du lab v2 (driver par routeur)
-netcheck/                       validation de changement et conformité (snapshot/diff/check/guard)
+netcheck/                       validation de changement et conformité (snapshot/diff/check/assert/guard)
+netcheck/rules/                 règles de conformité (default.yml) et d'audit de sécurité (security.yml)
+intents/                        états attendus du réseau, pour `netcheck assert` (lab FRR, lab v2)
+docs/audit/                     rapports d'audit de sécurité avant/après durcissement (v3)
 tests/                          fixtures et scénarios de bout en bout de netcheck
-tests/integration.sh                lab FRR (S1-S5, C1/C2, guard)
-tests/integration_multivendor.sh    lab v2 (S1, coupure r4<->r5, C1)
+tests/expect/                   fichiers --expect de référence (changement prévu, effet de bord oublié)
+tests/integration.sh                lab FRR (S1-S5, C1/C2, guard, A1/A2 assert, D1/D2 --expect et rollback)
+tests/integration_multivendor.sh    lab v2 (S1, coupure r4<->r5, C1, A1/A2 assert)
 test_lab.sh                     scénario de bout en bout du lab FRR (phases 1 et 2), 28 contrôles
 test_lab_multivendor.sh         scénario de bout en bout du lab v2 (topologie + routage)
 ```
@@ -316,6 +320,9 @@ Encadre automatiquement une intervention : snapshot avant, exécution de `script
 **lui** qui modifie, jamais netcheck), attente de convergence (sondée en boucle, jamais une
 pause fixe — délai maximum `--wait`), snapshot après, puis diff. `--yes` saute la confirmation
 interactive (utile en script ou en CI). Les deux snapshots sont horodatés automatiquement.
+`--expect` (changements prévus) et `--rollback` (retour arrière prouvé, codes retour 0 à 6) sont
+décrits dans « [Changements attendus et retour arrière](#changements-attendus-et-retour-arrière-v3) ».
+Depuis la v3, un script `--change` en échec rend au minimum le code 2.
 
 ### Codes retour
 
@@ -542,6 +549,90 @@ de confiance.
   forme obscurcie par la plateforme (`authentication-key $aes1$...$...$`), jamais en clair --
   mais ce n'est pas documenté comme un chiffrement sûr pour autant, donc masqué comme les autres
   secrets dans les rapports netcheck.
+
+## Changements attendus et retour arrière (v3)
+
+> ⚠️ **`guard` exécute des scripts sur les équipements** (les vôtres : netcheck n'en écrit jamais
+> un seul, il reste en lecture seule). Un retour arrière automatique est une intervention comme
+> une autre : **n'utilisez `guard --rollback` que sur un réseau dont vous avez l'autorisation
+> écrite d'exploiter les équipements.**
+
+### `--expect` : dire ce que l'intervention est censée changer
+
+`diff` et `guard` acceptent `--expect fichier.yml`. Un constat que le fichier prévoit devient
+**PRÉVU** : il reste affiché (avec sa gravité d'origine et le critère qui l'a prévu) mais n'entre
+plus dans le verdict. Référence : [`tests/expect/ospf-cost-r1.yml`](tests/expect/ospf-cost-r1.yml).
+
+```yaml
+findings:                        # critères sur les constats du diff
+  - id: r1-bascule-next-hop
+    description: "r1 passe par r2 pour 5 préfixes"
+    device: r1                   # obligatoire : un équipement précis (ni liste, ni "all")
+    category: next_hop           # obligatoire : une catégorie réelle du diff
+    pattern: "10\\.1\\.23\\.0/30" # optionnel : regex sur le message
+    severity: attention          # optionnel : PLAFOND (défaut attention)
+    count: 5                     # optionnel : nombre EXACT de constats attendus
+after:                           # assertions (format `assert`) vraies APRÈS le changement
+  - {id: chemin, description: "...", device: r1, type: path, prefix: 192.168.2.0/24, via: [r2, r3, r4, r5]}
+```
+
+| Situation | Résultat |
+|---|---|
+| constat couvert par un critère | PRÉVU, sans effet sur le verdict |
+| critère sans aucun constat | ATTENTION « changement attendu absent » |
+| `count` différent du nombre observé | ATTENTION « nombre de constats différent (attendu N, observé M) » |
+| assertion `after` en ÉCHEC / NON ÉVALUABLE | ÉCHEC (CRITIQUE) / ATTENTION |
+
+Garde-fous contre un critère qui masquerait un vrai problème, tous refusés **au chargement**
+(code 3, avant la moindre action sur le réseau) : `device` et `category` obligatoires, motif trop
+large (`.*`, `.+`, `.`, `^`...), clés inconnues. **Un constat CRITIQUE n'est jamais PRÉVU sans
+`severity: critique` explicite** (c'est un plafond, pas une égalité). Exemple mesuré sur le lab : un
+`ip ospf cost 100` sur r1 produit aussi un constat sur **r2** ; un fichier limité à r1 le laisse en
+ATTENTION (`tests/expect/ospf-cost-r1-sans-r2.yml` le démontre).
+
+### `guard --rollback` : retour arrière prouvé
+
+```bash
+python -m netcheck guard --change change.sh --rollback annule.sh \
+    [--rollback-on echec|attention] [--script-timeout 120] [--expect attendu.yml] [--wait 30] [--yes]
+```
+
+Les **deux scripts sont affichés ensemble** puis confirmés **une seule fois** avant toute action.
+Déroulé : snapshot avant → changement → convergence → snapshot après → diff (avec `--expect`) → si
+le verdict atteint le seuil **ou si le script de changement échoue ou se bloque** : annulation
+(**une seule exécution, jamais rejouée**) → convergence → snapshot « retour » → **preuve** : le diff
+avant ↔ retour doit contenir **zéro constat, quelle qu'en soit la gravité** (un simple « verdict
+OK » tolérerait une ligne de config restée). L'état est relevé plusieurs fois pendant `--wait`
+(l'état finit parfois de se stabiliser après la convergence OSPF/BGP), mais le script, lui, ne
+tourne qu'une fois. Chaque script a un délai (`--script-timeout`) : le **groupe de processus
+entier** est tué (un `docker exec` fils bloqué ne survit pas) et le script compte comme en échec.
+
+| Code | Situation |
+|---|---|
+| **0** | succès (OK, ou uniquement des constats prévus) |
+| **1** | attention, aucun rollback déclenché |
+| **2** | échec **sans** rollback (pas de `--rollback`) |
+| **3** | erreur d'usage, **avant toute action** (script ou fichier introuvable/invalide, confirmation refusée) |
+| **4** | échec **annulé avec succès** : retour à l'état initial prouvé |
+| **5** | échec **et annulation échouée** : le réseau n'est pas dans son état initial (cadre rouge, liste des écarts restants) |
+| **6** | **interrompu** (Ctrl+C ou SIGTERM) ou erreur interne : état inconnu, **aucun rollback lancé** |
+
+Le code 5 est un état grave : message final dans un cadre rouge sur stderr, et une annulation est
+aussi comptée en échec si le script d'annulation lui-même rend un code non nul ou se bloque, même
+si l'état semble revenu. **Une interruption ne déclenche jamais d'annulation automatique** (on ne
+sait pas où en était le réseau) : guard arrête le script en cours, écrit le journal avec
+`final_state: INTERRUPTED` et l'étape concernée, et le dit.
+
+> **Changement de comportement par rapport à la v0.2** : un script `--change` qui se termine avec
+> un code non nul n'est plus un simple avertissement. Sans `--rollback`, `guard` rend désormais au
+> minimum le **code 2** (une intervention dont le script échoue est une intervention échouée).
+
+**Journal** `reports/guard_<horodatage>.json` (dossier ignoré par Git, comme `snapshots/`) :
+chaque étape avec ses horodatages, les codes de sortie des scripts, les verdicts, la preuve du
+retour, l'état final. Les scripts y figurent avec leur **SHA-256** et leur contenu **masqué** (un
+script de changement peut contenir un secret) ; toute la sortie du journal passe par le masquage
+des secrets. Au terminal, au contraire, les scripts s'affichent **en clair** : c'est votre fichier
+local et il faut pouvoir lire exactement ce qu'on confirme.
 
 ## Dépannage
 

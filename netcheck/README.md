@@ -13,7 +13,11 @@ pour l'usage), mais conçu pour s'étendre à d'autres constructeurs.
 
 ```
 netcheck/
-├── cli.py                 # argparse : snapshot, list, diff, check, guard
+├── cli.py                 # argparse : snapshot, list, diff, check, guard, assert
+├── assertions.py          # `assert` : 6 types d'état attendu, évalués sur le modèle (Phase C)
+├── expect.py              # `--expect` : changements prévus, garde-fous anti-masquage (Phase D1)
+├── guard.py               # `guard` : retour arrière, codes 0-6, journal, délais (Phase D2)
+├── secrets.py             # masquage des secrets dans tous les rapports et journaux
 ├── inventory.py           # lit automation/inventory.yml (ou -i/--inventory) ; identifiants
 │                           # NETCHECK_USER/PASS → LAB_USER/PASS → inventaire (dans cet ordre)
 ├── collector.py           # session SSH générique + liste blanche des commandes (C1) +
