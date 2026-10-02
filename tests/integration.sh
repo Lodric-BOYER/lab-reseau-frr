@@ -282,6 +282,89 @@ grep -q '"final_state": "INTERRUPTED"' "$journal" && grep -q '"step": "script_ch
   && ok "journal : INTERRUPTED, étape script_changement" || { ko "journal inattendu"; cat "$journal"; }
 wait_healthy && ok "réseau intact (le script bloqué n'a rien modifié)" || ko "health.py KO"
 
+# ---------------------------------------------------------------- E1 : monitor + alertes (Phase E)
+title "E1 : monitor -- panne -> UNE alerte, rien ensuite, réparation -> retour à la normale (serveur local)"
+E_STATE="$JSON_DIR/e1_state.json"; E_LOG="$JSON_DIR/e1_messages.jsonl"; E_PORT="$JSON_DIR/e1_port"
+E_OUT="$JSON_DIR/e1_all_output.txt"
+rm -f "$E_STATE" "$E_STATE.lock" "$E_STATE.corrupt" "$E_PORT" "$E_OUT"
+$NC snapshot e1_nominal --force >/dev/null
+python3 tests/tools/webhook_recorder.py --port-file "$E_PORT" --log "$E_LOG" &
+recorder_pid=$!
+for _ in $(seq 1 50); do [[ -s "$E_PORT" ]] && break; sleep 0.2; done
+[[ -s "$E_PORT" ]] && ok "récepteur de webhook local démarré (127.0.0.1, aucun appel externe)" \
+  || ko "récepteur de webhook non démarré"
+E_SECRET="SENTINEL-WEBHOOK-TOKEN-4f9c2a"
+E_PORT_NUMBER=$(cat "$E_PORT")
+export NETCHECK_WEBHOOK_URL="http://127.0.0.1:$E_PORT_NUMBER/hook/$E_SECRET"
+mon() { $NC monitor --baseline e1_nominal --intent intents/lab.yml --state-file "$E_STATE" 2>&1; }
+count_msgs() { wc -l < "$E_LOG" | tr -d ' '; }
+msg_field() {   # msg_field N champ : champ du N-ième message reçu (corps JSON)
+  python3 -c "import json,sys; print(json.loads(open(sys.argv[1]).read().splitlines()[int(sys.argv[2])-1])['body'][sys.argv[3]])" \
+    "$E_LOG" "$1" "$2"
+}
+
+out=$(mon); code=$?; echo "$out" >> "$E_OUT"
+[[ "$code" == "0" && "$(count_msgs)" == "0" ]] && ok "relevé sain : code 0, aucune alerte (première exécution OK)" \
+  || { ko "relevé sain : code $code, $(count_msgs) message(s)"; echo "$out"; }
+
+docker exec "$LAB-r1" ip link set eth2 down
+sleep 5
+out=$(mon); code=$?; echo "$out" >> "$E_OUT"
+[[ "$code" == "2" ]] && ok "panne : code retour = 2" || { ko "panne : code $code (attendu 2)"; echo "$out"; }
+[[ "$(count_msgs)" == "1" ]] && ok "panne : UNE alerte reçue" || { ko "panne : $(count_msgs) message(s) (attendu 1)"; echo "$out"; }
+[[ "$(msg_field 1 status)" == "ECHEC" && "$(msg_field 1 previous_status)" == "OK" ]] \
+  && ok "alerte : OK -> ÉCHEC" || ko "alerte : statuts inattendus"
+
+out=$(mon); code=$?; echo "$out" >> "$E_OUT"
+[[ "$code" == "2" && "$(count_msgs)" == "1" ]] && echo "$out" | grep -q "statut inchangé" \
+  && ok "deuxième exécution sans changement : toujours 1 seul message (aucune alerte)" \
+  || { ko "deuxième exécution : code $code, $(count_msgs) message(s)"; echo "$out"; }
+
+# Verrou : une exécution en cours -> la nouvelle s'arrête proprement (code 4), sans alerte ni état modifié.
+# Le détenteur est UN seul processus : un `flock ... sleep` laisserait le fils `sleep` hériter du
+# verrou après la mort de `flock`, et il resterait tenu après notre kill.
+python3 -c 'import fcntl, sys, time; f = open(sys.argv[1], "a"); fcntl.flock(f, fcntl.LOCK_EX); time.sleep(60)' \
+  "$E_STATE.lock" &
+locker_pid=$!
+sleep 1
+out=$(mon); code=$?; echo "$out" >> "$E_OUT"
+kill "$locker_pid" 2>/dev/null; wait "$locker_pid" 2>/dev/null
+[[ "$code" == "4" && "$(count_msgs)" == "1" ]] && echo "$out" | grep -q "encore en cours" \
+  && ok "verrou tenu : code 4, aucune collecte ni alerte" || { ko "verrou : code $code"; echo "$out"; }
+
+docker exec "$LAB-r1" ip link set eth2 up
+wait_healthy && ok "retour à la normale (health.py)" || ko "health.py toujours KO après réparation"
+sleep 3
+out=$(mon); code=$?; echo "$out" >> "$E_OUT"
+[[ "$code" == "0" ]] && ok "réparation : code retour = 0" || { ko "réparation : code $code (attendu 0)"; echo "$out"; }
+[[ "$(count_msgs)" == "2" && "$(msg_field 2 event)" == "recovery" ]] \
+  && ok "réparation : message de retour à la normale (ÉCHEC -> OK)" \
+  || { ko "réparation : $(count_msgs) message(s)"; echo "$out"; }
+
+# Enveloppe automation/monitor.sh : lit l'URL dans un fichier 0600 (sans l'exécuter), refuse un fichier ouvert.
+E_ENV="$JSON_DIR/e1.env"
+printf "NETCHECK_WEBHOOK_URL='%s'\n# commentaire\ntouch %s\n" "$NETCHECK_WEBHOOK_URL" "$JSON_DIR/e1_executed" > "$E_ENV"
+chmod 600 "$E_ENV"
+out=$(env -u NETCHECK_WEBHOOK_URL NETCHECK_ENV_FILE="$E_ENV" automation/monitor.sh \
+  --baseline e1_nominal --state-file "$JSON_DIR/e1_sh_state.json" 2>&1); code=$?; echo "$out" >> "$E_OUT"
+[[ "$code" == "0" && ! -e "$JSON_DIR/e1_executed" ]] \
+  && ok "monitor.sh : fichier d'environnement 0600 lu comme du texte (rien d'exécuté), code 0" \
+  || { ko "monitor.sh : code $code"; echo "$out"; }
+chmod 644 "$E_ENV"
+out=$(env -u NETCHECK_WEBHOOK_URL NETCHECK_ENV_FILE="$E_ENV" automation/monitor.sh --baseline e1_nominal 2>&1); code=$?
+echo "$out" >> "$E_OUT"
+[[ "$code" == "3" ]] && echo "$out" | grep -q "chmod 600" \
+  && ok "monitor.sh : fichier lisible par d'autres -> refusé (code 3, message clair)" \
+  || { ko "monitor.sh : code $code (attendu 3)"; echo "$out"; }
+
+kill "$recorder_pid" 2>/dev/null; wait "$recorder_pid" 2>/dev/null
+unset NETCHECK_WEBHOOK_URL
+if grep -rq "$E_SECRET" "$E_OUT" "$E_STATE" reports/monitor_latest reports/monitor_2* "$JSON_DIR/e1_sh_state.json" 2>/dev/null; then
+  ko "l'URL du webhook (secret) apparaît dans une sortie, un état ou un rapport"
+else
+  ok "l'URL du webhook n'apparaît dans aucune sortie, aucun état, aucun rapport"
+fi
+
 # ---------------------------------------------------------------- Bilan
 echo
 echo "=== Bilan : $PASS contrôles réussis, $FAIL échec(s) ==="

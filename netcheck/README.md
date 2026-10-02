@@ -17,6 +17,8 @@ netcheck/
 ├── assertions.py          # `assert` : 6 types d'état attendu, évalués sur le modèle (Phase C)
 ├── expect.py              # `--expect` : changements prévus, garde-fous anti-masquage (Phase D1)
 ├── guard.py               # `guard` : retour arrière, codes 0-6, journal, délais (Phase D2)
+├── monitor.py             # `monitor` : statut global, état observed/notified, verrou, alertes (Phase E)
+├── webhook.py             # envoi de webhook : https, sans redirection, 5 s, un réessai, URL jamais affichée
 ├── secrets.py             # masquage des secrets dans tous les rapports et journaux
 ├── inventory.py           # lit automation/inventory.yml (ou -i/--inventory) ; identifiants
 │                           # NETCHECK_USER/PASS → LAB_USER/PASS → inventaire (dans cet ordre)

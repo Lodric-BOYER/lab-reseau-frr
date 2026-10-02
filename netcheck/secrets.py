@@ -47,9 +47,27 @@ _SECRET_PATTERNS = [
 ]
 
 
+# Phase E : une URL de webhook EST un secret (quiconque la connaît peut poster dans le salon).
+# Formats vérifiés dans la documentation de chaque service (Discord, Slack, Teams/Workflows) ;
+# l'URL configurée est de plus remplacée à l'identique par webhook.redact(), quel que soit son
+# format. Le masquage s'applique ici à tout texte destiné à un rapport ou à un message.
+_URL_CHARS = r"""[^\s'"<>]+"""
+_WEBHOOK_URL_PATTERNS = [
+    re.compile(rf"https://(?:[\w-]+\.)?discord(?:app)?\.com/api/(?:v\d+/)?webhooks/{_URL_CHARS}"),
+    re.compile(rf"https://hooks\.slack\.com/{_URL_CHARS}"),
+    # Teams (Workflows) : le port est facultatif, mais fréquent (« :443 ») dans les URL Power Automate.
+    re.compile(
+        rf"""https://[^\s/'"<>]*(?:webhook\.office\.com|logic\.azure\.com|powerplatform\.com)"""
+        rf"(?::\d+)?/{_URL_CHARS}"),
+]
+WEBHOOK_URL_MASK = "<url de webhook masquée>"
+
+
 def mask_secrets(text: str) -> str:
     """Remplace la valeur de chaque secret reconnu par '****', partout où le motif apparaît
     (une ligne de config isolée, ou un bloc plus large comme un diff unifié multi-lignes)."""
     for pattern in _SECRET_PATTERNS:
         text = pattern.sub(lambda m: f"{m.group(1)} ****", text)
+    for pattern in _WEBHOOK_URL_PATTERNS:
+        text = pattern.sub(WEBHOOK_URL_MASK, text)
     return text

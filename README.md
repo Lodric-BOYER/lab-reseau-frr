@@ -13,7 +13,7 @@ Il tourne sur un simple PC portable sous WSL2, sans aucun matériel réseau.
 | **Automatisation** | `health.py` (état OSPF/BGP) · `backup.py` (sauvegardes + baseline) · `drift.py` (diff vs baseline, rapport Markdown) |
 | **netcheck** | Validation de changements (état avant/après : routes, OSPF, BGP) · audit de conformité par règles YAML · rapports HTML · 2 drivers (FRR, SR Linux) |
 | **v2 (multi-constructeurs)** | `lab-multivendor.clab.yml` : mêmes r1-r4, r5 = Nokia SR Linux 26.7.2 · registre de drivers + champ `drivers:` par règle de conformité + identifiants par driver |
-| **v3 (audit de sécurité)** | `netcheck/rules/security.yml` : authentification OSPF (message-digest / keychain SR Linux) + TCP-MD5/GTSM/`maximum-prefix` sur eBGP + bannière SR Linux · rapports avant/après dans `docs/audit/` · secrets masqués dans les 3 sorties (`netcheck/secrets.py`) · `assert` (état attendu) · `guard` : changements prévus (`--expect`) et retour arrière prouvé (`--rollback`) |
+| **v3 (audit de sécurité)** | `netcheck/rules/security.yml` : authentification OSPF (message-digest / keychain SR Linux) + TCP-MD5/GTSM/`maximum-prefix` sur eBGP + bannière SR Linux · rapports avant/après dans `docs/audit/` · secrets masqués dans les 3 sorties (`netcheck/secrets.py`) · `assert` (état attendu) · `guard` : changements prévus (`--expect`) et retour arrière prouvé (`--rollback`) · `monitor` : surveillance planifiée, alertes webhook uniquement au changement de statut |
 | **Sécurité** | Commandes en lecture seule (liste blanche) · YAML chargé en `safe_load` · rapports protégés contre le XSS (testé) |
 
 ## Topologie
@@ -60,14 +60,16 @@ configs-multivendor/r5/         config de démarrage SR Linux (syntaxe "set", la
 automation/                     phase 2 : scripts Netmiko (health, backup, drift)
 automation/inventory.yml            inventaire du lab FRR
 automation/inventory-multivendor.yml inventaire du lab v2 (driver par routeur)
-netcheck/                       validation de changement et conformité (snapshot/diff/check/assert/guard)
+automation/monitor.sh               enveloppe à planifier (cron/systemd) pour `netcheck monitor`
+netcheck/                       validation de changement et conformité (snapshot/diff/check/assert/guard/monitor)
 netcheck/rules/                 règles de conformité (default.yml) et d'audit de sécurité (security.yml)
 intents/                        états attendus du réseau, pour `netcheck assert` (lab FRR, lab v2)
 docs/audit/                     rapports d'audit de sécurité avant/après durcissement (v3)
 tests/                          fixtures et scénarios de bout en bout de netcheck
 tests/expect/                   fichiers --expect de référence (changement prévu, effet de bord oublié)
-tests/integration.sh                lab FRR (S1-S5, C1/C2, guard, A1/A2 assert, D1/D2 --expect et rollback)
-tests/integration_multivendor.sh    lab v2 (S1, coupure r4<->r5, C1, A1/A2 assert)
+tests/tools/webhook_recorder.py récepteur de webhook LOCAL (tests et scénarios, aucun appel externe)
+tests/integration.sh                lab FRR (S1-S5, C1/C2, guard, A1/A2 assert, D1/D2 --expect et rollback, E1 monitor)
+tests/integration_multivendor.sh    lab v2 (S1, coupure r4<->r5, C1, A1/A2 assert, M1 monitor)
 test_lab.sh                     scénario de bout en bout du lab FRR (phases 1 et 2), 28 contrôles
 test_lab_multivendor.sh         scénario de bout en bout du lab v2 (topologie + routage)
 ```
@@ -633,6 +635,247 @@ retour, l'état final. Les scripts y figurent avec leur **SHA-256** et leur cont
 script de changement peut contenir un secret) ; toute la sortie du journal passe par le masquage
 des secrets. Au terminal, au contraire, les scripts s'affichent **en clair** : c'est votre fichier
 local et il faut pouvoir lire exactement ce qu'on confirme.
+
+## Surveillance planifiée et alertes (v3)
+
+> ⚠️ `monitor` interroge les équipements à chaque exécution, toutes les quelques minutes. Ne le
+> planifier que sur un réseau où vous avez une **autorisation écrite** : même en lecture seule, un
+> relevé répété et non autorisé peut être illégal. Ce dépôt ne vise que le lab.
+
+```bash
+python -m netcheck monitor --baseline nominal [--intent intents/lab.yml] [--rules fichier.yml] \
+    [--confirm N] [--webhook-format generic|discord] [--state-file f.json] [--dry-run] [-i inventaire]
+```
+
+**Une exécution = un relevé** (pas de démon : le planificateur est externe, voir plus bas). Un seul
+relevé en direct sert au diff contre la référence, aux assertions (`--intent`) et à la conformité
+(`--rules`) ; un composant dont l'entrée est absente n'est pas exécuté (« non exécuté » dans la
+sortie). **Lecture seule stricte** : `monitor` ne lance jamais `guard`, aucun script, aucun
+rollback (un test statique vérifie qu'il n'importe pas `guard`) ; il n'écrit que son état, son
+verrou et ses rapports dans `reports/` (ignoré par Git).
+
+**Statut global = le pire de quatre composants :**
+
+| Composant | OK | ATTENTION | ÉCHEC |
+|---|---|---|---|
+| diff (contre `--baseline`) | aucun constat ≥ ATTENTION | constat ATTENTION | constat CRITIQUE |
+| assert | tout OK | au moins une assertion **NON ÉVALUABLE** | au moins un ÉCHEC |
+| check | conforme | violation `moyenne` / `basse` | violation `critique` / `haute` |
+| collecte | tout joignable | | un équipement **injoignable** |
+
+| Code | Situation |
+|---|---|
+| **0 / 1 / 2** | statut global OK / ATTENTION / ÉCHEC |
+| **3** | refusé **avant toute collecte** (référence, intent ou règles introuvables ou invalides, `--confirm` < 1, `NETCHECK_WEBHOOK_URL` invalide) ou erreur interne : monitor n'a pas pu conclure, aucune alerte, état inchangé |
+| **4** | exécution **ignorée** : une exécution précédente tient encore le verrou |
+
+Une exception Python non gérée sortirait en code 1, que le planificateur lirait à tort comme
+« ATTENTION » : toute erreur interne est donc convertie en code 3 avec un message.
+
+### Anti-bruit : une alerte seulement quand le statut change
+
+Le fichier d'état (`reports/monitor_state.json`, droits 0600, écrit de façon atomique) distingue
+deux choses : **`observed`**, ce que le dernier relevé a vu, et **`notified`**, le dernier statut
+**réellement annoncé** (webhook réussi).
+
+```json
+{
+  "version": 1,
+  "observed":  {"status": "ECHEC", "since": "2026-10-03T10:00:03+00:00", "at": "2026-10-03T10:05:02+00:00"},
+  "notified":  {"status": "ECHEC", "at": "2026-10-03T10:00:04+00:00"},
+  "candidate": null,
+  "incident_since": "2026-10-03T10:00:03+00:00",
+  "components": {"collect": "OK", "diff": "ECHEC", "assert": "ECHEC", "check": null},
+  "baseline": "nominal",
+  "last_report": "reports/monitor_2026-10-03_100003"
+}
+```
+
+- Une alerte part quand `observed ≠ notified`, **dans les deux sens** et pour toute transition
+  (OK → ATTENTION/ÉCHEC, ATTENTION → ÉCHEC, ÉCHEC → ATTENTION « amélioration », → OK « retour à la
+  normale », avec la durée de l'incident). OK → ÉCHEC → ÉCHEC → OK donne exactement une alerte,
+  aucune, puis un retour à la normale.
+- **Première exécution** (pas de fichier d'état) : alerte seulement si le statut n'est pas OK.
+- **Fichier illisible ou corrompu** (JSON invalide, version inconnue, champ absurde, binaire,
+  dossier à la place du fichier) : monitor ne plante pas, garde une copie en `<fichier>.corrupt`,
+  le traite comme une première exécution et le dit dans sa sortie.
+- **Envoi en échec** : `notified` n'avance pas, donc l'exécution suivante réessaie. Sans cela, une
+  alerte perdue serait supprimée à jamais par l'anti-bruit. Si l'incident est fini entre-temps, rien
+  n'a été annoncé et rien ne l'est (le retour à la normale d'une panne jamais annoncée serait absurde).
+- **`--confirm N`** (défaut 1) : un **nouveau** statut doit être observé N fois de suite avant
+  d'être annoncé, aussi bien pour une dégradation que pour un retour à la normale. Le compteur
+  (`candidate`) est dans le fichier d'état. Avec `--confirm 2`, une panne isolée (un SSH qui
+  échoue une fois) n'envoie rien ; une panne persistante envoie une alerte à la 2ᵉ exécution. Le
+  code retour, lui, est toujours le statut réel du relevé.
+- **`--dry-run`** : affiche le message exact qui serait envoyé (même sans changement de statut, pour
+  voir le format) ; n'envoie rien, n'écrit ni état ni rapport.
+
+**Limites assumées**
+- De **nouveaux constats pendant un ÉCHEC déjà annoncé n'envoient rien** (le statut n'a pas changé) :
+  le rapport local est à jour, pas le salon.
+- **Après un changement légitime, refaites la référence** : `python -m netcheck snapshot nominal
+  --force`. Sinon le diff reste en ATTENTION ou ÉCHEC tant que l'état nominal d'hier est la référence.
+- L'envoi précède l'écriture de l'état : un crash entre les deux renverrait la même alerte
+  (livraison « au moins une fois »).
+
+**Verrou** : un `flock` non bloquant sur `<état>.lock`, tenu pendant toute l'exécution (collecte
+comprise). Une exécution qui trouve le verrou pris s'arrête proprement (code 4, âge du détenteur
+affiché, aucune collecte, aucun état modifié). **Verrou orphelin** : le noyau libère un `flock` à la
+mort du processus, même par `kill -9`, donc un crash ne peut pas laisser un verrou qui bloquerait les
+exécutions suivantes (un fichier `.pid` qu'il faudrait deviner périmé, si). Un monitor bloqué dans une
+collecte tiendrait le verrou : en systemd, `TimeoutStartSec=` l'arrête.
+
+**Rapports** : `reports/monitor_latest/` est réécrit à chaque exécution (`diff`, `assert`, `check` en
+JSON et HTML, plus `summary.json`) ; `reports/monitor_<horodatage>/` n'est écrit que quand un message
+part, c'est le chemin cité dans l'alerte.
+
+### Alertes par webhook
+
+L'URL vient **uniquement** de la variable d'environnement `NETCHECK_WEBHOOK_URL` : c'est un secret
+(quiconque la connaît peut poster dans le salon), jamais dans le dépôt ni en argument de commande.
+Sans elle, monitor fonctionne et dit « alertes désactivées ».
+
+- **https obligatoire** ; `http` n'est accepté que vers `localhost`, `127.0.0.1` et `[::1]` (tests).
+  Identifiants dans l'URL, schéma inconnu, hôte absent : refusés (code 3, avant toute collecte).
+- **Aucune redirection suivie** (un 3xx est un échec, la cible n'est jamais contactée), **délai de
+  5 s** par opération réseau, **un seul réessai** (erreur réseau, délai dépassé ou 5xx ; jamais un 4xx).
+  Tout 2xx vaut succès.
+- **Un échec d'envoi est journalisé** (« webhook : échec d'envoi (HTTP 500) après 2 tentative(s) »)
+  **sans changer le code retour** de monitor.
+- **L'URL n'apparaît jamais** : ni dans la sortie, ni dans l'état, ni dans les rapports, ni dans un
+  message d'erreur (celles-ci sont construites à partir du type d'erreur et du code HTTP, jamais de
+  `str(exception)`, qui peut citer l'URL). Les formats d'URL Discord, Slack et Teams sont de plus
+  reconnus et masqués par `secrets.py` partout où du texte est publié.
+
+**Contenu d'une alerte** (liste blanche) : statut et statut précédent, horodatage, état de chaque
+composant, équipements concernés, **au plus 10 constats** résumés (gravité, équipement, message
+tronqué à 200 caractères, puis « et N autres »), chemin **relatif** du rapport local. Jamais de
+configuration (pour la conformité : l'identifiant et la description de la règle, jamais le détail
+qui peut citer une ligne de config) ; tout passe par le masquage des secrets.
+
+`--webhook-format generic` (défaut) :
+
+```json
+{"source": "netcheck", "netcheck_version": "0.2.0", "event": "status_change", "kind": "degradation",
+ "status": "ECHEC", "previous_status": "OK", "timestamp": "2026-10-03T10:05:02+02:00",
+ "components": {"collect": "OK", "diff": "ECHEC", "assert": "ECHEC", "check": null},
+ "devices": ["r1", "r3"],
+ "findings": [{"severity": "CRITIQUE", "component": "diff", "device": "r1",
+               "category": "ospf_neighbor", "message": "voisin OSPF perdu : 10.1.255.3"}],
+ "more": 4, "report": "reports/monitor_2026-10-03_100502"}
+```
+
+`kind` vaut `first_report`, `degradation`, `improvement` ou `recovery` (alors `event: "recovery"`,
+avec `incident_duration_s`). `--webhook-format discord` produit un embed (titre « 🔴 netcheck :
+ÉCHEC (OK → ÉCHEC) », couleur par statut, constats en liste) avec **`allowed_mentions: {"parse": []}`
+obligatoire** : les textes viennent d'équipements, aucun « @everyone » ne doit pouvoir sonner. La
+description est limitée à 3500 caractères (la limite Discord est 4096, 6000 cumulés).
+
+**Slack et Teams (documenté, non implémenté).** Seule la fonction qui construit le corps change ;
+l'envoi (https, pas de redirection, 5 s, un réessai) reste identique.
+- **Slack** : corps `{"text": "…"}` (avec `blocks` en option) ; la réponse réussie est **HTTP 200 avec
+  `ok`**, pas 204 (d'où « tout 2xx vaut succès »). Pas d'embeds ni d'`allowed_mentions`.
+- **Teams** : les connecteurs Microsoft 365 sont annoncés comme « nearing deprecation » : viser un
+  webhook **Workflows**. Corps `{"type": "message", "attachments": [{"contentType":
+  "application/vnd.microsoft.card.adaptive", "content": {…carte adaptative…}}]}` ; taille maximale
+  28 Ko, limitation au-delà de 4 requêtes par seconde.
+
+Références vérifiées : Discord, « Webhook Resource » (<https://docs.discord.com/developers/resources/webhook>)
+et « Message Resource » (<https://docs.discord.com/developers/resources/message>) ; Slack, « Sending
+messages using incoming webhooks »
+(<https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks>) ; Microsoft, « Create an
+Incoming Webhook - Teams | Microsoft Learn »
+(<https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook>).
+
+### Planifier dans WSL
+
+`automation/monitor.sh` est l'enveloppe à planifier. Elle fournit `NETCHECK_WEBHOOK_URL` à monitor
+depuis `~/.config/netcheck/env` **sans jamais exécuter ce fichier** (pas de `source` : ce serait
+exécuter du code toutes les 5 minutes) : le fichier est lu comme du texte, seule la ligne
+`NETCHECK_WEBHOOK_URL=` est retenue (guillemets simples ou doubles retirés), toute autre ligne est
+ignorée. Il doit appartenir à l'utilisateur, être un **fichier régulier** (pas un lien) et n'être
+lisible que par lui (**0600**, ou 0400) : sinon refus avec un message clair (code 3). Une
+`NETCHECK_WEBHOOK_URL` déjà exportée l'emporte sur le fichier.
+
+À taper vous-même (rien de tout cela n'est fait par le dépôt, et aucun `sudo` n'est nécessaire) :
+
+```bash
+# 1. Enregistrer l'URL SANS qu'elle entre dans l'historique du shell
+mkdir -p ~/.config/netcheck && chmod 700 ~/.config/netcheck
+read -rsp 'URL du webhook : ' U; echo
+( umask 077; printf "NETCHECK_WEBHOOK_URL='%s'\n" "$U" > ~/.config/netcheck/env ); unset U
+
+# 2. La référence : l'état nominal, lab sain et déployé
+cd ~/lab-reseau-frr && python -m netcheck snapshot nominal
+
+# 3. Vérifier le message sans rien envoyer
+automation/monitor.sh --baseline nominal --intent intents/lab.yml --webhook-format discord --dry-run
+```
+
+**Option recommandée : cron** (`crontab -e`, puis ajouter la ligne) :
+
+```
+*/5 * * * * /home/<vous>/lab-reseau-frr/automation/monitor.sh --baseline nominal --intent intents/lab.yml --confirm 2 --webhook-format discord >> /home/<vous>/lab-reseau-frr/reports/monitor.log 2>&1
+```
+
+`--confirm 2` : une panne doit être vue deux fois de suite (donc 5 à 10 minutes) avant d'alerter.
+Le journal grossit d'environ 100 Ko par jour avec une sortie d'une ligne par exécution et n'est pas
+roté (acceptable pour un lab ; `: > reports/monitor.log` le vide).
+
+**Variante : timer systemd utilisateur.** Deux fichiers, puis activation :
+
+```ini
+# ~/.config/systemd/user/netcheck-monitor.service
+[Unit]
+Description=netcheck monitor (surveillance du lab)
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/lab-reseau-frr
+ExecStart=%h/lab-reseau-frr/automation/monitor.sh --baseline nominal --intent intents/lab.yml --confirm 2 --webhook-format discord
+SuccessExitStatus=1 2
+TimeoutStartSec=300
+
+# ~/.config/systemd/user/netcheck-monitor.timer
+[Unit]
+Description=netcheck monitor toutes les 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
+```
+
+```bash
+systemctl --user daemon-reload && systemctl --user enable --now netcheck-monitor.timer
+systemctl --user list-timers
+```
+
+`SuccessExitStatus=1 2` : ATTENTION et ÉCHEC sont des statuts, pas des plantages de l'unité.
+
+| | cron | timer systemd utilisateur |
+|---|---|---|
+| Prérequis dans WSL | service `cron` actif (`systemctl is-active cron` ; sans systemd, `sudo service cron start` à chaque démarrage) | `systemd=true` dans la section `[boot]` de `/etc/wsl.conf` (documenté par Microsoft pour les versions récentes de WSL) |
+| Dépend d'une session ouverte | non : service système, lance les crontabs utilisateur | oui, sauf si `loginctl enable-linger <vous>` (modifie la configuration : non testé ici) |
+| Journaux | fichier (`reports/monitor.log`) | journald (`journalctl --user -u netcheck-monitor`) |
+
+Constaté sur la machine de développement : `systemd=true`, `cron.service` actif et activé,
+gestionnaire systemd utilisateur actif, `Linger=no`.
+
+**L'instance WSL doit rester active.** Rien ne s'exécute si WSL est arrêté (ni cron ni systemd ne
+tournent alors), et un PC en veille met la VM en pause. Deux façons de l'éviter, avec leur coût :
+1. **Garder un terminal WSL ouvert** pendant la surveillance (choix retenu pour ce lab) : aucun
+   réglage, la VM s'arrête normalement quand on ferme tout.
+2. **`instanceIdleTimeout=-1`** dans `%UserProfile%\.wslconfig` (section `[general]`, fichier à créer
+   soi-même puis `wsl --shutdown`) : désactive l'arrêt automatique de l'instance. Coût : **la VM et le
+   lab restent en mémoire en permanence** (les 7 conteneurs et leur RAM), même sans rien faire.
+   Selon la documentation Microsoft (« Advanced settings configuration in WSL | Microsoft Learn »,
+   <https://learn.microsoft.com/en-us/windows/wsl/wsl-config>), `instanceIdleTimeout` vaut 15000 ms par
+   défaut et `vmIdleTimeout` (section `[wsl2]`) 60000 ms. Cette page ne dit pas si un processus de
+   fond (cron, timer) compte comme une activité qui empêche l'arrêt : non vérifié, d'où la
+   recommandation d'un terminal ouvert ou du réglage explicite.
 
 ## Dépannage
 

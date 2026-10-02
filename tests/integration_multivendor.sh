@@ -136,6 +136,20 @@ grep -q '"id": "chemin-r1-vers-lan-r5"' "$JSON_DIR/a2.json" && grep -q "trou noi
 grep -q '"id": "ospf-r5-voisin-srlinux"' "$JSON_DIR/a2.json" && ok "assertion OSPF côté SR Linux présente dans le rapport" \
   || ko "assertion OSPF côté SR Linux absente du rapport"
 
+# ---------------------------------------------------------------- M1 : monitor sur les deux drivers
+title "M1 : monitor sur le lab mixte (FRR + SR Linux) -> OK, aucune alerte (lecture seule)"
+M_STATE="$JSON_DIR/m1_state.json"
+rm -f "$M_STATE" "$M_STATE.lock"
+$NC snapshot m1_nominal --force "${INV[@]}" >/dev/null
+# shellcheck disable=SC2086  # $NC est volontairement découpé en mots (interpréteur + -m netcheck)
+out=$(env -u NETCHECK_WEBHOOK_URL $NC monitor --baseline m1_nominal --intent intents/lab-multivendor.yml \
+  --rules netcheck/rules/default.yml --state-file "$M_STATE" "${INV[@]}" 2>&1); code=$?
+[[ "$code" == "0" ]] && ok "code retour = 0" || { ko "code retour = $code (attendu 0)"; echo "$out"; }
+echo "$out" | grep -q "netcheck monitor : OK (diff OK · assert OK · check OK)" \
+  && ok "statut OK sur les trois composants (r5 SR Linux inclus)" || { ko "statut inattendu"; echo "$out"; }
+grep -q '"status": "OK"' "$M_STATE" && ok "état enregistré (premier relevé OK, rien à annoncer)" \
+  || ko "fichier d'état absent ou inattendu"
+
 # ---------------------------------------------------------------- Bilan
 echo
 echo "=== Bilan : $PASS contrôles réussis, $FAIL échec(s) ==="

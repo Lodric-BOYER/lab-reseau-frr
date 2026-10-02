@@ -1,6 +1,6 @@
 """Interface en ligne de commande : `python -m netcheck <sous-commande> ...`.
 
-Six sous-commandes : snapshot, list, diff, check, guard, assert.
+Sept sous-commandes : snapshot, list, diff, check, guard, assert, monitor.
 """
 from __future__ import annotations
 
@@ -9,7 +9,19 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from netcheck import assertions, collector, compliance, diff, expect, guard, inventory, report, snapshot
+from netcheck import (
+    assertions,
+    collector,
+    compliance,
+    diff,
+    expect,
+    guard,
+    inventory,
+    monitor,
+    report,
+    snapshot,
+    webhook,
+)
 
 DEFAULT_RULES_PATH = Path(__file__).resolve().parent / "rules" / "default.yml"
 REPORTS_DIR = inventory.REPO_ROOT / "reports"  # journaux de guard ; ignoré par Git (C4)
@@ -248,6 +260,47 @@ def cmd_assert(args: argparse.Namespace) -> int:
     return code
 
 
+def cmd_monitor(args: argparse.Namespace) -> int:
+    """Surveillance planifiée, exécution unique (Phase E, SPEC_v3 §8). Lecture seule stricte :
+    ni guard, ni script, ni rollback. Voir netcheck/monitor.py pour le statut, l'anti-bruit
+    (--confirm) et les codes retour (0/1/2 = statut, 3 = refusé, 4 = verrou tenu)."""
+    # --- Tout ce qui peut être refusé l'est ICI, avant la moindre collecte (code 3) -----------
+    if args.confirm < 1:
+        print("Erreur : --confirm doit être >= 1", file=sys.stderr)
+        return monitor.EXIT_USAGE
+    url = None
+    try:
+        url = webhook.from_environment()   # ne cite jamais l'URL dans ses erreurs
+        baseline = snapshot.load(args.baseline)
+        intent = assertions.load_intent(args.intent) if args.intent else None
+        rules = compliance.load_rules(Path(args.rules)) if args.rules else None
+        inv = inventory.load(path=args.inventory)
+    except Exception as e:  # noqa: BLE001 -- toute erreur de chargement est un refus, code 3
+        print(f"Erreur : {webhook.redact(str(e), url)}", file=sys.stderr)
+        return monitor.EXIT_USAGE
+
+    cfg = monitor.MonitorConfig(
+        baseline_name=args.baseline, baseline=baseline, inventory=inv,
+        state_file=Path(args.state_file) if args.state_file else REPORTS_DIR / monitor.STATE_FILENAME,
+        reports_dir=REPORTS_DIR, intent=intent, intent_path=args.intent, rules=rules,
+        rules_path=args.rules, webhook_url=url, webhook_format=args.webhook_format,
+        confirm=args.confirm, dry_run=args.dry_run, repo_root=inventory.REPO_ROOT,
+    )
+    io = monitor.MonitorIO(
+        collect=lambda: collector.collect_all(inv.routers),
+        send=webhook.post,
+        now=lambda: datetime.now().astimezone(),
+    )
+    try:
+        return monitor.run_monitor(cfg, io)
+    except Exception as e:  # noqa: BLE001
+        # Une exception Python non gérée sortirait en code 1, lu à tort comme « ATTENTION » par un
+        # planificateur : un monitor qui n'a pas pu conclure doit le dire (code 3), sans alerte.
+        print(f"Erreur interne : monitor n'a pas pu conclure ({type(e).__name__}) : "
+              f"{webhook.redact(str(e), url)}", file=sys.stderr)
+        return monitor.EXIT_USAGE
+
+
 def cmd_list(_args: argparse.Namespace) -> int:
     snaps = snapshot.list_snapshots()
     if not snaps:
@@ -348,6 +401,27 @@ def build_parser() -> argparse.ArgumentParser:
     p_assert.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
     _add_inventory_arg(p_assert)
     p_assert.set_defaults(func=cmd_assert)
+
+    p_monitor = sub.add_parser(
+        "monitor", help="surveillance planifiée à exécution unique (cron/systemd) + alertes webhook")
+    p_monitor.add_argument(
+        "--baseline", required=True,
+        help="snapshot de référence : l'état nominal, à refaire après un changement légitime")
+    p_monitor.add_argument("--intent", help="fichier d'intent YAML (assertions) ; absent : non exécuté")
+    p_monitor.add_argument("--rules", help="fichier de règles de conformité YAML ; absent : non exécuté")
+    p_monitor.add_argument("--state-file", help="fichier d'état (défaut : reports/monitor_state.json)")
+    p_monitor.add_argument(
+        "--webhook-format", choices=("generic", "discord"), default="generic",
+        help="format du message (défaut : generic ; l'URL vient de NETCHECK_WEBHOOK_URL)")
+    p_monitor.add_argument(
+        "--confirm", type=int, default=1, metavar="N",
+        help="un nouveau statut doit être observé N fois de suite avant d'alerter, dans les deux sens "
+             "(défaut : 1)")
+    p_monitor.add_argument(
+        "--dry-run", action="store_true",
+        help="affiche le message qui serait envoyé ; n'envoie rien, n'écrit ni état ni rapport")
+    _add_inventory_arg(p_monitor)
+    p_monitor.set_defaults(func=cmd_monitor)
 
     return p
 
