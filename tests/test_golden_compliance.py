@@ -26,9 +26,12 @@ def test_golden_is_not_vacuous(rules_name):
     data = json.loads(golden.golden_path(rules_name).read_text(encoding="utf-8"))
     cases = data["cases"]
     assert data["meta"]["netcheck_version"] == "0.3.0"
-    for needed in ("fixture:frr-r3", "fixture:srlinux-r5", "fixture:eos-r4", "config:frr-r3",
-                   "config:eos-r4", "lab:frr", "lab:multivendor", "lab:ceos", "lab:config-frr"):
+    for needed in ("fixture:frr-r3", "fixture:srlinux-r5", "fixture:srlinux-r5-hardened",
+                   "fixture:eos-r4", "config:frr-r3", "config:eos-r4", "lab:frr", "lab:multivendor",
+                   "lab:ceos", "lab:config-frr"):
         assert needed in cases, needed
+    # Le r5 durci (relevé sur le lab mixte) est conforme : c'est le chemin « conforme » de SR Linux.
+    assert cases["fixture:srlinux-r5-hardened"]["base"]["compliant"] is True
 
     bases = [c["base"] for c in cases.values()]
     assert not any("error" in b for b in bases)

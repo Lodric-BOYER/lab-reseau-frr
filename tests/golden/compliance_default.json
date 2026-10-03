@@ -17,7 +17,16 @@
     "équipement",
     "raison"
    ]
-  }
+  },
+  "additions": [
+   {
+    "cases": [
+     "fixture:srlinux-r5-hardened"
+    ],
+    "code_commit": "b56a775",
+    "reason": "r5 durci relevé sur le lab mixte (snapshot v4a-ref-mixte) : keychain OSPF en aes1, bannière ; comble le trou de couverture SR Linux durci du gel A1"
+   }
+  ]
  },
  "cases": {
   "fixture:frr-r1": {
@@ -2164,6 +2173,139 @@
       "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
      ]
     ]
+   }
+  },
+  "fixture:srlinux-r5-hardened": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "syslog-actif",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "pas-de-mot-de-passe-en-clair",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lan-en-ospf-passif",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-journalisation-active",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-pas-de-route-defaut-statique",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-ospf-router-id-explicite",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ]
+    ]
+   },
+   "mutants_total": 92,
+   "mutants_changed": {
+    "63:15ff2f67": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "srlinux-ospf-point-to-point",
+       "r5",
+       "interface OSPF ethernet-1/1.0 active (non passive) sans interface-type point-to-point : risque d'élection DR/BDR inutile",
+       null
+      ]
+     ]
+    },
+    "69:19b9e7e0": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "srlinux-ospf-point-to-point",
+       "r5",
+       "interface OSPF ethernet-1/2.0 active (non passive) sans interface-type point-to-point : risque d'élection DR/BDR inutile",
+       null
+      ]
+     ]
+    },
+    "72:19b9e7e0": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "srlinux-ospf-point-to-point",
+       "r5",
+       "interface OSPF lo0.0 active (non passive) sans interface-type point-to-point : risque d'élection DR/BDR inutile",
+       null
+      ]
+     ]
+    },
+    "probe:ip-mtu-1514@8": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "srlinux-mtu-marge-suffisante",
+       "r5",
+       "interface ethernet-1/1 : mtu 1514 - ip-mtu 1514 = 0 < marge minimale 14 (cf. Phase C : ip-mtu-too-large)",
+       null
+      ]
+     ]
+    },
+    "probe:no-description@ethernet-1/1": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "interface-avec-description",
+       "r5",
+       "interface ethernet-1/1 (10.2.45.2/30) sans description",
+       null
+      ]
+     ]
+    },
+    "probe:no-description@ethernet-1/2": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "interface-avec-description",
+       "r5",
+       "interface ethernet-1/2 (192.168.2.1/24) sans description",
+       null
+      ]
+     ]
+    },
+    "probe:loopback-unknown": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "interface-avec-description",
+       "r5",
+       "interface lo0 (10.2.255.5/32) sans description",
+       null
+      ]
+     ]
+    }
    }
   }
  }

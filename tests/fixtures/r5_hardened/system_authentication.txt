@@ -1,0 +1,8 @@
+    keychain kc-ospf-r4r5 {
+        admin-state enable
+        type ospf
+        key 1 {
+            algorithm md5
+            authentication-key $aes1$ATKq7XVh31OHFG8=$BpGX4PMmmYzouU4jnG6LqA==
+        }
+    }

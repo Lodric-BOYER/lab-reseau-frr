@@ -1,0 +1,664 @@
+{
+  "name": "r5",
+  "host": "172.20.21.15",
+  "timestamp": "2026-10-03T14:57:45+00:00",
+  "reachable": true,
+  "error": null,
+  "interfaces": [
+    {
+      "name": "ethernet-1/1",
+      "description": "vers-r4",
+      "admin_up": true,
+      "oper_up": true,
+      "addresses": [
+        "10.2.45.2/30"
+      ],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/2",
+      "description": "LAN-pc2",
+      "admin_up": true,
+      "oper_up": true,
+      "addresses": [
+        "192.168.2.1/24"
+      ],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/3",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/4",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/5",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/6",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/7",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/8",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/9",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/10",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/11",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/12",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/13",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/14",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/15",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/16",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/17",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/18",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/19",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/20",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/21",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/22",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/23",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/24",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/25",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/26",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/27",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/28",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/29",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/30",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/31",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/32",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/33",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/34",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/35",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/36",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/37",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/38",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/39",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/40",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/41",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/42",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/43",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/44",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/45",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/46",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/47",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/48",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/49",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/50",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/51",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/52",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/53",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/54",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/55",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/56",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/57",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "ethernet-1/58",
+      "description": null,
+      "admin_up": false,
+      "oper_up": false,
+      "addresses": [],
+      "is_loopback": false
+    },
+    {
+      "name": "lo0",
+      "description": null,
+      "admin_up": true,
+      "oper_up": true,
+      "addresses": [
+        "10.2.255.5/32"
+      ],
+      "is_loopback": true
+    },
+    {
+      "name": "mgmt0",
+      "description": null,
+      "admin_up": true,
+      "oper_up": true,
+      "addresses": [
+        "172.20.21.15/24"
+      ],
+      "is_loopback": false
+    }
+  ],
+  "routes": [
+    {
+      "prefix": "10.1.0.0/16",
+      "protocol": "ospfv2",
+      "metric": 20,
+      "distance": 150,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": "10.2.45.1",
+          "interface": "ethernet-1/1.0",
+          "directly_connected": false
+        }
+      ]
+    },
+    {
+      "prefix": "10.2.45.0/30",
+      "protocol": "local",
+      "metric": 0,
+      "distance": 0,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": "10.2.45.2",
+          "interface": "ethernet-1/1.0",
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "10.2.45.2/32",
+      "protocol": "host",
+      "metric": 0,
+      "distance": 0,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": null,
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "10.2.45.3/32",
+      "protocol": "host",
+      "metric": 0,
+      "distance": 0,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": null,
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "10.2.255.4/32",
+      "protocol": "ospfv2",
+      "metric": 16,
+      "distance": 10,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": "10.2.45.1",
+          "interface": "ethernet-1/1.0",
+          "directly_connected": false
+        }
+      ]
+    },
+    {
+      "prefix": "10.2.255.5/32",
+      "protocol": "host",
+      "metric": 0,
+      "distance": 0,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": null,
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "172.16.34.0/30",
+      "protocol": "ospfv2",
+      "metric": 26,
+      "distance": 10,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": "10.2.45.1",
+          "interface": "ethernet-1/1.0",
+          "directly_connected": false
+        }
+      ]
+    },
+    {
+      "prefix": "192.168.1.0/24",
+      "protocol": "ospfv2",
+      "metric": 20,
+      "distance": 150,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": "10.2.45.1",
+          "interface": "ethernet-1/1.0",
+          "directly_connected": false
+        }
+      ]
+    },
+    {
+      "prefix": "192.168.2.0/24",
+      "protocol": "local",
+      "metric": 0,
+      "distance": 0,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": "192.168.2.1",
+          "interface": "ethernet-1/2.0",
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "192.168.2.1/32",
+      "protocol": "host",
+      "metric": 0,
+      "distance": 0,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": null,
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "192.168.2.255/32",
+      "protocol": "host",
+      "metric": 0,
+      "distance": 0,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": null,
+          "directly_connected": true
+        }
+      ]
+    }
+  ],
+  "ospf_neighbors": [
+    {
+      "router_id": "10.2.255.4",
+      "state": "Full",
+      "interface": "ethernet-1/1.0"
+    }
+  ],
+  "bgp_peers": [],
+  "bgp_prefixes": [],
+  "running_config": "# --- interface ---\n    interface ethernet-1/1 {\n        description vers-r4\n        admin-state enable\n        mtu 1514\n        subinterface 0 {\n            admin-state enable\n            ip-mtu 1500\n            ipv4 {\n                admin-state enable\n                address 10.2.45.2/30 {\n                }\n            }\n        }\n    }\n    interface ethernet-1/2 {\n        description LAN-pc2\n        admin-state enable\n        subinterface 0 {\n            admin-state enable\n            ipv4 {\n                admin-state enable\n                address 192.168.2.1/24 {\n                }\n            }\n        }\n    }\n    interface lo0 {\n        admin-state enable\n        subinterface 0 {\n            admin-state enable\n            ipv4 {\n                admin-state enable\n                address 10.2.255.5/32 {\n                }\n            }\n        }\n    }\n    interface mgmt0 {\n        admin-state enable\n        subinterface 0 {\n            admin-state enable\n            ipv4 {\n                admin-state enable\n                dhcp-client {\n                }\n            }\n            ipv6 {\n                admin-state enable\n                dhcp-client {\n                }\n            }\n        }\n    }\n\n# --- network-instance default protocols ospf ---\n    instance main {\n        admin-state enable\n        version ospf-v2\n        router-id 10.2.255.5\n        area 0.0.0.0 {\n            interface ethernet-1/1.0 {\n                interface-type point-to-point\n                authentication {\n                    keychain kc-ospf-r4r5\n                }\n            }\n            interface ethernet-1/2.0 {\n                passive true\n            }\n            interface lo0.0 {\n                passive true\n            }\n        }\n    }\n\n# --- system authentication ---\n    keychain kc-ospf-r4r5 {\n        admin-state enable\n        type ospf\n        key 1 {\n            algorithm md5\n            authentication-key $aes1$ATKq7XVh31OHFG8=$BpGX4PMmmYzouU4jnG6LqA==\n        }\n    }\n\n# --- system banner ---\n    login-banner \"Acces reserve - lab de demonstration - toute activite peut etre journalisee\"\n",
+  "driver": "srlinux"
+}

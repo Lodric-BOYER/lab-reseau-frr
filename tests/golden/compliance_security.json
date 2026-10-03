@@ -17,7 +17,16 @@
     "équipement",
     "raison"
    ]
-  }
+  },
+  "additions": [
+   {
+    "cases": [
+     "fixture:srlinux-r5-hardened"
+    ],
+    "code_commit": "b56a775",
+    "reason": "r5 durci relevé sur le lab mixte (snapshot v4a-ref-mixte) : keychain OSPF en aes1, bannière ; comble le trou de couverture SR Linux durci du gel A1"
+   }
+  ]
  },
  "cases": {
   "fixture:frr-r1": {
@@ -5464,6 +5473,149 @@
       "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
      ]
     ]
+   }
+  },
+  "fixture:srlinux-r5-hardened": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 92,
+   "mutants_changed": {
+    "65:81e55cc8": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "srlinux-ospf-authentification-keychain",
+       "r5",
+       "interface OSPF ethernet-1/1.0 active (non passive) sans authentification (aucune keychain référencée)",
+       "ospf"
+      ]
+     ]
+    },
+    "69:19b9e7e0": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "srlinux-ospf-authentification-keychain",
+       "r5",
+       "interface OSPF ethernet-1/2.0 active (non passive) sans authentification (aucune keychain référencée)",
+       "ospf"
+      ]
+     ]
+    },
+    "72:19b9e7e0": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "srlinux-ospf-authentification-keychain",
+       "r5",
+       "interface OSPF lo0.0 active (non passive) sans authentification (aucune keychain référencée)",
+       "ospf"
+      ]
+     ]
+    },
+    "77:329c55d7": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "srlinux-ospf-authentification-keychain",
+       "r5",
+       "interface OSPF ethernet-1/1.0 référence la keychain 'kc-ospf-r4r5', introuvable sous /system authentication",
+       "ospf"
+      ]
+     ]
+    },
+    "78:cbfd2a92": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "srlinux-ospf-authentification-keychain",
+       "r5",
+       "interface OSPF ethernet-1/1.0 référence la keychain 'kc-ospf-r4r5', introuvable sous /system authentication",
+       "ospf"
+      ]
+     ]
+    },
+    "80:0143dd16": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "srlinux-ospf-authentification-keychain",
+       "r5",
+       "interface OSPF ethernet-1/1.0 référence la keychain 'kc-ospf-r4r5', qui n'est pas de type ospf",
+       "ospf"
+      ]
+     ]
+    },
+    "88:68573960": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "srlinux-banniere-de-connexion",
+       "r5",
+       "aucune ligne ne correspond à /^\\s*login-banner\\s/",
+       "acces"
+      ]
+     ]
+    }
    }
   }
  }

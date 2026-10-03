@@ -96,6 +96,11 @@ def _from_fixtures(driver_cls, driver_name: str, folder: Path, name: str, files:
     return state
 
 
+def _from_state_file(path: Path) -> DeviceState:
+    """État normalisé d'un snapshot réel (DeviceState tel que le driver l'a produit sur le lab)."""
+    return DeviceState.from_dict(json.loads(path.read_text(encoding="utf-8")))
+
+
 def _config_only(name: str, driver_name: str, path: Path) -> DeviceState:
     """Configuration seule, sans aucun modèle : l'état que produira `check --config-dir`."""
     return DeviceState(name=name, host="-", timestamp="", reachable=True,
@@ -109,6 +114,8 @@ def devices() -> dict[str, DeviceState]:
         out[f"fixture:frr-{r}"] = _from_fixtures(FrrDriver, "frr", FIXTURES / r, r, _FILES)
     out["fixture:srlinux-r5"] = _from_fixtures(
         SrlinuxDriver, "srlinux", FIXTURES / "r5", "r5", _SRLINUX_FILES)
+    # Ajouté après A1 (r5 durci, relevé sur le lab mixte : keychain OSPF en $aes1$, bannière).
+    out["fixture:srlinux-r5-hardened"] = _from_state_file(FIXTURES / "r5_hardened" / "state.json")
     ceos = FIXTURES / "ceos"
     for scenario in sorted(p.name for p in ceos.iterdir() if p.is_dir()):
         out[f"fixture:eos-{scenario}"] = _from_fixtures(EosDriver, "eos", ceos / scenario, "r4", _FILES)
@@ -235,20 +242,35 @@ def _delta(base: dict, rec: dict) -> dict:
     return {k: v for k, v in rec.items() if base[k] != v}
 
 
-def build(rules_name: str) -> dict:
+def _build_device_case(rules, state: DeviceState) -> dict:
+    base = record(rules, {state.name: state})
+    changed, total = {}, 0
+    for key, mutated in mutants(state):
+        total += 1
+        rec = record(rules, {state.name: mutated})
+        if rec != base:
+            changed[key] = _delta(base, rec)
+    return {"base": base, "mutants_total": total, "mutants_changed": changed}
+
+
+def build_cases(rules_name: str, only: list[str] | None = None) -> dict[str, dict]:
+    """Tous les cas, ou seulement ceux de `only` (ajout d'un cas sans toucher aux autres)."""
     rules = compliance.load_rules(RULE_FILES[rules_name])
     cases: dict[str, dict] = {}
     for case_id, state in devices().items():
-        base = record(rules, {state.name: state})
-        changed, total = {}, 0
-        for key, mutated in mutants(state):
-            total += 1
-            rec = record(rules, {state.name: mutated})
-            if rec != base:
-                changed[key] = _delta(base, rec)
-        cases[case_id] = {"base": base, "mutants_total": total, "mutants_changed": changed}
+        if only is None or case_id in only:
+            cases[case_id] = _build_device_case(rules, state)
     for case_id, devs in labs().items():
-        cases[case_id] = {"base": record(rules, devs, LAB_MGMT[case_id])}
+        if only is None or case_id in only:
+            cases[case_id] = {"base": record(rules, devs, LAB_MGMT[case_id])}
+    unknown = set(only or ()) - set(cases)
+    if unknown:
+        raise SystemExit(f"cas inconnu(s) : {sorted(unknown)}")
+    return cases
+
+
+def build(rules_name: str) -> dict:
+    cases = build_cases(rules_name)
     return {
         "meta": {
             "netcheck_version": __version__,
@@ -268,6 +290,36 @@ def _code_commit() -> str:
     out = subprocess.run(["git", "-C", str(REPO), "log", "-1", "--format=%h", "--", "netcheck/"],
                          capture_output=True, text=True, check=False)
     return out.stdout.strip() or "inconnu"
+
+
+def _write(path: Path, data: dict) -> None:
+    path.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def add_cases(case_ids: list[str], reason: str) -> None:
+    """Ajoute des cas NOUVEAUX au gel, sans toucher aux autres. Refuse d'écraser un cas existant, et
+    refuse de tourner si netcheck/ diffère du code de référence du gel : un ajout n'est légitime que
+    tant que le moteur répond encore comme la v0.3.0. Les autres cas restent identiques à l'octet."""
+    for rules_name in RULE_FILES:
+        data = json.loads(golden_path(rules_name).read_text(encoding="utf-8"))
+        reference = data["meta"]["code_commit"]
+        changed = subprocess.run(["git", "-C", str(REPO), "diff", "--quiet", reference, "--", "netcheck/"],
+                                 check=False).returncode
+        if changed:
+            raise SystemExit(f"netcheck/ diffère du code de référence {reference} : ajout refusé "
+                             "(un écart voulu se traite cas par cas, après validation)")
+        clash = [c for c in case_ids if c in data["cases"]]
+        if clash:
+            raise SystemExit(f"{rules_name} : cas déjà gelé(s) {clash}, jamais écrasés")
+        data["cases"].update(build_cases(rules_name, only=case_ids))
+        data["meta"].setdefault("additions", []).append(
+            {"cases": case_ids, "code_commit": reference, "reason": reason})
+        _write(golden_path(rules_name), data)
+        for case_id in case_ids:
+            case = data["cases"][case_id]
+            print(f"{rules_name} : + {case_id} : {case['mutants_total']} mutations "
+                  f"({len(case['mutants_changed'])} changent la réponse), "
+                  f"conforme={case['base'].get('compliant')}")
 
 
 def _normalized(data) -> object:
@@ -326,6 +378,9 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("record")
     sub.add_parser("compare")
+    add = sub.add_parser("add", help="ajoute des cas nouveaux au gel (jamais d'écrasement)")
+    add.add_argument("cases", nargs="+")
+    add.add_argument("--reason", required=True)
     ref = sub.add_parser("reference")
     ref.add_argument("action", choices=["record", "compare"])
     args = parser.parse_args(argv)
@@ -341,6 +396,10 @@ def main(argv: list[str] | None = None) -> int:
             mutants_changed = sum(len(c.get("mutants_changed", {})) for c in cases.values())
             print(f"{golden_path(rules_name).relative_to(REPO)} : {len(cases)} cas, "
                   f"{mutants_total} mutations ({mutants_changed} changent la réponse)")
+        return 0
+
+    if args.command == "add":
+        add_cases(args.cases, args.reason)
         return 0
 
     if args.command == "compare":

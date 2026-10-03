@@ -1,0 +1,19 @@
+    instance main {
+        admin-state enable
+        version ospf-v2
+        router-id 10.2.255.5
+        area 0.0.0.0 {
+            interface ethernet-1/1.0 {
+                interface-type point-to-point
+                authentication {
+                    keychain kc-ospf-r4r5
+                }
+            }
+            interface ethernet-1/2.0 {
+                passive true
+            }
+            interface lo0.0 {
+                passive true
+            }
+        }
+    }

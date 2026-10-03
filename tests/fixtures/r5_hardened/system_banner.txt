@@ -1,0 +1,1 @@
+    login-banner "Acces reserve - lab de demonstration - toute activite peut etre journalisee"
