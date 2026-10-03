@@ -1,0 +1,97 @@
+! r4 : Arista cEOS (Phase F, O6) -- remplace le r4 FRR de configs/r4/frr.conf, MEME logique :
+!   - OSPF area 0 vers r5, authentification message-digest (MD5), lien point-a-point ;
+!   - eBGP AS65002 <-> r3 (AS65001) : TCP-MD5, GTSM (ttl maximum-hops 1), maximum-routes 10,
+!     filtrage entrant et sortant par prefix-list + route-map ;
+!   - agregat 10.2.0.0/16 porte par une route de rejet Null0 ; redistribution BGP -> OSPF.
+! Les secrets sont ceux du lab FRR (lab uniquement, C11) ; EOS les stocke ensuite en « type 7 »
+! dans la running-config (reversible : traite comme un secret par netcheck/secrets.py).
+! Syntaxe verifiee EN DIRECT sur cEOS 4.34.8M (aucune commande devinee) ; les lignes de plate-forme
+! (aaa, utilisateur admin par defaut de l'image, multi-agent) reprennent la configuration par
+! defaut generee par containerlab. Differences voulues avec cette configuration par defaut :
+!   - AUCUNE API de gestion (eAPI, gNMI, NETCONF) : seul SSH est utilise, et un lab de securite
+!     n'expose pas d'API inutiles (la regle de conformite eos-api-gestion-exposee le verifie) ;
+!   - pas de route par defaut via Management0 : elle n'a pas de role ici et polluerait la table
+!     de routage de r4.
+!
+no aaa root
+!
+username admin privilege 15 role network-admin secret sha512 $6$BfyQeqMEAOYfFIFW$2TgamS6RUy/xvOEvKUwPWTVOBo3/XKjMOv0OJc1jq0e5avT1XGjkSpRvtprKpxM3u/HbtqsRiDweed98L7PYS.
+!
+no service interface inactive port-id allocation disabled
+!
+transceiver qsfp default-mode 4x10G
+!
+service routing protocols model multi-agent
+!
+hostname r4
+!
+spanning-tree mode mstp
+!
+system l1
+   unsupported speed action error
+   unsupported error-correction action error
+!
+interface Ethernet1
+   description eBGP-vers-r3-AS65001
+   no switchport
+   ip address 172.16.34.2/30
+   ip ospf area 0.0.0.0
+!
+interface Ethernet2
+   description vers-r5
+   no switchport
+   ip address 10.2.45.1/30
+   ip ospf network point-to-point
+   ip ospf authentication message-digest
+   ip ospf message-digest-key 1 md5 lab-ospf-r4r5
+   ip ospf area 0.0.0.0
+!
+interface Loopback0
+   ip address 10.2.255.4/32
+   ip ospf area 0.0.0.0
+!
+interface Management0
+   ip address 172.20.22.14/24
+!
+ip routing
+!
+! Route de rejet pour l'agregat annonce en BGP (bonne pratique operateur)
+ip route 10.2.0.0/16 Null0
+!
+ip prefix-list PL-EBGP-OUT seq 10 permit 10.2.0.0/16
+ip prefix-list PL-EBGP-OUT seq 20 permit 192.168.2.0/24
+ip prefix-list PL-EBGP-IN seq 10 permit 10.1.0.0/16
+ip prefix-list PL-EBGP-IN seq 20 permit 192.168.1.0/24
+!
+route-map RM-EBGP-IN permit 10
+   match ip address prefix-list PL-EBGP-IN
+!
+route-map RM-EBGP-OUT permit 10
+   match ip address prefix-list PL-EBGP-OUT
+!
+router ospf 1
+   router-id 10.2.255.4
+   passive-interface Ethernet1
+   passive-interface Loopback0
+   redistribute bgp
+!
+router bgp 65002
+   router-id 10.2.255.4
+   neighbor 172.16.34.1 remote-as 65001
+   neighbor 172.16.34.1 description r3-AS65001
+   neighbor 172.16.34.1 password lab-bgp-r3r4
+   neighbor 172.16.34.1 ttl maximum-hops 1
+   neighbor 172.16.34.1 maximum-routes 10
+   neighbor 172.16.34.1 route-map RM-EBGP-IN in
+   neighbor 172.16.34.1 route-map RM-EBGP-OUT out
+   network 10.2.0.0/16
+   network 192.168.2.0/24
+!
+router multicast
+   ipv4
+      software-forwarding kernel
+   !
+   ipv6
+      software-forwarding kernel
+!
+end

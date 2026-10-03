@@ -1,0 +1,5470 @@
+{
+ "meta": {
+  "netcheck_version": "0.3.0",
+  "code_commit": "b56a775",
+  "rules": "netcheck/rules/security.yml",
+  "mutation": "suppression d'une ligne non vide (hors '!') et sondes nommées (probe:*) ; seules les mutations dont la réponse diffère de la base sont stockées, et seulement les champs qui diffèrent",
+  "columns": {
+   "violations": [
+    "gravité",
+    "règle",
+    "équipement",
+    "détail",
+    "catégorie"
+   ],
+   "not_applicable": [
+    "règle",
+    "équipement",
+    "raison"
+   ]
+  }
+ },
+ "cases": {
+  "fixture:frr-r1": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r1",
+      "interface eth1 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r1",
+      "interface eth2 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 42,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "basse",
+       "securite-journalisation-active",
+       "r1",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       "journalisation"
+      ]
+     ]
+    },
+    "12:30372a65": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "15:6bc0ec10": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "17:de3ac217": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "19:7c000824": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "22:6bc0ec10": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "24:de3ac217": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "30:077c3838": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth3 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "36:077c3838": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface lo : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r1",
+       "ligne interdite trouvée : 'password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r1",
+       "ligne interdite trouvée : 'enable password ****'",
+       "acces"
+      ]
+     ]
+    }
+   }
+  },
+  "fixture:frr-r3": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r3",
+      "interface eth1 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r3",
+      "interface eth2 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ebgp-authentification-tcp-md5",
+      "r3",
+      "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-maximum-prefix",
+      "r3",
+      "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-gtsm-ttl-security",
+      "r3",
+      "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+      "bgp"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 75,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "basse",
+       "securite-journalisation-active",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       "journalisation"
+      ]
+     ]
+    },
+    "19:30372a65": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "22:6bc0ec10": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "24:de3ac217": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "26:7c000824": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "29:6bc0ec10": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "31:de3ac217": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "37:077c3838": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth3 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "43:077c3838": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface lo : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "46:187410a0": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "48:1b8a29bd": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "66:de3ac217": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r3",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 10.1.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r3",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 192.168.1.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'enable password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@14": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@14": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@15": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@15": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@46": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "fixture:frr-r4": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r4",
+      "interface eth2 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-maximum-prefix",
+      "r4",
+      "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+      "bgp"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 68,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "basse",
+       "securite-journalisation-active",
+       "r4",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       "journalisation"
+      ]
+     ]
+    },
+    "23:077c3838": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "26:7c000824": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "29:6bc0ec10": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "31:de3ac217": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "36:077c3838": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface lo : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "39:91caf8c9": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "41:20e57def": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "59:de3ac217": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r4",
+       "ligne interdite trouvée : 'password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r4",
+       "ligne interdite trouvée : 'enable password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@14": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@14": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@15": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@15": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@39": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "fixture:srlinux-r5": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "srlinux-ospf-authentification-keychain",
+      "r5",
+      "interface OSPF ethernet-1/1.0 active (non passive) sans authentification (aucune keychain référencée)",
+      "ospf"
+     ],
+     [
+      "basse",
+      "srlinux-banniere-de-connexion",
+      "r5",
+      "aucune ligne ne correspond à /^\\s*login-banner\\s/",
+      "acces"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {
+    "56:36affac2": {
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "srlinux-banniere-de-connexion",
+       "r5",
+       "aucune ligne ne correspond à /^\\s*login-banner\\s/",
+       "acces"
+      ]
+     ]
+    },
+    "62:81aaac1c": {
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "srlinux-banniere-de-connexion",
+       "r5",
+       "aucune ligne ne correspond à /^\\s*login-banner\\s/",
+       "acces"
+      ]
+     ]
+    },
+    "64:c2b7df62": {
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "srlinux-banniere-de-connexion",
+       "r5",
+       "aucune ligne ne correspond à /^\\s*login-banner\\s/",
+       "acces"
+      ]
+     ]
+    },
+    "66:19b9e7e0": {
+     "violations": [
+      [
+       "haute",
+       "srlinux-ospf-authentification-keychain",
+       "r5",
+       "interface OSPF ethernet-1/1.0 active (non passive) sans authentification (aucune keychain référencée)",
+       "ospf"
+      ],
+      [
+       "haute",
+       "srlinux-ospf-authentification-keychain",
+       "r5",
+       "interface OSPF ethernet-1/2.0 active (non passive) sans authentification (aucune keychain référencée)",
+       "ospf"
+      ],
+      [
+       "basse",
+       "srlinux-banniere-de-connexion",
+       "r5",
+       "aucune ligne ne correspond à /^\\s*login-banner\\s/",
+       "acces"
+      ]
+     ]
+    },
+    "69:19b9e7e0": {
+     "violations": [
+      [
+       "haute",
+       "srlinux-ospf-authentification-keychain",
+       "r5",
+       "interface OSPF ethernet-1/1.0 active (non passive) sans authentification (aucune keychain référencée)",
+       "ospf"
+      ],
+      [
+       "haute",
+       "srlinux-ospf-authentification-keychain",
+       "r5",
+       "interface OSPF lo0.0 active (non passive) sans authentification (aucune keychain référencée)",
+       "ospf"
+      ],
+      [
+       "basse",
+       "srlinux-banniere-de-connexion",
+       "r5",
+       "aucune ligne ne correspond à /^\\s*login-banner\\s/",
+       "acces"
+      ]
+     ]
+    }
+   }
+  },
+  "fixture:eos-degraded_api_exposed": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "eos-api-gestion-exposee",
+      "r4",
+      "API de gestion eAPI (management api http-commands) active (no shutdown)",
+      "acces"
+     ],
+     [
+      "haute",
+      "eos-api-gestion-exposee",
+      "r4",
+      "API de gestion gNMI (management api gnmi) active (transport configuré)",
+      "acces"
+     ],
+     [
+      "haute",
+      "eos-api-gestion-exposee",
+      "r4",
+      "API de gestion NETCONF (management api netconf) active (transport configuré)",
+      "acces"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ]
+    ]
+   },
+   "mutants_total": 86,
+   "mutants_changed": {
+    "8:5f9c6a63": {
+     "violations": [
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "9:b9d2b990": {
+     "violations": [
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "25:2105e560": {
+     "violations": [
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "26:674cc95b": {
+     "violations": [
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "28:07e5911f": {
+     "violations": [
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "29:f4a81aff": {
+     "violations": [
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "42:4e2f7b4e": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "44:183e7882": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : message-digest activé mais aucune clé md5 configurée",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "72:309a8686": {
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "75:c847a6c5": {
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "76:52acb5e4": {
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-routes",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "89:55f23123": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "90:5aa8af9d": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Loopback0 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@68": {
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans limite maximum-routes",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "probe:limit-zero@76": {
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    }
+   }
+  },
+  "fixture:eos-degraded_bgp_connect": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {
+    "33:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "35:183e7882": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : message-digest activé mais aucune clé md5 configurée",
+       "ospf"
+      ]
+     ]
+    },
+    "63:309a8686": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "66:adb42a2a": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "67:52acb5e4": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "80:55f23123": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "81:5aa8af9d": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Loopback0 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@59": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@67": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "fixture:eos-degraded_bgp_maxpath": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {
+    "33:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "35:183e7882": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : message-digest activé mais aucune clé md5 configurée",
+       "ospf"
+      ]
+     ]
+    },
+    "63:309a8686": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "66:c847a6c5": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "67:52acb5e4": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "80:55f23123": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "81:5aa8af9d": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Loopback0 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@59": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@67": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "fixture:eos-degraded_interface_shutdown": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ]
+    ]
+   },
+   "mutants_total": 81,
+   "mutants_changed": {
+    "34:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "36:183e7882": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : message-digest activé mais aucune clé md5 configurée",
+       "ospf"
+      ]
+     ]
+    },
+    "64:309a8686": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "67:c847a6c5": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "68:52acb5e4": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "81:55f23123": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "82:5aa8af9d": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Loopback0 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@60": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@68": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "fixture:eos-degraded_ospf_down": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {
+    "33:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "35:aab922a1": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : message-digest activé mais aucune clé md5 configurée",
+       "ospf"
+      ]
+     ]
+    },
+    "63:309a8686": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "66:c847a6c5": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "67:52acb5e4": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "80:55f23123": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "81:5aa8af9d": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Loopback0 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@59": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@67": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "fixture:eos-r4": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {
+    "33:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "35:183e7882": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : message-digest activé mais aucune clé md5 configurée",
+       "ospf"
+      ]
+     ]
+    },
+    "63:309a8686": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "66:c847a6c5": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "67:52acb5e4": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "80:55f23123": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "81:5aa8af9d": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Loopback0 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@59": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@67": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "config:frr-r1": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 38,
+   "mutants_changed": {
+    "3:83f2453e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "securite-journalisation-active",
+       "r1",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       "journalisation"
+      ]
+     ]
+    },
+    "9:077c3838": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface lo : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "16:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "25:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "34:077c3838": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r1",
+       "interface eth3 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r1",
+       "ligne interdite trouvée : 'password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r1",
+       "ligne interdite trouvée : 'enable password ****'",
+       "acces"
+      ]
+     ]
+    }
+   }
+  },
+  "config:frr-r2": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 32,
+   "mutants_changed": {
+    "3:83f2453e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "securite-journalisation-active",
+       "r2",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       "journalisation"
+      ]
+     ]
+    },
+    "9:077c3838": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r2",
+       "interface lo : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "16:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r2",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "25:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r2",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r2",
+       "ligne interdite trouvée : 'password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r2",
+       "ligne interdite trouvée : 'enable password ****'",
+       "acces"
+      ]
+     ]
+    }
+   }
+  },
+  "config:frr-r3": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 76,
+   "mutants_changed": {
+    "3:83f2453e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "securite-journalisation-active",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       "journalisation"
+      ]
+     ]
+    },
+    "9:077c3838": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface lo : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "16:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "25:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "34:077c3838": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth3 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "52:de3ac217": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r3",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 10.1.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r3",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 192.168.1.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "62:95313dd9": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "63:48bfb93d": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "68:9175810f": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'enable password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@48": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@48": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@58": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "config:frr-r4": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 68,
+   "mutants_changed": {
+    "3:83f2453e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "securite-journalisation-active",
+       "r4",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       "journalisation"
+      ]
+     ]
+    },
+    "9:077c3838": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface lo : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "16:077c3838": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "23:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r4",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "43:de3ac217": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "53:d092f488": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "54:14924cce": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "59:c5a51580": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r4",
+       "ligne interdite trouvée : 'password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r4",
+       "ligne interdite trouvée : 'enable password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@38": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@38": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@39": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@39": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@49": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "config:frr-r5": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 30,
+   "mutants_changed": {
+    "3:83f2453e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "securite-journalisation-active",
+       "r5",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       "journalisation"
+      ]
+     ]
+    },
+    "9:077c3838": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r5",
+       "interface lo : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "16:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r5",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "25:077c3838": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r5",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r5",
+       "ligne interdite trouvée : 'password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r5",
+       "ligne interdite trouvée : 'enable password ****'",
+       "acces"
+      ]
+     ]
+    }
+   }
+  },
+  "config:eos-r4": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ]
+    ]
+   },
+   "mutants_total": 90,
+   "mutants_changed": {
+    "45:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "46:a904f07a": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : message-digest activé mais aucune clé md5 configurée",
+       "ospf"
+      ]
+     ]
+    },
+    "74:55f23123": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "75:5aa8af9d": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Loopback0 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "82:d092f488": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "83:309a8686": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "84:52acb5e4": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@78": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@84": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "lab:frr": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r1",
+      "interface eth1 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r1",
+      "interface eth2 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r3",
+      "interface eth1 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r3",
+      "interface eth2 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r4",
+      "interface eth2 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ebgp-authentification-tcp-md5",
+      "r3",
+      "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+      "bgp"
+     ],
+     [
+      "haute",
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-maximum-prefix",
+      "r3",
+      "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-maximum-prefix",
+      "r4",
+      "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-gtsm-ttl-security",
+      "r3",
+      "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+      "bgp"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   }
+  },
+  "lab:multivendor": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r1",
+      "interface eth1 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r1",
+      "interface eth2 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r3",
+      "interface eth1 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r3",
+      "interface eth2 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r4",
+      "interface eth2 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "srlinux-ospf-authentification-keychain",
+      "r5",
+      "interface OSPF ethernet-1/1.0 active (non passive) sans authentification (aucune keychain référencée)",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ebgp-authentification-tcp-md5",
+      "r3",
+      "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+      "bgp"
+     ],
+     [
+      "haute",
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-maximum-prefix",
+      "r3",
+      "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-maximum-prefix",
+      "r4",
+      "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-gtsm-ttl-security",
+      "r3",
+      "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
+      "bgp"
+     ],
+     [
+      "basse",
+      "srlinux-banniere-de-connexion",
+      "r5",
+      "aucune ligne ne correspond à /^\\s*login-banner\\s/",
+      "acces"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   }
+  },
+  "lab:ceos": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r1",
+      "interface eth1 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r1",
+      "interface eth2 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r3",
+      "interface eth1 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ospf-authentification-message-digest",
+      "r3",
+      "interface eth2 : adjacence OSPF active sans authentification message-digest",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ebgp-authentification-tcp-md5",
+      "r3",
+      "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-maximum-prefix",
+      "r3",
+      "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-gtsm-ttl-security",
+      "r3",
+      "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+      "bgp"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   }
+  },
+  "lab:config-frr": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   }
+  },
+  "lab:config-ceos": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   }
+  }
+ }
+}
