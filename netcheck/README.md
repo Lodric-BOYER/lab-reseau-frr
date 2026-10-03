@@ -13,7 +13,7 @@ pour l'usage), mais conçu pour s'étendre à d'autres constructeurs.
 
 ```
 netcheck/
-├── cli.py                 # argparse : snapshot, list, diff, check, guard, assert
+├── cli.py                 # argparse : snapshot, list, diff, check, guard, assert, monitor
 ├── assertions.py          # `assert` : 6 types d'état attendu, évalués sur le modèle (Phase C)
 ├── expect.py              # `--expect` : changements prévus, garde-fous anti-masquage (Phase D1)
 ├── guard.py               # `guard` : retour arrière, codes 0-6, journal, délais (Phase D2)
@@ -64,10 +64,21 @@ sorties (terminal, JSON, HTML) mais n'entre jamais dans `verdict()` ni le code r
 
 ## Sécurité
 
-- **C1 (lecture seule)** : `collector.ALLOWED_COMMANDS` est la seule liste de commandes qui
-  peuvent être envoyées à un équipement. Vérifiée deux fois : sur tout `REQUIRED_COMMANDS`
-  du driver avant même la connexion SSH, puis à nouveau avant l'envoi de chaque commande
-  individuelle. Un driver ne peut donc jamais faire passer une commande de configuration.
+- **C1 (lecture seule), à deux niveaux.** (1) `collector.ALLOWED_COMMANDS` est la liste des
+  commandes *logiques* qui peuvent être demandées à un équipement ; vérifiée deux fois : sur tout
+  `REQUIRED_COMMANDS` du driver avant même la connexion SSH, puis à nouveau avant l'envoi de
+  chaque commande individuelle. (2) Depuis la Phase F, un driver peut déclarer `ALLOWED_CLI` : la
+  liste des commandes CLI *réelles*, en **correspondance exacte** de la chaîne complète (le driver
+  EOS : six chaînes, suffixe `| json` compris). Le niveau 1 ne voit pas ce que `translate()`
+  fabrique ; le niveau 2 porte sur ce qui part réellement. Un driver ne peut donc jamais faire
+  passer une commande de configuration, une redirection ou un second pipe.
+- **`monitor` ne modifie rien** : il n'importe ni `guard` ni `subprocess` (vérifié par un test
+  statique) et n'écrit que son état, son verrou et ses rapports locaux. **`guard`** est la seule
+  commande qui exécute quelque chose de modifiant -- et c'est le script de l'utilisateur.
+- **Secrets** : `secrets.mask_secrets` masque, dans tout ce qui est publié (rapports terminal,
+  JSON et HTML, journaux de `guard`, alertes de `monitor`), la valeur de chaque secret reconnu --
+  règle générique « mot-clé, type facultatif, valeur », mot-clé conservé. Les snapshots, eux, sont
+  bruts et restent hors Git. **L'URL d'un webhook est un secret** : jamais affichée ni journalisée.
 - **Règles YAML** : chargées avec `yaml.safe_load` exclusivement (jamais `yaml.load`). Un
   fichier de règles peut venir d'une revue de code ou d'un partage réseau — ce n'est pas un
   canal de confiance. Voir `compliance.load_rules`.
@@ -76,12 +87,76 @@ sorties (terminal, JSON, HTML) mais n'entre jamais dans `verdict()` ni le code r
   échappées côté serveur — jamais de réinjection de texte en JavaScript. Aucune ressource
   externe (CSS/JS intégrés). Voir `tests/test_report.py` pour les preuves (payload XSS
   vérifié échappé, absence d'`innerHTML`, absence de `http://`/`https://`/`src=`).
-- **`guard`** est la seule commande qui exécute quelque chose de modifiant — et c'est le
-  script fourni par l'utilisateur (`--change`) qui le fait, jamais netcheck lui-même.
+
+## Formats de fichiers : intent (`assert`) et expect (`--expect`)
+
+Les deux sont du YAML chargé par `yaml.safe_load` exclusivement, et **validés en entier avant la
+moindre action** (code retour 3 sinon, jamais découvert après l'exécution d'un script de
+changement). Exemples réels : `intents/lab.yml`, `intents/lab-multivendor.yml`,
+`intents/lab-ceos.yml`, `tests/expect/*.yml`.
+
+### Intent : l'état attendu (`netcheck assert --intent f.yml [--snapshot s]`)
+
+```yaml
+assertions:
+  - id: bgp-r3-vers-r4              # obligatoire, unique
+    description: "..."              # obligatoire
+    device: r3                      # obligatoire (point de départ pour `path`)
+    type: bgp_session               # obligatoire : un des six types ci-dessous
+    neighbor: 172.16.34.2           # + paramètres propres au type
+```
+
+| `type` | Paramètres | Vérifie |
+|---|---|---|
+| `bgp_session` | `neighbor` ; `state` (défaut `Established`), `min_prefixes_received` | la session existe, dans l'état voulu, avec assez de préfixes |
+| `ospf_neighbors` | `count` ; `state` (défaut `Full`) | **exactement** `count` voisins dans cet état |
+| `route_present` | `prefix` ; `protocol`, `next_hop`, `interface` | route **sélectionnée** au préfixe EXACT (pas de LPM), avec les attributs donnés |
+| `route_absent` | `prefix` | aucune route sélectionnée à ce préfixe EXACT |
+| `interface_up` | `interface` | interface présente, administrativement et opérationnellement active |
+| `path` | `prefix`, `via` (suite d'équipements après `device`) ; `mode: all\|any` (défaut `all`) | le chemin logique calculé de saut en saut |
+
+Résultat par assertion : **OK**, **ÉCHEC** ou **NON ÉVALUABLE** (jamais un OK silencieux). Code
+retour : 0 tout OK, 2 au moins un ÉCHEC, 3 usage ; NON ÉVALUABLE ne change pas le code (mais
+`monitor` le traite comme ATTENTION). Évalué **uniquement sur le modèle normalisé** : les mêmes
+assertions fonctionnent sur FRR, SR Linux et EOS.
+
+`path` : à chaque saut, route sélectionnée la **plus spécifique** (longest prefix match), puis
+saut suivant résolu par l'adresse du next-hop (table adresse -> équipement, interfaces de
+management exclues) ; arrêt quand le préfixe est directement connecté. Un **trou noir** (aucune
+route, ou route de rejet Null0 / `dropRoute`) est un fait observable : **ÉCHEC** avec « trou
+noir », jamais NON ÉVALUABLE. NON ÉVALUABLE est réservé aux limites de la méthode : boucle,
+profondeur maximale (16 sauts), next-hop inconnu, adresse portée par deux équipements, équipement
+injoignable. En ECMP, `mode: all` exige que toutes les branches soient conformes, `any` qu'une
+seule le soit ; l'échec montre le chemin calculé (« attendu r1 r3 r4 r5, obtenu … »).
+
+### Expect : ce que l'intervention est censée changer (`diff|guard --expect f.yml`)
+
+```yaml
+findings:                  # critères sur les constats du diff
+  - id: r1-bascule-next-hop        # obligatoire, unique
+    description: "..."             # obligatoire
+    device: r1                     # obligatoire : un nom précis (jamais « all », jamais une liste)
+    category: next_hop             # obligatoire : une catégorie réelle de diff.FINDING_CATEGORIES
+    pattern: "10\\.1\\.23\\.0/30"  # facultatif : regex (re.search) sur le message du constat
+    severity: attention            # facultatif : info | attention | critique (défaut attention)
+    count: 5                       # facultatif : nombre EXACT de constats attendus
+after:                     # assertions au format intent, évaluées sur l'état APRÈS le changement
+  - {id: ..., description: ..., device: r1, type: ospf_neighbors, count: 2}
+```
+
+Un constat couvert par un critère est affiché **PRÉVU** : il garde sa gravité d'origine mais
+n'entre plus dans le verdict. Inversement, un changement prévu **mais non observé**
+(`expected_change_missing`), un nombre de constats différent de `count` (`expected_count_mismatch`)
+et une assertion `after` en ÉCHEC ou NON ÉVALUABLE (`expected_state`) deviennent des constats
+**ATTENTION**. Garde-fous anti-masquage : `device` et `category` obligatoires ; un motif qui
+accepte tout (`.*`, `.+`, `.`, `^`, `[\s\S]*`) est refusé ; `severity` est un **plafond** (sans
+lui, un critère ne couvre jamais un constat CRITIQUE) ; une clé inconnue est refusée ; les
+assertions `after` sont validées au chargement. Les effets de bord non listés (par exemple un
+second routeur dont le chemin change) restent donc **non prévus** et continuent de compter.
 
 ## Registre de drivers et lab multi-constructeurs (Phase D1)
 
-`collector.DRIVER_REGISTRY` associe un nom de driver (`"frr"`, `"srlinux"`) à sa classe.
+`collector.DRIVER_REGISTRY` associe un nom de driver (`"frr"`, `"srlinux"`, `"eos"`) à sa classe.
 Chaque routeur de l'inventaire peut porter un champ `driver:` -- absent, il vaut `"frr"`
 (comportement historique, lab mono-constructeur inchangé). Un nom qui ne correspond à aucun
 driver enregistré lève une `ValueError` explicite (nom du routeur, nom demandé, drivers
@@ -95,20 +170,24 @@ propre driver via le registre.
 `inventory.yml`, r5 avec `driver: srlinux` et ses propres identifiants (C11 : uniquement dans
 ce fichier et les variables d'environnement, jamais en dur ailleurs, y compris dans les
 tests). Le sélectionner : `netcheck <sous-commande> ... -i automation/inventory-multivendor.yml`
-(l'option `-i`/`--inventory` existe sur `snapshot`, `diff`, `check` et `guard` ; le drapeau se
-place après la sous-commande, comme tout argument `argparse`).
+(l'option `-i`/`--inventory` existe sur `snapshot`, `diff`, `check`, `guard`, `assert` et
+`monitor` ; le drapeau se place après la sous-commande, comme tout argument `argparse`). Même
+principe pour le lab Arista cEOS : `automation/inventory-ceos.yml` (r4 = `driver: eos`, Netmiko
+`arista_eos`, identifiants par défaut de l'image `admin` / `admin`, lab uniquement).
 
 ## Ajouter un driver constructeur (ex. Cisco IOS, FortiGate)
 
 **Ce que dit le modèle** : `diff.py`, `report.py` et l'essentiel de `compliance.py` ne
 travaillent que sur le modèle normalisé (`model.py`) -- eux n'ont jamais besoin de changer.
 
-**Ce qui doit vraiment changer, honnêtement, à l'ajout d'un driver SR Linux (Phase D1/D2)** :
-pas seulement un fichier dans `drivers/`. Liste complète, sans rien cacher :
+**Ce qui doit vraiment changer, honnêtement, à l'ajout d'un driver (SR Linux en Phase D1/D2, puis
+Arista EOS en Phase F : le troisième constructeur est le vrai test de l'architecture)** : pas
+seulement un fichier dans `drivers/`. Liste complète, sans rien cacher :
 
 1. `drivers/<constructeur>.py` : une classe héritant de `drivers.base.Driver`
-   (`REQUIRED_COMMANDS`, `translate()`, `parse()`, `clean_output()` optionnel) -- voir
-   `drivers/srlinux.py`.
+   (`REQUIRED_COMMANDS`, `translate()`, `parse()`, `clean_output()` optionnel ; et, si
+   l'équipement l'exige, `NEEDS_ENABLE` et `ALLOWED_CLI` -- voir le point 8) -- voir
+   `drivers/srlinux.py` et `drivers/eos.py`.
 2. `collector.DRIVER_REGISTRY` : la classe doit y être ajoutée sous le nom que portera le
    champ `driver:` de l'inventaire (Phase D1) -- c'est ce registre qui résout automatiquement
    le bon driver par routeur.
@@ -133,7 +212,56 @@ pas seulement un fichier dans `drivers/`. Liste complète, sans rien cacher :
    `tests/fixtures/r5/route.json` : une route apprise dynamiquement référence un
    `next-hop-group` qui s'est avéré indirect -- résolu en deux temps via deux tableaux de la
    même réponse JSON, une architecture réelle découverte en creusant en direct, pas devinée
-   non plus, documentée dans `drivers/srlinux.py`).
+   non plus, documentée dans `drivers/srlinux.py` ; ou, côté EOS, `tests/fixtures/ceos/` : un
+   nominal et cinq états dégradés capturés par les six commandes du driver).
+8. **Double liste blanche** (Phase F). La liste *logique* du collecteur ne voit pas ce que
+   `translate()` fabrique. Un driver déclare donc `ALLOWED_CLI` : les commandes CLI *réelles*, en
+   **correspondance exacte** de la chaîne complète (EOS : `show ip route | json`, pas un
+   préfixe, pas une regex). Le collecteur la contrôle avant la connexion puis avant chaque envoi.
+   Écrire **un test par détournement possible** : redirection (`>`), ajout (`>>`), `tee`, second
+   pipe, variantes d'espacement et de casse, `;`, retour ligne -- et un driver piégé doit être
+   refusé *avant* que `ConnectHandler` soit appelé. `NEEDS_ENABLE` : si la session s'ouvre en mode
+   utilisateur (EOS : `r4>`), le collecteur appelle la méthode Netmiko `enable()` -- jamais
+   `send_command("enable")`.
+9. **Masquage des secrets** (`secrets.py`) *avant* qu'une configuration du nouveau constructeur
+   entre dans un rapport. Un motif écrit pour `md5 X` prenait le `7` d'EOS pour la valeur et
+   laissait fuir le hash entier (constaté sur les trois formes réelles : `md5 7`, `password 7`,
+   `secret sha512`). La règle est donc générique -- **mot-clé, type facultatif (`0|5|7|8a|9|
+   sha512|…`), valeur ; tout est masqué sauf le mot-clé** -- avec des tests sur les lignes
+   **réelles** de l'équipement, un test qui échoue si une valeur de hash survit, la non-régression
+   des autres constructeurs, et des garde-fous contre le sur-masquage (une phrase française
+   contenant « secret » ou « md5 » ne doit pas être mangée). Un hash « type 7 » n'est pas un
+   chiffrement : il est réversible.
+10. **Normalisation du JSON** : relever les particularités sur l'équipement, ne pas les deviner.
+    Pour EOS : ASN en chaîne (`"65001"` -> entier) ; `adjacencyState: "full"` en minuscules ->
+    `"Full/-"` ; tout sous `vrfs.default` ; `peerState: "Idle"` + `peerStateIdleReason: "MaxPath"`
+    -> `Idle(MaxPath)` ; route statique Null0 = `dropRoute`, `vias: []` mais `directlyConnected:
+    true` (trompeur) -> même signature de trou noir que FRR (`NextHop` sans ip ni interface), donc
+    `assert path` fonctionne sans changement ; `interfaceStatus: "disabled"` = admin down ;
+    `is_loopback` d'après `hardware`, jamais d'après le nom ; interface de management (`Management0`)
+    à lister dans `management_interfaces` de l'inventaire.
+11. **Des tests d'intégration qui attendent un état STABLE.** « OSPF Full » (ou `health.py` vert)
+    précède la fin du recalcul des routes : une référence prise à cet instant est fausse dès sa
+    naissance, et un `monitor` lancé trop tôt dit la vérité sur un état transitoire. Avant de
+    prendre une référence, relever deux fois à 4 s d'intervalle jusqu'à un diff vide ; avant de
+    conclure à un retour à la normale, attendre le retour à la référence. Découvert en Phase F :
+    deux scénarios de la Phase E n'avaient réussi que par chance de timing.
+12. **Règles et intents** : les évaluateurs de règles qui lisent le texte de la configuration
+    vivent encore dans `compliance.py` (un jeu `eos_*` de +147 lignes en Phase F) ; les règles
+    YAML correspondantes portent `drivers: [<constructeur>]` et un jeu d'assertions
+    `intents/lab-<x>.yml` fournit l'état attendu.
+
+**Mesure honnête du troisième constructeur (Arista EOS, Phase F)** :
+
+| Fichier | Changement |
+|---|---|
+| `drivers/eos.py` | **nouveau**, 192 lignes : tout le dialecte EOS |
+| `drivers/base.py` | +19 : `NEEDS_ENABLE`, `ALLOWED_CLI`, `check_cli` (sans effet pour FRR / SR Linux) |
+| `collector.py` | +12 : registre, `enable()`, contrôle exact de la commande CLI |
+| `compliance.py` | **+147** : la syntaxe d'un constructeur vit encore ici (voir « pistes v4 ») |
+| `secrets.py` | +35 / −11 : règle générique (faille réelle trouvée) |
+| `rules/security.yml` | +77 : cinq règles EOS |
+| `model.py`, `diff.py`, `assertions.py`, `management.py`, `report.py`, `guard.py`, `monitor.py`, `cli.py` | **0 ligne** |
 
 ## Reconnaissance du loopback (`is_loopback`)
 
@@ -142,7 +270,8 @@ qu'un attribut de nom. Chaque driver le renseigne à partir de ce que son équip
 réellement — pour FRR, le champ JSON `"type"` (`"Loopback"` vs `"Ethernet"`), toujours
 présent, donc jamais `None` pour ce driver ; pour SR Linux, le nom d'interface comparé au
 motif YANG exact (`lo0`, `lo1`... jusqu'à `lo255`), affiché par l'équipement lui-même dans un
-message d'erreur de validation -- jamais None non plus, mais jamais deviné. La règle
+message d'erreur de validation -- jamais None non plus, mais jamais deviné ; pour Arista EOS, le
+champ JSON `"hardware"` (`"loopback"` vs `"ethernet"`), et `None` s'il est absent. La règle
 `interface_description_required`
 utilise `is_loopback` quand il est connu, et ne retombe sur l'heuristique de nom (`lo` exact,
 ou préfixe `loopback`) que s'il vaut `None` — un driver qui n'expose pas cette info, ou un

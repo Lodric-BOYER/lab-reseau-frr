@@ -11,10 +11,11 @@ Il tourne sur un simple PC portable sous WSL2, sans aucun matériel réseau.
 | **Stack** | WSL2 (Ubuntu) · Docker 29 · containerlab 0.79 · FRRouting 10.2.1 · Python 3 · Netmiko 4.8 |
 | **Routage** | OSPF (point-to-point, interfaces passives) dans chaque AS · eBGP filtré (prefix-list + route-map) entre AS65001 et AS65002 |
 | **Automatisation** | `health.py` (état OSPF/BGP) · `backup.py` (sauvegardes + baseline) · `drift.py` (diff vs baseline, rapport Markdown) |
-| **netcheck** | Validation de changements (état avant/après : routes, OSPF, BGP) · audit de conformité par règles YAML · rapports HTML · 2 drivers (FRR, SR Linux) |
+| **netcheck** (v0.3.0, [CHANGELOG](CHANGELOG.md)) | Validation de changements (état avant/après : routes, OSPF, BGP) · audit de conformité par règles YAML · rapports HTML · 3 drivers (FRR, Nokia SR Linux, Arista EOS) |
 | **v2 (multi-constructeurs)** | `lab-multivendor.clab.yml` : mêmes r1-r4, r5 = Nokia SR Linux 26.7.2 · registre de drivers + champ `drivers:` par règle de conformité + identifiants par driver |
 | **v3 (audit de sécurité)** | `netcheck/rules/security.yml` : authentification OSPF (message-digest / keychain SR Linux) + TCP-MD5/GTSM/`maximum-prefix` sur eBGP + bannière SR Linux · rapports avant/après dans `docs/audit/` · secrets masqués dans les 3 sorties (`netcheck/secrets.py`) · `assert` (état attendu) · `guard` : changements prévus (`--expect`) et retour arrière prouvé (`--rollback`) · `monitor` : surveillance planifiée, alertes webhook uniquement au changement de statut |
-| **Sécurité** | Commandes en lecture seule (liste blanche) · YAML chargé en `safe_load` · rapports protégés contre le XSS (testé) |
+| **v3 (cEOS)** | `lab-cEOS.clab.yml` : r4 = Arista cEOS 4.34.8M (image importée localement) · driver `eos` (`enable()`, liste blanche exacte, secrets type 7 masqués) · 5 règles de sécurité EOS · lab testé : 26 + 38 contrôles |
+| **Sécurité** | Commandes en lecture seule (liste blanche, à deux niveaux) · YAML chargé en `safe_load` · rapports protégés contre le XSS (testé) · secrets masqués dans toutes les sorties · valeurs de lab uniquement : voir « [Secrets du lab](#secrets-du-lab) » |
 
 ## Topologie
 
@@ -234,7 +235,11 @@ pip install -r requirements-dev.txt   # ajoute pytest ; requirements.txt suffit 
 Toutes les commandes s'utilisent avec `python -m netcheck`, lancées **depuis la racine du
 dépôt** (comme les scripts de `automation/`, uniquement joignable depuis WSL).
 
-### Les 5 commandes
+### Les commandes
+
+`snapshot`, `list`, `diff`, `check`, `guard`, `assert` et `monitor`. Les cinq premières sont
+détaillées ci-dessous ; `assert` et `monitor` ont leur propre section plus bas (**état attendu**,
+**surveillance planifiée**).
 
 #### `snapshot <nom> [-d r1 r3] [--force]`
 
@@ -331,6 +336,47 @@ interactive (utile en script ou en CI). Les deux snapshots sont horodatés autom
 décrits dans « [Changements attendus et retour arrière](#changements-attendus-et-retour-arrière-v3) ».
 Depuis la v3, un script `--change` en échec rend au minimum le code 2.
 
+#### `assert --intent f.yml [--snapshot s] [--json f] [--html f]`
+
+Vérifie que le réseau est **dans l'état voulu**, sans référence « avant » : on déclare ce qui doit
+être vrai (une session eBGP établie, exactement deux voisins OSPF, une route avec tel next-hop,
+une interface active, un chemin traversant tels équipements) et netcheck le vérifie, en direct ou
+sur un snapshot (hors ligne). Là où `diff` répond « qu'est-ce qui a changé ? », `assert` répond
+« est-ce que ce qui doit être vrai l'est ? ».
+
+```yaml
+assertions:
+  - id: chemin-r1-vers-lan-r5
+    description: "Le trafic de r1 vers le LAN de pc2 passe par r3, r4 puis r5"
+    device: r1
+    type: path
+    prefix: 192.168.2.0/24
+    via: [r3, r4, r5]
+    mode: all
+```
+
+Six types (`bgp_session`, `ospf_neighbors`, `route_present`, `route_absent`, `interface_up`,
+`path`), évalués **uniquement sur le modèle normalisé** : les mêmes assertions fonctionnent sur
+FRR, SR Linux et Arista EOS. Chaque assertion rend **OK**, **ÉCHEC** ou **NON ÉVALUABLE** (jamais
+un OK silencieux). `path` calcule le chemin de saut en saut par *longest prefix match* ; un
+**trou noir** (aucune route, ou route Null0) est un **ÉCHEC** (« trou noir sur r4 : … »), alors
+que NON ÉVALUABLE est réservé aux limites de la méthode (boucle, 16 sauts dépassés, next-hop
+inconnu). Format complet : [netcheck/README.md](netcheck/README.md#formats-de-fichiers--intent-assert-et-expect---expect).
+Exemples réels : `intents/lab.yml`, `intents/lab-multivendor.yml`, `intents/lab-ceos.yml`.
+Code retour : **0** tout OK, **2** au moins un ÉCHEC, **3** erreur d'usage (intent invalide).
+
+```
+$ python -m netcheck assert --intent intents/lab-ceos.yml -i automation/inventory-ceos.yml
+…
+Verdict : OK  (11 OK, 0 échec(s), 0 non évaluable(s))
+```
+
+#### `monitor --baseline <snapshot> [--intent f.yml] [--rules f.yml] [--confirm N]`
+
+Surveillance à exécution unique, pour cron ou un timer systemd : statut global (le pire du diff,
+des assertions et de la conformité), alerte par webhook **seulement quand le statut change**.
+Lecture seule stricte. Voir « [Surveillance planifiée et alertes](#surveillance-planifiée-et-alertes-v3) ».
+
 ### Codes retour
 
 | Commande | 0 | 1 | 2 | 3 |
@@ -338,6 +384,11 @@ Depuis la v3, un script `--change` en échec rend au minimum le code 2.
 | `diff` / `guard` | OK | ATTENTION | ÉCHEC (≥ 1 CRITIQUE) | erreur d'utilisation / snapshot manquant |
 | `check` | conforme | non-conformité(s) moyenne/basse | non-conformité critique/haute | règles ou équipement introuvable |
 | `snapshot` | tout OK | au moins un équipement injoignable | — | snapshot existant sans `--force` |
+| `assert` | tout OK | — | au moins un ÉCHEC | intent invalide |
+| `monitor` | statut OK | statut ATTENTION | statut ÉCHEC | refusé ou erreur interne (4 : verrou tenu) |
+
+`guard` a ses propres codes 4 à 6 (annulation réussie, annulation échouée, interrompu) : voir
+« [Changements attendus et retour arrière](#changements-attendus-et-retour-arrière-v3) ».
 
 ### Écrire une règle de conformité
 
@@ -637,7 +688,22 @@ conception, inchangé). Rapports avant/après dans [`docs/audit/`](docs/audit/) 
 ```bash
 python -m netcheck check --rules netcheck/rules/security.yml
 python -m netcheck check --rules netcheck/rules/security.yml -i automation/inventory-multivendor.yml
+python -m netcheck check --rules netcheck/rules/security.yml -i automation/inventory-ceos.yml
 ```
+
+**Le rapport avant/après** (`docs/audit/`, fichiers `.html` autonomes et `.json`) : même règles,
+même commande, avant puis après le durcissement de la Phase B.
+
+| Lab | Avant (`avant-*`) | Après (`apres-*`) |
+|---|---|---|
+| FRR | **NON CONFORME** : 14 non-conformités (10 haute, 4 moyenne ; 8 OSPF, 6 BGP) | **CONFORME** : 0 |
+| Mixte FRR + SR Linux | **NON CONFORME** : 15 (10 haute, 4 moyenne, 1 basse ; 8 OSPF, 6 BGP, 1 accès : la bannière SR Linux) | **CONFORME** : 0 |
+
+Ces rapports sont des **preuves datées**, produites par netcheck 0.2.0 sur les labs de l'époque :
+ils ne sont pas régénérés (le lab « avant » n'existe plus, il a été durci). Le lab Arista cEOS est
+né durci : il n'a pas de rapport « avant », mais ses preuves négatives sont rejouées par
+`tests/integration_ceos.sh` (mauvaise clé OSPF, API de gestion exposée), et `security.yml` compte
+cinq règles `drivers: [eos]`. Les secrets de ce dépôt sont décrits dans « [Secrets du lab](#secrets-du-lab) ».
 
 ### Ce que l'authentification OSPF et TCP-MD5 protègent réellement (et ce qu'elles ne protègent pas)
 
@@ -898,7 +964,7 @@ qui peut citer une ligne de config) ; tout passe par le masquage des secrets.
 `--webhook-format generic` (défaut pour une URL qui n'est pas Discord) :
 
 ```json
-{"source": "netcheck", "netcheck_version": "0.2.0", "event": "status_change", "kind": "degradation",
+{"source": "netcheck", "netcheck_version": "0.3.0", "event": "status_change", "kind": "degradation",
  "status": "ECHEC", "previous_status": "OK", "timestamp": "2026-10-03T10:05:02+02:00",
  "components": {"collect": "OK", "diff": "ECHEC", "assert": "ECHEC", "check": null},
  "devices": ["r1", "r3"],
@@ -1018,6 +1084,67 @@ tournent alors), et un PC en veille met la VM en pause. Deux façons de l'évite
    défaut et `vmIdleTimeout` (section `[wsl2]`) 60000 ms. Cette page ne dit pas si un processus de
    fond (cron, timer) compte comme une activité qui empêche l'arrêt : non vérifié, d'où la
    recommandation d'un terminal ouvert ou du réglage explicite.
+
+## Secrets du lab
+
+**Tous les secrets de ce dépôt sont des valeurs de lab, sans aucune valeur hors du lab.** Ils sont
+là parce qu'un lab reproductible doit démarrer sans étape manuelle, pas parce que c'est une bonne
+pratique. **Ne réutilisez jamais ces fichiers, ces clés ni ces mots de passe sur un équipement
+réel.**
+
+| Où | Quoi | Forme |
+|---|---|---|
+| `configs/r*/frr.conf` | clés OSPF `lab-ospf-r1r2`, `lab-ospf-r1r3`, `lab-ospf-r2r3`, `lab-ospf-r4r5` ; mot de passe BGP `lab-bgp-r3r4` | **en clair** |
+| `configs-multivendor/r5/config.cli` | la clé OSPF `lab-ospf-r4r5` (keychain SR Linux) | en clair dans le fichier ; **`$aes1$…`** (obscurci par la plateforme, pas un chiffrement garanti) dans la configuration relevée |
+| `configs-ceos/r4/startup-config` | `lab-ospf-r4r5` et `lab-bgp-r3r4` ; hash `sha512` du compte `admin` | clés en clair dans le fichier ; **type 7** (réversible) dans la running-config ; le hash sha512 est celui du mot de passe par défaut `admin` de l'image |
+| `automation/inventory*.yml` | identifiants par défaut des images : `netops` / `netops` (FRR), `admin` / `NokiaSrl1!` (SR Linux), `admin` / `admin` (cEOS) | en clair, documentés comme identifiants de lab ; surchargeables par `NETCHECK_USER` / `NETCHECK_PASS` ou, par driver, `NETCHECK_SRLINUX_*`, `NETCHECK_EOS_*` |
+| `tests/fixtures/` | configurations et sorties **réelles** capturées sur les labs | mêmes valeurs de lab : type 7 et sha512 (`ceos/`), `$aes1$…` (`r5/`, SR Linux) ; les fixtures FRR (`r1/`…`r4/`) ont été capturées avant le durcissement et ne contiennent aucune clé |
+| `tests/test_*.py`, `tests/integration*.sh` | valeurs **inventées** pour tester le masquage (`hunter2`, jetons `SENTINEL-…`, fausses URL de webhook à identifiants fictifs) | fictives : jamais une vraie URL |
+| `docs/audit/` | rapports d'audit | secrets **masqués** (`password ****`) |
+
+Trois précisions. (1) Le **type 7** d'EOS n'est pas un chiffrement : il se déchiffre ; il est masqué
+dans les rapports comme les autres, mais il reste lisible dans les snapshots. (2) Les **snapshots**
+et les **rapports locaux** (`snapshots/`, `reports/`) contiennent des configurations brutes : ils
+sont exclus de Git (`.gitignore`). (3) L'**URL d'un webhook** n'est, elle, jamais dans le dépôt : elle
+vient de `NETCHECK_WEBHOOK_URL`, d'un fichier `~/.config/netcheck/env` en 0600 lu comme du texte, et
+n'apparaît dans aucune sortie ; les exemples du dépôt n'utilisent que des valeurs fictives.
+
+## Limites connues et pistes v4
+
+**Limites connues (documentées, pas cachées).**
+- **Les évaluateurs de règles qui lisent le texte de la configuration vivent dans
+  `compliance.py`**, un jeu par constructeur (FRR, SR Linux, EOS : +147 lignes pour EOS). C'est le
+  point faible de l'architecture : chaque nouveau constructeur y ajoute son dialecte.
+- **Peer groups** : les règles BGP lisent `neighbor X remote-as N` voisin par voisin. Un voisin
+  défini par un peer group (EOS comme FRR) échappe à ces règles : faux négatif possible. Les peer
+  groups EOS n'ont jamais été observés dans ce lab.
+- **Adresses IPv4 secondaires** (EOS) ignorées, faute d'avoir été observées ; **IPv6** hors modèle
+  (le modèle est IPv4) ; **VRF** : seule la VRF par défaut est lue.
+- **États OSPF autres que `full`** : seul `full` a été observé sur EOS ; les autres sont simplement
+  mis en majuscule initiale, jamais devinés.
+- **Pas de TCP-AO** (RFC 5925) : ni le noyau WSL2 de ce lab ni FRR (bgpd) ne le supportent ; TCP-MD5,
+  cryptographiquement plus faible, est la seule authentification eBGP réaliste ici.
+- **`maximum-routes` (EOS) ≠ `maximum-prefix` (FRR)** : EOS compte les routes reçues *avant* la
+  politique d'entrée, FRR les préfixes *acceptés* après filtre (sauf `force`) : même protection,
+  seuil différent.
+- **`monitor`** : de nouveaux constats pendant un ÉCHEC déjà annoncé n'envoient rien ; livraison
+  « au moins une fois » ; délai du webhook appliqué à chaque opération réseau, pas au total ;
+  Slack et Teams documentés, **non implémentés**.
+- **SR Linux** : pas de BGP dans ce lab (le driver n'analyse pas BGP).
+- **`guard`** n'est pas une transaction : son « retour arrière » est un script fourni par
+  l'utilisateur, et le retour est *prouvé* par un diff vide, pas garanti par l'équipement.
+- **Les tests d'intégration** exigent Docker et containerlab et ne tournent pas en CI (seuls les
+  tests unitaires, ruff et shellcheck y tournent) ; l'instance WSL doit rester active pour une
+  surveillance planifiée.
+
+**Pistes v4.**
+1. Extraire les évaluateurs texte de `compliance.py` **vers les drivers** (chaque driver fournit
+   ses propres vérifications de configuration, `compliance.py` ne garde que le moteur).
+2. Une configuration **structurée** dans le modèle (arbre de configuration par driver) pour
+   remplacer les expressions régulières par des requêtes, et traiter peer groups et héritage.
+3. **TCP-AO** dès que le noyau et FRR le supportent ; IPv6 ; VRF multiples ; adresses secondaires.
+4. `monitor` : alertes Slack et Teams, anti-rebond par composant, délai total du webhook.
+5. Intégration continue du lab (runner avec Docker et containerlab) pour rejouer les scénarios.
 
 ## Dépannage
 
