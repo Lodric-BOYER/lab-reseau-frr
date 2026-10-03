@@ -40,10 +40,14 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
 - **Peer groups BGP (FRR et EOS).** Les règles BGP lisent chaque voisin avec ses réglages effectifs
   (`drivers/bgp_neighbors.py`) : un membre hérite du mot de passe, du GTSM, de la limite et des
   politiques de son groupe, et un réglage posé sur le membre masque celui du groupe. Un constat sur un
-  membre le nomme avec son groupe (`192.0.2.5 (peer group PG-OPEN)`). Les plages de voisins dynamiques
-  (`bgp listen range … peer-group …`) sont évaluées comme un voisin eBGP qui hérite de son groupe.
-  Neuf configurations relevées en direct (r3 FRR, r4 cEOS) servent de fixtures
-  (`tests/fixtures/peergroups/`), avec la preuve du retour exact de chaque scénario.
+  membre le nomme avec son groupe (`192.0.2.5 (peer group PG-OPEN)`). Treize configurations relevées en
+  direct (r3 FRR, r4 cEOS) servent de fixtures (`tests/fixtures/peergroups/`), avec la preuve du retour
+  exact de chaque scénario.
+- **Plages de voisins dynamiques (`bgp listen range … peer-group …`, FRR et EOS).** Elles créent des
+  sessions eBGP sans aucune ligne `neighbor <ip>` : la plage est évaluée comme un voisin eBGP qui hérite
+  des réglages de son groupe, et un constat la nomme (`192.0.2.64/26 (plage dynamique, peer group …)`).
+  Avant, ces sessions n'étaient pas auditées du tout. Relevé en direct : FRR écrit la plage sans
+  `remote-as` (celui du groupe s'applique), EOS exige le `remote-as` sur la ligne même.
 - Gel de référence de la conformité (`tests/golden/`, `tests/tools/golden.py`) : les réponses de la
   v0.3.0 sur des configurations réelles, leurs mutations et des sondes ; les écarts voulus sont tracés
   dans `meta.revisions`.
@@ -95,6 +99,10 @@ Défauts communs à FRR et EOS, sur les peer groups (relevés sur r3 et r4, mesu
   (`neighbor 192.0.2.5 peer-group PG`), donc il n'était jamais vu. C'était le groupe, et non ses membres,
   qui était jugé : un groupe complet donnait « conforme » par hasard, et une surcharge dangereuse sur un
   membre (par exemple `maximum-routes 0`, illimité) passait inaperçue.
+- **`maximum-routes 0` posé sur un membre (EOS)** : sur EOS, 0 veut dire « pas de limite ». Sur un membre
+  de peer group, cette surcharge masque la limite de son groupe et passait inaperçue (aucune violation,
+  code 0) ; elle est maintenant signalée. Le changement est apparu avec le code des peer groups
+  (commit `fe6b04e`) ; pour un voisin déclaré hors groupe, la v0.3.0 le signalait déjà.
 - **`remote-as external|internal` ignoré (FRR)** : un voisin `external` n'était jamais audité. EOS refuse
   ces deux formes (`% Invalid input`, relevé sur cEOS 4.34.8M).
 

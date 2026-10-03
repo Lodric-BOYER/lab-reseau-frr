@@ -82,6 +82,11 @@ FRR_EXPECTED = {
     "frr_s4_external": {**_NONE, **{k: ["192.0.2.6", "192.0.2.8"] for k in FRR_KINDS[:5]}},
     # S5 : un groupe sans membre n'est pas un voisin : ni voisin fantôme ni violation.
     "frr_s5_orphan_group": _NONE,
+    # S6 : plage dynamique dont le groupe porte tout : elle en hérite, rien n'est signalé.
+    "frr_s6_listen_group": _NONE,
+    # S7 : plage dynamique dont le groupe n'a pas de mot de passe : la PLAGE est signalée (avant : jamais
+    # vue).
+    "frr_s7_listen_open_group": {**_NONE, **{k: ["192.0.2.64/26"] for k in FRR_KINDS[:5]}},
 }
 EOS_NONE = {kind: [] for kind in EOS_KINDS}
 EOS_EXPECTED = {
@@ -89,6 +94,8 @@ EOS_EXPECTED = {
     "eos_s2_override": EOS_NONE,
     "eos_s3_open_group": {kind: ["192.0.2.5"] for kind in EOS_KINDS},
     "eos_s5_orphan_group": EOS_NONE,
+    "eos_s6_listen_group": EOS_NONE,
+    "eos_s7_listen_open_group": {kind: ["192.0.2.64/26"] for kind in EOS_KINDS},
 }
 
 
@@ -125,6 +132,12 @@ def test_a_member_is_named_with_its_group_in_the_finding():
         "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)"]
     assert details(text("eos_s3_open_group"), "eos", "eos_bgp_neighbor_maximum_routes_required") == [
         "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-routes"]
+    # Une plage dynamique relevée en direct : nommée avec son réseau et son groupe.
+    assert details(text("frr_s7_listen_open_group"), "frr", "bgp_neighbor_password_required") == [
+        "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) "
+        "sans authentification TCP-MD5 (mot de passe)"]
+    assert details(text("eos_s7_listen_open_group"), "eos", "eos_bgp_neighbor_ttl_security_required") == [
+        "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl maximum-hops)"]
 
 
 def test_a_neighbor_outside_any_group_keeps_the_v030_message():
@@ -235,9 +248,9 @@ def test_remote_as_external_and_internal_are_frr_only():
 
 def test_dynamic_neighbor_ranges_are_neighbors_inheriting_from_their_group():
     """`bgp listen range` crée des sessions sans ligne `neighbor <ip>` : la plage est un voisin eBGP virtuel,
-    évalué avec les réglages de son groupe. Syntaxe vérifiée : FRR accepte `bgp listen range <réseau>
-    peer-group <groupe>` ; EOS exige `remote-as` sur la ligne ou sur le groupe (`% Incomplete command`
-    sinon, constaté) et déclare `bgp listen limit` obsolète."""
+    évalué avec les réglages de son groupe. Relevé en direct (S6, S7) : FRR écrit `bgp listen range <réseau>
+    peer-group <groupe>` ; EOS exige `remote-as` sur la ligne même (`% Incomplete command` sinon, constaté)
+    et déclare `bgp listen limit` obsolète. Ces variantes dérivent des relevés pour d'autres réseaux."""
     frr = replace(text("frr_s3_open_group"), " neighbor 192.0.2.5 peer-group PG-OPEN\n",
                   " neighbor 192.0.2.5 peer-group PG-OPEN\n"
                   " bgp listen range 198.51.100.0/24 peer-group PG-OPEN\n")
@@ -250,17 +263,15 @@ def test_dynamic_neighbor_ranges_are_neighbors_inheriting_from_their_group():
                        " neighbor 192.0.2.2 peer-group PG-TEST\n"
                        " bgp listen range 198.51.100.0/24 peer-group PG-TEST\n")
     assert all(flagged(complete, "frr", kind) == [] for kind in FRR_KINDS)
-    # EOS, `remote-as` sur la ligne de la plage (S5 : groupe avec mot de passe, sans GTSM ni limite).
+    # EOS : le `remote-as` de la ligne de la plage (EOS l'exige) fait foi ; le groupe S5 a un mot de
+    # passe mais ni GTSM ni limite. Une plage iBGP (même AS que le routeur) n'est pas un voisin eBGP.
     eos = replace(text("eos_s5_orphan_group"), "   neighbor PG-ORPHAN remote-as 65099\n",
                   "   neighbor PG-ORPHAN remote-as 65099\n"
                   "   bgp listen range 198.51.100.0/24 peer-group PG-ORPHAN remote-as 65099\n")
     assert flagged(eos, "eos", "eos_bgp_neighbor_password_required") == []
     assert flagged(eos, "eos", "eos_bgp_neighbor_ttl_security_required") == ["198.51.100.0/24"]
-    # EOS, `remote-as` sur le groupe et pas sur la ligne.
-    eos = replace(text("eos_s5_orphan_group"), "   neighbor PG-ORPHAN remote-as 65099\n",
-                  "   neighbor PG-ORPHAN remote-as 65099\n"
-                  "   bgp listen range 198.51.100.0/24 peer-group PG-ORPHAN\n")
-    assert flagged(eos, "eos", "eos_bgp_neighbor_maximum_routes_required") == ["198.51.100.0/24"]
+    ibgp = eos.replace("peer-group PG-ORPHAN remote-as 65099\n", "peer-group PG-ORPHAN remote-as 65002\n")
+    assert flagged(ibgp, "eos", "eos_bgp_neighbor_ttl_security_required") == []
 
 
 def test_the_view_reads_neighbors_in_the_order_of_the_configuration():

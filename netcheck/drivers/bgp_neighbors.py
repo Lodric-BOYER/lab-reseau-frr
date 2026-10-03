@@ -17,9 +17,10 @@ Ce module lit chaque voisin avec ses réglages EFFECTIFS :
   l'AS local (ou vaut `external`, FRR seulement : EOS répond « % Invalid input » à `external` et `internal`) ;
 - un réglage posé sur le membre MASQUE celui du groupe (`lines`) : c'est la surcharge, relevée en direct
   sur les deux équipements (mot de passe, GTSM, limite de routes) ;
-- une plage de voisins dynamiques (`bgp listen range <réseau> peer-group <groupe> [remote-as N]`, syntaxe
-  vérifiée sur les deux équipements ; EOS exige `remote-as` sur la ligne ou sur le groupe) crée des sessions
-  sans ligne `neighbor <ip>` : elle est un voisin à part entière, qui hérite des réglages de son groupe ;
+- une plage de voisins dynamiques (`bgp listen range <réseau> peer-group <groupe> [remote-as N]`) crée des
+  sessions sans ligne `neighbor <ip>` : elle est un voisin à part entière, qui hérite des réglages de son
+  groupe. Relevée en direct (fixtures `*_s6_*`, `*_s7_*`) : FRR l'écrit sans `remote-as` (celui du groupe
+  s'applique), EOS l'exige sur la ligne même (`% Incomplete command` sinon, même si le groupe le porte) ;
 - un membre dont aucun `remote-as` (propre ou du groupe) n'est connu n'ouvre pas de session : il n'est pas
   évalué, comme avant.
 
