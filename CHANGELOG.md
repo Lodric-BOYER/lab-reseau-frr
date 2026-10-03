@@ -15,12 +15,23 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   ligne n'est ignorée en silence : chaque ligne de la source tombe dans exactement une classe, et tout
   ce qui est douteux produit un avertissement (texte masqué).
 - **Les règles de configuration vivent dans les drivers** : `Driver.CONFIG_CHECKS` et
-  `Driver.parse_config()` ; les règles FRR sont dans `drivers/frr_rules.py`. `compliance.py` ne garde
-  que le moteur.
+  `Driver.parse_config()` ; les règles sont dans `drivers/frr_rules.py`, `srlinux_rules.py` et
+  `eos_rules.py`. `compliance.py` ne garde que le moteur : **836 → 388 lignes**, et un test statique
+  (`tests/test_compliance_neutrality.py`) échoue si une syntaxe de constructeur y revient.
+- **SR Linux : une règle, deux syntaxes.** Les accolades de « info from running » et les lignes
+  `set /` du fichier de démarrage donnent les mêmes chemins (vue plate de `confparse`). Les règles
+  vérifient la présence et la référence d'une keychain, jamais la forme de la clé (en clair dans le
+  fichier de démarrage, `$aes1$` sur l'équipement) : même verdict, test à l'appui.
+- **EOS : bannières et sous-commandes non indentées.** Une bannière (`banner login|motd` jusqu'à
+  `EOF`) est du texte libre ; une sous-commande non indentée est signalée, comme pour FRR. EOS, lui
+  aussi, lit selon le contexte et ignore l'indentation : vérifié sur cEOS 4.34.8M en chargeant de vrais
+  fichiers dans une session de configuration abandonnée.
 - **Verdict « ANALYSE INCOMPLÈTE »** : une ligne de configuration que l'analyse n'a pas pu lire donne
   au minimum le code retour 1, dans les trois sorties (terminal, JSON `status`, HTML) et dans
   `monitor` (ATTENTION). « NON CONFORME » reste réservé aux violations réelles. Une ligne lue mais
-  ambiguë n'est qu'une information, sans effet sur le code retour.
+  ambiguë n'est qu'une information, sans effet sur le code retour. Une accolade fermante manquante
+  rend la **structure incertaine** : les lignes restent évaluées (les violations sont rapportées) mais
+  le verdict ne peut pas être « conforme ».
 - **FRR : sous-commande au premier niveau.** FRR lit selon le contexte et ignore l'indentation ; une
   sous-commande non indentée (`ip ospf …`, `neighbor …`) d'un fichier écrit à la main est signalée
   (liste vérifiée avec `vtysh -C`), au lieu de faire croire à une interface sans authentification.
@@ -53,6 +64,19 @@ régulières et sous-chaînes (validés sur 10 cas du gel et 4 entrées fabriqu�
   ignorée par l'audit d'authentification OSPF.
 - **Une description contenant le texte `ip ospf passive`** était lue comme la commande.
 - **Espaces multiples** dans `neighbor X password Y` : l'ancien code concluait « sans mot de passe ».
+
+Défauts des règles EOS de la v0.3.0 :
+
+- **Une bannière dont le texte ressemble à de la configuration** était lue comme de la configuration
+  (par exemple une fausse interface sans authentification).
+- **Un `!` en colonne 0 terminait le bloc** : les lignes indentées qui suivent étaient ignorées, alors
+  qu'EOS les applique au bloc ouvert (vérifié sur cEOS).
+- **Espaces multiples** dans `neighbor X maximum-routes N` : l'ancien code concluait « sans limite ».
+
+### Connu
+
+- Une keychain SR Linux sans aucune clé n'est pas détectée (comportement de la v0.3.0, conservé) :
+  amélioration prévue en phase E.
 
 ## [0.3.0] — 2026-10-03
 
