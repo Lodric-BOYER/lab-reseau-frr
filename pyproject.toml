@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
@@ -7,6 +7,10 @@ name = "netcheck"
 dynamic = ["version"]
 description = "Validation de changement reseau et audit de conformite (lab FRR)."
 readme = "netcheck/README.md"
+# Expression SPDX (PEP 639). Toute dependance doit rester compatible : MIT, BSD ou Apache-2.0 ;
+# pas de licence copyleft (GPL) sans decision explicite.
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = [
     "netmiko>=4.4",

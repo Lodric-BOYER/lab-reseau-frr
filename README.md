@@ -16,6 +16,7 @@ Il tourne sur un simple PC portable sous WSL2, sans aucun matériel réseau.
 | **v3 (audit de sécurité)** | `netcheck/rules/security.yml` : authentification OSPF (message-digest / keychain SR Linux) + TCP-MD5/GTSM/`maximum-prefix` sur eBGP + bannière SR Linux · rapports avant/après dans `docs/audit/` · secrets masqués dans les 3 sorties (`netcheck/secrets.py`) · `assert` (état attendu) · `guard` : changements prévus (`--expect`) et retour arrière prouvé (`--rollback`) · `monitor` : surveillance planifiée, alertes webhook uniquement au changement de statut |
 | **v3 (cEOS)** | `lab-cEOS.clab.yml` : r4 = Arista cEOS 4.34.8M (image importée localement) · driver `eos` (`enable()`, liste blanche exacte, secrets type 7 masqués) · 5 règles de sécurité EOS · lab testé : 26 + 38 contrôles |
 | **Sécurité** | Commandes en lecture seule (liste blanche, à deux niveaux) · YAML chargé en `safe_load` · rapports protégés contre le XSS (testé) · secrets masqués dans toutes les sorties · valeurs de lab uniquement : voir « [Secrets du lab](#secrets-du-lab) » |
+| **Licence** | [Apache-2.0](LICENSE) · voir « [Licence](#licence) » |
 
 ## Topologie
 
@@ -1145,6 +1146,18 @@ n'apparaît dans aucune sortie ; les exemples du dépôt n'utilisent que des val
 3. **TCP-AO** dès que le noyau et FRR le supportent ; IPv6 ; VRF multiples ; adresses secondaires.
 4. `monitor` : alertes Slack et Teams, anti-rebond par composant, délai total du webhook.
 5. Intégration continue du lab (runner avec Docker et containerlab) pour rejouer les scénarios.
+
+## Licence
+
+Ce dépôt est distribué sous licence **Apache-2.0** (texte complet dans [LICENSE](LICENSE),
+copyright 2026 Lodric BOYER). Le paquet `netcheck` la déclare dans `pyproject.toml`.
+
+**Dépendances.** Celles d'exécution (netmiko, PyYAML, Jinja2, rich) et de développement (pytest,
+ruff) sont sous licences permissives (MIT ou BSD). Une dépendance future doit rester compatible :
+MIT, BSD ou Apache-2.0. Une licence copyleft (GPL) n'est pas acceptée sans décision explicite.
+
+Les images de routeurs (Arista cEOS, Nokia SR Linux, et les suivantes) restent soumises à leurs
+propres licences : elles ne sont jamais dans ce dépôt ni redistribuées par lui.
 
 ## Dépannage
 
