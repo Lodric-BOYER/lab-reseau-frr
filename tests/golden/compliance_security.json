@@ -168,6 +168,32 @@
       "rules_after": []
      }
     ]
+   },
+   {
+    "rules": "security",
+    "reason": "A3b : accolade supprimée dans une configuration SR Linux. (1) un } supprimé : la v0.3.0 lisait le passive true de l'interface suivante comme celui de ethernet-1/1.0 et ne signalait rien (faux négatif) ; le moteur lit la structure et signale la violation d'authentification. (2) authentication { supprimé : la v0.3.0 acceptait une ligne keychain n'importe où dans le bloc ; le schéma vérifié sur l'équipement est authentication { keychain X }, le moteur signale l'absence de référence. Écarts validés (2 cas).",
+    "code_commit": "f7710f1",
+    "targets": [
+     {
+      "case": "fixture:srlinux-r5",
+      "mutation": "64:c2b7df62",
+      "rules_before": [
+       "srlinux-banniere-de-connexion"
+      ],
+      "rules_after": [
+       "srlinux-ospf-authentification-keychain",
+       "srlinux-banniere-de-connexion"
+      ]
+     },
+     {
+      "case": "fixture:srlinux-r5-hardened",
+      "mutation": "64:f8e6d2c6",
+      "rules_before": [],
+      "rules_after": [
+       "srlinux-ospf-authentification-keychain"
+      ]
+     }
+    ]
    }
   ]
  },
@@ -1754,18 +1780,6 @@
      ]
     },
     "62:81aaac1c": {
-     "code": 1,
-     "violations": [
-      [
-       "basse",
-       "srlinux-banniere-de-connexion",
-       "r5",
-       "aucune ligne ne correspond à /^\\s*login-banner\\s/",
-       "acces"
-      ]
-     ]
-    },
-    "64:c2b7df62": {
      "code": 1,
      "violations": [
       [
@@ -5506,6 +5520,19 @@
        "r5",
        "aucune ligne ne correspond à /^\\s*login-banner\\s/",
        "acces"
+      ]
+     ]
+    },
+    "64:f8e6d2c6": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "srlinux-ospf-authentification-keychain",
+       "r5",
+       "interface OSPF ethernet-1/1.0 active (non passive) sans authentification (aucune keychain référencée)",
+       "ospf"
       ]
      ]
     }

@@ -48,3 +48,15 @@ route-map sans `exit` absorbait la suivante. Le moteur lit les blocs par indenta
 n'est plus lu comme `ip ospf passive` ; une description contenant ce texte n'est plus lue comme la
 commande ; des espaces multiples dans `neighbor X password Y` ne donnent plus « sans mot de passe » ;
 un fichier sans `exit` est lu entièrement.
+
+**A3b, SR Linux : 2 mutations de `security.yml`, toutes deux la suppression d'une ligne d'accolade**
+(une configuration corrompue : le moteur la signale aussi, voir « STRUCTURE INCERTAINE » et « NON LUE »).
+
+| Cas (ligne) | v0.3.0 | Maintenant |
+|---|---|---|
+| `fixture:srlinux-r5` (64), un `}` supprimé après `interface ethernet-1/1.0` | seule la bannière est signalée, code 1 : le `passive true` de l'interface suivante était lu comme celui de ethernet-1/1.0 (faux négatif) | violation d'authentification haute + bannière, code 2 |
+| `fixture:srlinux-r5-hardened` (64), `authentication {` supprimé | conforme, code 0 : une ligne `keychain X` était acceptée n'importe où dans le bloc | violation haute « aucune keychain référencée » ; schéma vérifié : `authentication { keychain X }` |
+
+**A3c, EOS : aucun écart du gel.** Hors gel (anciens moteurs comparés sur des entrées fabriquées) : le texte
+d'une bannière n'est plus lu comme de la configuration, et des espaces multiples dans
+`neighbor X maximum-routes N` ne donnent plus « sans limite ».
