@@ -26,6 +26,142 @@
     "code_commit": "b56a775",
     "reason": "r5 durci relevé sur le lab mixte (snapshot v4a-ref-mixte) : keychain OSPF en aes1, bannière ; comble le trou de couverture SR Linux durci du gel A1"
    }
+  ],
+  "revisions": [
+   {
+    "rules": "security",
+    "reason": "A3a : suppression d'un exit. La v0.3.0 perdait le bloc qui précède (faux négatifs) ou fusionnait deux route-maps (faux positifs) ; le moteur lit les blocs par indentation. Écarts validés (10 cas, 5 faux positifs et 5 faux négatifs de la v0.3.0).",
+    "code_commit": "dd63d36",
+    "targets": [
+     {
+      "case": "fixture:frr-r1",
+      "mutation": "17:de3ac217",
+      "rules_before": [
+       "ospf-authentification-message-digest"
+      ],
+      "rules_after": [
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest"
+      ]
+     },
+     {
+      "case": "fixture:frr-r1",
+      "mutation": "24:de3ac217",
+      "rules_before": [
+       "ospf-authentification-message-digest"
+      ],
+      "rules_after": [
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest"
+      ]
+     },
+     {
+      "case": "fixture:frr-r3",
+      "mutation": "24:de3ac217",
+      "rules_before": [
+       "ospf-authentification-message-digest",
+       "ebgp-authentification-tcp-md5",
+       "ebgp-maximum-prefix",
+       "ebgp-gtsm-ttl-security"
+      ],
+      "rules_after": [
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "ebgp-authentification-tcp-md5",
+       "ebgp-maximum-prefix",
+       "ebgp-gtsm-ttl-security"
+      ]
+     },
+     {
+      "case": "fixture:frr-r3",
+      "mutation": "31:de3ac217",
+      "rules_before": [
+       "ospf-authentification-message-digest",
+       "ebgp-authentification-tcp-md5",
+       "ebgp-maximum-prefix",
+       "ebgp-gtsm-ttl-security"
+      ],
+      "rules_after": [
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "ebgp-authentification-tcp-md5",
+       "ebgp-maximum-prefix",
+       "ebgp-gtsm-ttl-security"
+      ]
+     },
+     {
+      "case": "fixture:frr-r3",
+      "mutation": "66:de3ac217",
+      "rules_before": [
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "ebgp-authentification-tcp-md5",
+       "ebgp-maximum-prefix",
+       "ebgp-gtsm-ttl-security",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux"
+      ],
+      "rules_after": [
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "ebgp-authentification-tcp-md5",
+       "ebgp-maximum-prefix",
+       "ebgp-gtsm-ttl-security"
+      ]
+     },
+     {
+      "case": "fixture:frr-r4",
+      "mutation": "31:de3ac217",
+      "rules_before": [
+       "ebgp-authentification-tcp-md5",
+       "ebgp-maximum-prefix",
+       "ebgp-gtsm-ttl-security"
+      ],
+      "rules_after": [
+       "ospf-authentification-message-digest",
+       "ebgp-authentification-tcp-md5",
+       "ebgp-maximum-prefix",
+       "ebgp-gtsm-ttl-security"
+      ]
+     },
+     {
+      "case": "fixture:frr-r4",
+      "mutation": "59:de3ac217",
+      "rules_before": [
+       "ospf-authentification-message-digest",
+       "ebgp-authentification-tcp-md5",
+       "ebgp-maximum-prefix",
+       "ebgp-gtsm-ttl-security",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux"
+      ],
+      "rules_after": [
+       "ospf-authentification-message-digest",
+       "ebgp-authentification-tcp-md5",
+       "ebgp-maximum-prefix",
+       "ebgp-gtsm-ttl-security"
+      ]
+     },
+     {
+      "case": "config:frr-r3",
+      "mutation": "52:de3ac217",
+      "rules_before": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux"
+      ],
+      "rules_after": []
+     },
+     {
+      "case": "config:frr-r4",
+      "mutation": "43:de3ac217",
+      "rules_before": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux"
+      ],
+      "rules_after": []
+     }
+    ]
+   }
   ]
  },
  "cases": {
@@ -136,17 +272,6 @@
       ]
      ]
     },
-    "17:de3ac217": {
-     "violations": [
-      [
-       "haute",
-       "ospf-authentification-message-digest",
-       "r1",
-       "interface eth2 : adjacence OSPF active sans authentification message-digest",
-       "ospf"
-      ]
-     ]
-    },
     "19:7c000824": {
      "violations": [
       [
@@ -159,17 +284,6 @@
      ]
     },
     "22:6bc0ec10": {
-     "violations": [
-      [
-       "haute",
-       "ospf-authentification-message-digest",
-       "r1",
-       "interface eth1 : adjacence OSPF active sans authentification message-digest",
-       "ospf"
-      ]
-     ]
-    },
-    "24:de3ac217": {
      "violations": [
       [
        "haute",
@@ -473,38 +587,6 @@
       ]
      ]
     },
-    "24:de3ac217": {
-     "violations": [
-      [
-       "haute",
-       "ospf-authentification-message-digest",
-       "r3",
-       "interface eth2 : adjacence OSPF active sans authentification message-digest",
-       "ospf"
-      ],
-      [
-       "haute",
-       "ebgp-authentification-tcp-md5",
-       "r3",
-       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
-       "bgp"
-      ],
-      [
-       "moyenne",
-       "ebgp-maximum-prefix",
-       "r3",
-       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
-       "bgp"
-      ],
-      [
-       "moyenne",
-       "ebgp-gtsm-ttl-security",
-       "r3",
-       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
-       "bgp"
-      ]
-     ]
-    },
     "26:7c000824": {
      "violations": [
       [
@@ -538,38 +620,6 @@
      ]
     },
     "29:6bc0ec10": {
-     "violations": [
-      [
-       "haute",
-       "ospf-authentification-message-digest",
-       "r3",
-       "interface eth1 : adjacence OSPF active sans authentification message-digest",
-       "ospf"
-      ],
-      [
-       "haute",
-       "ebgp-authentification-tcp-md5",
-       "r3",
-       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
-       "bgp"
-      ],
-      [
-       "moyenne",
-       "ebgp-maximum-prefix",
-       "r3",
-       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
-       "bgp"
-      ],
-      [
-       "moyenne",
-       "ebgp-gtsm-ttl-security",
-       "r3",
-       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
-       "bgp"
-      ]
-     ]
-    },
-    "31:de3ac217": {
      "violations": [
       [
        "haute",
@@ -726,59 +776,6 @@
        "r3",
        "interface eth2 : adjacence OSPF active sans authentification message-digest",
        "ospf"
-      ]
-     ]
-    },
-    "66:de3ac217": {
-     "violations": [
-      [
-       "haute",
-       "ospf-authentification-message-digest",
-       "r3",
-       "interface eth1 : adjacence OSPF active sans authentification message-digest",
-       "ospf"
-      ],
-      [
-       "haute",
-       "ospf-authentification-message-digest",
-       "r3",
-       "interface eth2 : adjacence OSPF active sans authentification message-digest",
-       "ospf"
-      ],
-      [
-       "haute",
-       "ebgp-authentification-tcp-md5",
-       "r3",
-       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
-       "bgp"
-      ],
-      [
-       "moyenne",
-       "ebgp-maximum-prefix",
-       "r3",
-       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
-       "bgp"
-      ],
-      [
-       "moyenne",
-       "ebgp-gtsm-ttl-security",
-       "r3",
-       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
-       "bgp"
-      ],
-      [
-       "haute",
-       "ebgp-pas-de-reinjection-de-prefixes-locaux",
-       "r3",
-       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 10.1.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
-       "bgp"
-      ],
-      [
-       "haute",
-       "ebgp-pas-de-reinjection-de-prefixes-locaux",
-       "r3",
-       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 192.168.1.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
-       "bgp"
       ]
      ]
     },
@@ -1322,31 +1319,6 @@
       ]
      ]
     },
-    "31:de3ac217": {
-     "violations": [
-      [
-       "haute",
-       "ebgp-authentification-tcp-md5",
-       "r4",
-       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
-       "bgp"
-      ],
-      [
-       "moyenne",
-       "ebgp-maximum-prefix",
-       "r4",
-       "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
-       "bgp"
-      ],
-      [
-       "moyenne",
-       "ebgp-gtsm-ttl-security",
-       "r4",
-       "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
-       "bgp"
-      ]
-     ]
-    },
     "36:077c3838": {
      "violations": [
       [
@@ -1405,52 +1377,6 @@
        "r4",
        "interface eth2 : adjacence OSPF active sans authentification message-digest",
        "ospf"
-      ]
-     ]
-    },
-    "59:de3ac217": {
-     "violations": [
-      [
-       "haute",
-       "ospf-authentification-message-digest",
-       "r4",
-       "interface eth2 : adjacence OSPF active sans authentification message-digest",
-       "ospf"
-      ],
-      [
-       "haute",
-       "ebgp-authentification-tcp-md5",
-       "r4",
-       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
-       "bgp"
-      ],
-      [
-       "moyenne",
-       "ebgp-maximum-prefix",
-       "r4",
-       "voisin eBGP 172.16.34.1 sans limite maximum-prefix",
-       "bgp"
-      ],
-      [
-       "moyenne",
-       "ebgp-gtsm-ttl-security",
-       "r4",
-       "voisin eBGP 172.16.34.1 sans GTSM (ttl-security hops)",
-       "bgp"
-      ],
-      [
-       "haute",
-       "ebgp-pas-de-reinjection-de-prefixes-locaux",
-       "r4",
-       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
-       "bgp"
-      ],
-      [
-       "haute",
-       "ebgp-pas-de-reinjection-de-prefixes-locaux",
-       "r4",
-       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
-       "bgp"
       ]
      ]
     },
@@ -3728,26 +3654,6 @@
       ]
      ]
     },
-    "52:de3ac217": {
-     "compliant": false,
-     "code": 2,
-     "violations": [
-      [
-       "haute",
-       "ebgp-pas-de-reinjection-de-prefixes-locaux",
-       "r3",
-       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 10.1.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
-       "bgp"
-      ],
-      [
-       "haute",
-       "ebgp-pas-de-reinjection-de-prefixes-locaux",
-       "r3",
-       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 192.168.1.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
-       "bgp"
-      ]
-     ]
-    },
     "62:95313dd9": {
      "compliant": false,
      "code": 2,
@@ -3988,26 +3894,6 @@
        "r4",
        "interface eth2 : adjacence OSPF active sans authentification message-digest",
        "ospf"
-      ]
-     ]
-    },
-    "43:de3ac217": {
-     "compliant": false,
-     "code": 2,
-     "violations": [
-      [
-       "haute",
-       "ebgp-pas-de-reinjection-de-prefixes-locaux",
-       "r4",
-       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
-       "bgp"
-      ],
-      [
-       "haute",
-       "ebgp-pas-de-reinjection-de-prefixes-locaux",
-       "r4",
-       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
-       "bgp"
       ]
      ]
     },

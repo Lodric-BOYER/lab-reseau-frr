@@ -26,6 +26,23 @@
     "code_commit": "b56a775",
     "reason": "r5 durci relevé sur le lab mixte (snapshot v4a-ref-mixte) : keychain OSPF en aes1, bannière ; comble le trou de couverture SR Linux durci du gel A1"
    }
+  ],
+  "revisions": [
+   {
+    "rules": "default",
+    "reason": "A3a : suppression d'un exit. La v0.3.0 perdait le bloc qui précède (faux négatifs) ou fusionnait deux route-maps (faux positifs) ; le moteur lit les blocs par indentation. Écarts validés (10 cas, 5 faux positifs et 5 faux négatifs de la v0.3.0).",
+    "code_commit": "dd63d36",
+    "targets": [
+     {
+      "case": "fixture:frr-r1",
+      "mutation": "31:de3ac217",
+      "rules_before": [
+       "lan-en-ospf-passif"
+      ],
+      "rules_after": []
+     }
+    ]
+   }
   ]
  },
  "cases": {
@@ -83,19 +100,6 @@
      ]
     },
     "30:077c3838": {
-     "compliant": false,
-     "code": 1,
-     "violations": [
-      [
-       "moyenne",
-       "lan-en-ospf-passif",
-       "r1",
-       "interface eth3 (description 'LAN-pc1') n'est pas en ip ospf passive",
-       null
-      ]
-     ]
-    },
-    "31:de3ac217": {
      "compliant": false,
      "code": 1,
      "violations": [
