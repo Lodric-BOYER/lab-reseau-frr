@@ -58,6 +58,10 @@ def test_the_detector_knows_the_lab_secrets():
     """Garde-fou contre un test vide : la liste extraite contient bien les valeurs attendues."""
     values = lab_secret_values()
     assert {"lab-bgp-r3r4", "lab-ospf-r1r3", "lab-ospf-r4r5"} <= values
+    # Relevés de peer groups (A4) : mots de passe en clair côté FRR, hash « type 7 » côté EOS.
+    assert {"lab-bgp-pgtest", "lab-bgp-pggroup", "lab-bgp-pgmember", "lab-bgp-pgorphan"} <= values
+    eos_group = (REPO / "tests" / "fixtures" / "peergroups" / "eos_s1_group.txt").read_text(encoding="utf-8")
+    assert re.search(r"neighbor PG-TEST password 7 (\S+)", eos_group).group(1) in values
     assert any(v.startswith("$aes1$") for v in values)
     assert any(v.startswith("$6$") for v in values)
     assert len(values) >= 8

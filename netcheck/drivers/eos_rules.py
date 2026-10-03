@@ -15,19 +15,17 @@ niveau par l'arbre et son bloc paraîtrait incomplet, sans alerte : `flag_mispla
 (ligne NON conservée). Conséquence sur l'ancien code (v0.3.0), qui terminait un bloc au premier `!` : il
 ignorait les lignes indentées qui suivent un `!` alors qu'EOS les applique au bloc ouvert.
 
-Les messages sont ceux de la v0.3.0, mot pour mot (le gel de référence les compare). Les peer groups ne
-sont pas encore pris en compte (étape A4).
+Les messages sont ceux de la v0.3.0, mot pour mot (le gel de référence les compare), sauf pour un voisin
+membre d'un peer group, que le constat nomme avec son groupe (étape A4 : `bgp_neighbors`).
 """
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 
 from netcheck.confparse import ConfigNode, ParsedConfig
+from netcheck.drivers.bgp_neighbors import EOS_SYNTAX, BgpView
 from netcheck.model import DeviceState
 from netcheck.ruletypes import Check, Rule, Violation
-
-_DIGITS = re.compile(r"\d+")
 
 # Une bannière EOS est du texte libre multi-lignes, terminé par `EOF` (vérifié, `login` et `motd`) : ses
 # lignes peuvent contenir « ! », « { » ou une indentation, sans être de la configuration.
@@ -48,28 +46,13 @@ def _has(node: ConfigNode, *words: str) -> bool:
     return any(child.words == words for child in node.children)
 
 
-@dataclass
-class _Bgp:
-    below: list[ConfigNode]    # tout ce qui est sous `router bgp`
-    ebgp: list[str]            # IP des voisins eBGP (remote-as différent de l'AS local), dans l'ordre
-
-
-def _bgp(cfg: ParsedConfig) -> _Bgp | None:
-    """Le premier bloc `router bgp <AS>`. Seuls les voisins déclarés un par un avec `neighbor X remote-as N`
-    sont vus : les peer groups EOS n'ont pas été observés dans ce lab (étape A4)."""
+def _bgp(cfg: ParsedConfig) -> BgpView | None:
+    """Le premier bloc `router bgp <AS>`. Les voisins sont lus avec leurs réglages effectifs : un membre
+    d'un peer group hérite de son groupe et peut le surcharger (voir `bgp_neighbors`, relevé sur cEOS
+    4.34.8M dans tests/fixtures/peergroups/). EOS refuse `remote-as external|internal` (`% Invalid input`,
+    sur un voisin comme sur un groupe) : seuls des numéros d'AS désignent un voisin."""
     nodes = cfg.top("router", "bgp", "*")
-    if not nodes:
-        return None
-    block = nodes[0]
-    below = _below(block)
-    local_as = block.words[2]
-    ebgp = []
-    for n in below:
-        if len(n.words) >= 4 and n.words[0] == "neighbor" and n.words[2] == "remote-as":
-            remote = _DIGITS.match(n.words[3])
-            if remote and remote.group() != local_as:
-                ebgp.append(n.words[1])
-    return _Bgp(below, ebgp)
+    return BgpView(nodes[0], EOS_SYNTAX) if nodes else None
 
 
 def _check_eos_ospf_authentication_required(rule: Rule, device: DeviceState, cfg) -> list[Violation]:
@@ -115,14 +98,14 @@ def _check_eos_bgp_neighbor_password_required(rule: Rule, device: DeviceState, c
         return []
 
     def has_password(ip: str) -> bool:
-        for n in bgp.below:
-            if n.words[:3] == ("neighbor", ip, "password"):
-                rest = n.words[3:]
-                if len(rest) == 1 or (len(rest) == 2 and rest[0].isdigit()):
-                    return True
+        for n in bgp.lines(ip, lambda rest: rest[:1] == ("password",)):
+            rest = n.words[3:]
+            if len(rest) == 1 or (len(rest) == 2 and rest[0].isdigit()):
+                return True
         return False
 
-    return [Violation(rule, device.name, f"voisin eBGP {ip} sans authentification TCP-MD5 (mot de passe)")
+    return [Violation(rule, device.name,
+                      f"voisin eBGP {bgp.label(ip)} sans authentification TCP-MD5 (mot de passe)")
             for ip in bgp.ebgp if not has_password(ip)]
 
 
@@ -133,10 +116,10 @@ def _check_eos_bgp_neighbor_ttl_security_required(rule: Rule, device: DeviceStat
     bgp = _bgp(_config(cfg))
     if bgp is None:
         return []
-    return [Violation(rule, device.name, f"voisin eBGP {ip} sans GTSM (ttl maximum-hops)")
+    return [Violation(rule, device.name, f"voisin eBGP {bgp.label(ip)} sans GTSM (ttl maximum-hops)")
             for ip in bgp.ebgp
-            if not any(len(n.words) == 5 and n.words[:4] == ("neighbor", ip, "ttl", "maximum-hops")
-                       and n.words[4].isdigit() for n in bgp.below)]
+            if not any(len(n.words) == 5 and n.words[4].isdigit()
+                       for n in bgp.lines(ip, lambda rest: rest[:2] == ("ttl", "maximum-hops")))]
 
 
 def _check_eos_bgp_neighbor_maximum_routes_required(rule: Rule, device: DeviceState, cfg) -> list[Violation]:
@@ -148,14 +131,15 @@ def _check_eos_bgp_neighbor_maximum_routes_required(rule: Rule, device: DeviceSt
         return []
     violations = []
     for ip in bgp.ebgp:
-        limit = next((int(m.group()) for n in bgp.below
-                      if n.words[:3] == ("neighbor", ip, "maximum-routes") and len(n.words) >= 4
-                      and (m := re.match(r"\d+\b", n.words[3]))), None)
+        limit = next((int(m.group())
+                      for n in bgp.lines(ip, lambda rest: rest[:1] == ("maximum-routes",))
+                      if len(n.words) >= 4 and (m := re.match(r"\d+\b", n.words[3]))), None)
         if limit is None:
-            violations.append(Violation(rule, device.name, f"voisin eBGP {ip} sans limite maximum-routes"))
+            violations.append(Violation(rule, device.name,
+                f"voisin eBGP {bgp.label(ip)} sans limite maximum-routes"))
         elif limit == 0:
             violations.append(Violation(rule, device.name,
-                f"voisin eBGP {ip} : maximum-routes 0 (illimité) n'est pas une limite"))
+                f"voisin eBGP {bgp.label(ip)} : maximum-routes 0 (illimité) n'est pas une limite"))
     return violations
 
 

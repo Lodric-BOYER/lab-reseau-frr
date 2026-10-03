@@ -7,10 +7,12 @@ Différences voulues avec les évaluateurs textuels de la v0.3.0, toutes à l'av
   plus lu comme « ip ospf passive » ;
 - un bloc se termine à la fin de son indentation : supprimer un `exit` ne fait plus perdre ni fusionner
   le bloc qui précède (la v0.3.0 ne retrouvait un bloc d'interface que s'il se terminait par `exit`).
-Les messages sont inchangés mot pour mot (le gel de référence les compare).
+Les messages sont inchangés mot pour mot (le gel de référence les compare), sauf pour un voisin membre d'un
+peer group, que le constat nomme avec son groupe.
 
-Vérifié en direct sur FRR 10.2.1 (les commentaires de chaque règle disent quoi) ; les peer groups ne
-sont pas encore pris en compte (étape A4).
+Vérifié en direct sur FRR 10.2.1 (les commentaires de chaque règle disent quoi). Les peer groups sont lus
+par `bgp_neighbors` (étape A4) : un membre est évalué avec les réglages de son groupe, qu'il peut surcharger ;
+`remote-as external|internal` désigne un voisin eBGP / iBGP.
 
 ATTENTION, FRR ne lit pas l'indentation : il lit selon le CONTEXTE (le bloc ouvert). Vérifié avec
 `vtysh -C` (contrôle de syntaxe, rien n'est appliqué) : `ip ospf area 0` ou `neighbor X remote-as N` en
@@ -23,13 +25,11 @@ indentée serait lue au premier niveau et son interface paraîtrait sans authent
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 
 from netcheck.confparse import ConfigNode, ParsedConfig
+from netcheck.drivers.bgp_neighbors import FRR_SYNTAX, BgpView
 from netcheck.model import DeviceState
 from netcheck.ruletypes import Check, Rule, Violation
-
-_DIGITS = re.compile(r"\d+")
 
 
 def _config(cfg: ParsedConfig | None) -> ParsedConfig:
@@ -85,42 +85,23 @@ def flag_misplaced_subcommands(cfg: ParsedConfig) -> None:
                 break
 
 
-@dataclass
-class _Bgp:
-    below: list[ConfigNode]    # tout ce qui est sous `router bgp` (famille d'adresses comprise)
-    ebgp: list[str]            # IP des voisins eBGP (remote-as différent de l'AS local), dans l'ordre
-
-
-def _bgp(cfg: ParsedConfig) -> _Bgp | None:
-    """Le premier bloc `router bgp <AS>`, ou None s'il n'y a pas de BGP configuré."""
+def _bgp(cfg: ParsedConfig) -> BgpView | None:
+    """Le premier bloc `router bgp <AS>`, ou None s'il n'y a pas de BGP configuré. Les voisins sont lus
+    avec leurs réglages effectifs (peer groups : voir `bgp_neighbors`)."""
     nodes = cfg.top("router", "bgp", "*")
-    if not nodes:
-        return None
-    block = nodes[0]
-    below = [n for n in block.walk() if n is not block]
-    local_as = block.words[2]
-    ebgp = []
-    for n in below:
-        if len(n.words) >= 4 and n.words[0] == "neighbor" and n.words[2] == "remote-as":
-            remote = _DIGITS.match(n.words[3])
-            if remote and remote.group() != local_as:
-                ebgp.append(n.words[1])
-    return _Bgp(below, ebgp)
-
-
-def _neighbor_line(bgp: _Bgp, ip: str, *words: str) -> bool:
-    """Une ligne `neighbor <ip> <words...>` exacte, où que ce soit sous `router bgp`."""
-    return any(n.words == ("neighbor", ip, *words) for n in bgp.below)
+    return BgpView(nodes[0], FRR_SYNTAX) if nodes else None
 
 
 # ------------------------------------------------------------------------------------------
 # Politiques d'entrée et de sortie des voisins eBGP
 # ------------------------------------------------------------------------------------------
 
-def _has_policy(bgp: _Bgp, ip: str, direction: str) -> bool:
-    return any(len(n.words) == 5 and n.words[:2] == ("neighbor", ip)
-               and n.words[2] in ("route-map", "prefix-list") and n.words[4] == direction
-               for n in bgp.below)
+def _policy_lines(bgp: BgpView, ip: str, kind: str, direction: str) -> list[ConfigNode]:
+    return bgp.lines(ip, lambda rest: len(rest) == 3 and rest[0] == kind and rest[2] == direction)
+
+
+def _has_policy(bgp: BgpView, ip: str, direction: str) -> bool:
+    return any(_policy_lines(bgp, ip, kind, direction) for kind in ("route-map", "prefix-list"))
 
 
 def _check_bgp_policy(rule: Rule, device: DeviceState, cfg, direction: str) -> list[Violation]:
@@ -128,7 +109,7 @@ def _check_bgp_policy(rule: Rule, device: DeviceState, cfg, direction: str) -> l
     if bgp is None:
         return []  # pas de BGP configuré sur cet équipement : rien à vérifier
     mot = "entrée" if direction == "in" else "sortie"
-    return [Violation(rule, device.name, f"voisin eBGP {ip} sans route-map/prefix-list en {mot}")
+    return [Violation(rule, device.name, f"voisin eBGP {bgp.label(ip)} sans route-map/prefix-list en {mot}")
             for ip in bgp.ebgp if not _has_policy(bgp, ip, direction)]
 
 
@@ -193,9 +174,10 @@ def _check_bgp_neighbor_password_required(rule: Rule, device: DeviceState, cfg) 
     bgp = _bgp(_config(cfg))
     if bgp is None:
         return []
-    return [Violation(rule, device.name, f"voisin eBGP {ip} sans authentification TCP-MD5 (mot de passe)")
+    return [Violation(rule, device.name,
+                      f"voisin eBGP {bgp.label(ip)} sans authentification TCP-MD5 (mot de passe)")
             for ip in bgp.ebgp
-            if not any(len(n.words) == 4 and n.words[:3] == ("neighbor", ip, "password") for n in bgp.below)]
+            if not any(len(n.words) == 4 for n in bgp.lines(ip, lambda rest: rest[:1] == ("password",)))]
 
 
 def _check_bgp_neighbor_maximum_prefix_required(rule: Rule, device: DeviceState, cfg) -> list[Violation]:
@@ -208,10 +190,10 @@ def _check_bgp_neighbor_maximum_prefix_required(rule: Rule, device: DeviceState,
     bgp = _bgp(_config(cfg))
     if bgp is None:
         return []
-    return [Violation(rule, device.name, f"voisin eBGP {ip} sans limite maximum-prefix")
+    return [Violation(rule, device.name, f"voisin eBGP {bgp.label(ip)} sans limite maximum-prefix")
             for ip in bgp.ebgp
-            if not any(len(n.words) == 4 and n.words[:3] == ("neighbor", ip, "maximum-prefix")
-                       and n.words[3].isdigit() for n in bgp.below)]
+            if not any(len(n.words) == 4 and n.words[3].isdigit()
+                       for n in bgp.lines(ip, lambda rest: rest[:1] == ("maximum-prefix",)))]
 
 
 def _check_bgp_neighbor_ttl_security_required(rule: Rule, device: DeviceState, cfg) -> list[Violation]:
@@ -224,24 +206,23 @@ def _check_bgp_neighbor_ttl_security_required(rule: Rule, device: DeviceState, c
     bgp = _bgp(_config(cfg))
     if bgp is None:
         return []
-    return [Violation(rule, device.name, f"voisin eBGP {ip} sans GTSM (ttl-security hops)")
+    return [Violation(rule, device.name, f"voisin eBGP {bgp.label(ip)} sans GTSM (ttl-security hops)")
             for ip in bgp.ebgp
-            if not any(len(n.words) == 5 and n.words[:4] == ("neighbor", ip, "ttl-security", "hops")
-                       and n.words[4].isdigit() for n in bgp.below)]
+            if not any(len(n.words) == 5 and n.words[4].isdigit()
+                       for n in bgp.lines(ip, lambda rest: rest[:2] == ("ttl-security", "hops")))]
 
 
 # ------------------------------------------------------------------------------------------
 # Politiques d'entrée : ce que la prefix-list autorise réellement
 # ------------------------------------------------------------------------------------------
 
-def _route_map_in_name(bgp: _Bgp, neighbor: str) -> str | None:
-    """Nom du route-map appliqué en entrée ('in') à ce voisin, ou None si aucun (dans ce cas,
-    la règle ebgp-politique-entrante existante signale déjà le problème -- pas le rôle des
-    règles de politique ci-dessous, qui supposent qu'un route-map en entrée existe)."""
-    for n in bgp.below:
-        if len(n.words) == 5 and n.words[:3] == ("neighbor", neighbor, "route-map") and n.words[4] == "in":
-            return n.words[3]
-    return None
+def _route_map_in_name(bgp: BgpView, neighbor: str) -> str | None:
+    """Nom du route-map appliqué en entrée ('in') à ce voisin (le sien, à défaut celui de son peer
+    group), ou None si aucun (dans ce cas, la règle ebgp-politique-entrante existante signale déjà le
+    problème -- pas le rôle des règles de politique ci-dessous, qui supposent qu'un route-map en entrée
+    existe)."""
+    lines = _policy_lines(bgp, neighbor, "route-map", "in")
+    return lines[0].words[3] if lines else None
 
 
 def _route_map_prefix_lists(cfg: ParsedConfig, route_map: str) -> list[str]:
@@ -282,7 +263,7 @@ def _check_bgp_neighbor_no_default_route_policy(rule: Rule, device: DeviceState,
             for network in _prefix_list_networks(config, pl):
                 if network == "0.0.0.0/0":
                     violations.append(Violation(rule, device.name,
-                        f"prefix-list '{pl}' (politique d'entrée du voisin eBGP {ip}) "
+                        f"prefix-list '{pl}' (politique d'entrée du voisin eBGP {bgp.label(ip)}) "
                         f"autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur"))
     return violations
 
@@ -307,7 +288,7 @@ def _check_bgp_neighbor_no_own_prefixes_policy(rule: Rule, device: DeviceState, 
             for network in _prefix_list_networks(config, pl):
                 if network in own_networks:
                     violations.append(Violation(rule, device.name,
-                        f"prefix-list '{pl}' (politique d'entrée du voisin eBGP {ip}) "
+                        f"prefix-list '{pl}' (politique d'entrée du voisin eBGP {bgp.label(ip)}) "
                         f"autorise {network}, que ce routeur annonce déjà lui-même : "
                         f"risque de réinjection"))
     return violations
