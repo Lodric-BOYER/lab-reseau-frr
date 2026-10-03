@@ -90,6 +90,7 @@ class SrlinuxDriver(Driver):
 
     # Phase A (v4) : les règles qui lisent la syntaxe de SR Linux vivent dans drivers/srlinux_rules.py.
     CONFIG_CHECKS = srlinux_rules.CHECKS
+    CONFIG_FILENAMES = ("config.cli",)
 
     def translate(self, command: str) -> str:
         return self._TRANSLATION[command]

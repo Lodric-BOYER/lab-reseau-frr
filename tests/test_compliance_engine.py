@@ -216,8 +216,9 @@ def test_json_counts_every_family_apart_and_labels_the_cause():
     na, warnings = _scenario()
     d = report.compliance_to_dict([], compliant=False, not_applicable=na, config_warnings=warnings)
     assert d["summary"] == {
-        "violations": 0, "config_lines_unread": 1, "config_notes": 1, "not_applicable": 2,
-        "not_applicable_not_implemented": 1, "not_applicable_out_of_scope": 1}
+        "violations": 0, "config_lines_unread": 1, "config_files_not_audited": 0, "config_notes": 1,
+        "not_applicable": 2,
+        "not_applicable_not_implemented": 1, "not_applicable_no_model": 0, "not_applicable_out_of_scope": 1}
     assert [(n["device"], n["cause"]) for n in d["not_applicable"]] == [
         ("r5", "not_implemented"), ("r6", "driver")]
     assert [(w["line"], w["kept"]) for w in d["config_analysis"]] == [(12, False), (7, True)]
@@ -289,8 +290,8 @@ def test_cli_check_exits_1_on_an_unread_line_even_when_all_rules_pass(
                           "     drivers: [fake-brace], kind: fake_kind}\n", encoding="utf-8")
     monkeypatch.setattr(cli.snapshot, "load", lambda name: {"x": device("x", "fake-brace", UNREAD)})
     out_json = tmp_path / "out.json"
-    args = argparse.Namespace(rules=str(rules_file), inventory=None, snapshot="s",
-                              json=str(out_json), html=None)
+    args = argparse.Namespace(rules=str(rules_file), inventory=None, snapshot="s", config_dir=None,
+                              driver=None, json=str(out_json), html=None)
     assert cli.cmd_check(args) == 1
     data = json.loads(out_json.read_text(encoding="utf-8"))
     assert data["compliant"] is False and data["violations"] == []

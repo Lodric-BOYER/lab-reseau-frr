@@ -142,7 +142,22 @@ def _check_srlinux_ospf_authentication_required(rule: Rule, device: DeviceState,
     return violations
 
 
+def _check_srlinux_login_banner_present(rule: Rule, device: DeviceState, cfg) -> list[Violation]:
+    """Une bannière de connexion doit être configurée. Elle se lit sur le CHEMIN : le mot-clé `login-banner`
+    suivi de son texte, identique dans les deux syntaxes (accolades de « info from running » et ligne
+    `set / system banner login-banner "..."` du fichier de démarrage) : aucune expression régulière sur le
+    texte, donc aucune forme à reconstruire pour que `check --config-dir` donne le verdict du direct (A5).
+    Le préfixe `system banner` n'est volontairement pas exigé : la v0.3.0 voyait la bannière même quand le
+    marqueur de section de la collecte manquait, et le gel le compare (une configuration ainsi abîmée est de
+    toute façon signalée par l'analyse). Le message est celui de la v0.3.0, qui citait l'expression
+    régulière de la règle."""
+    if any("login-banner" in line.path[:-1] for line in _config(cfg).flat):
+        return []
+    return [Violation(rule, device.name, "aucune ligne ne correspond à /^\\s*login-banner\\s/")]
+
+
 CHECKS: dict[str, Check] = {
+    "srlinux_login_banner_present": Check(_check_srlinux_login_banner_present),
     "srlinux_interface_mtu_margin": Check(_check_srlinux_interface_mtu_margin),
     "srlinux_ospf_interface_type_point_to_point": Check(_check_srlinux_ospf_interface_type_point_to_point),
     "srlinux_ospf_authentication_required": Check(_check_srlinux_ospf_authentication_required),

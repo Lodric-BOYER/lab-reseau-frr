@@ -153,8 +153,7 @@ rules:
     applies_to: all
     drivers: [srlinux]
     category: acces
-    kind: line_present
-    pattern: "^\\s*login-banner\\s"
+    kind: srlinux_login_banner_present
     references:
       - title: "SR Linux — CLI interface (login-banner / motd-banner)"
         url: "https://documentation.nokia.com/srlinux/26-3/books/system-mgmt/cli-interface.html"

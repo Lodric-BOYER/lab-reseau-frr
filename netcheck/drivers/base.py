@@ -59,6 +59,10 @@ class Driver(ABC):
     #: `line_present`, `line_absent` et `interface_description_required`, sont dans le moteur).
     CONFIG_CHECKS: ClassVar[dict[str, Check]] = {}
 
+    #: Phase A5 : noms de fichier de configuration que ce driver reconnaît dans un dossier d'équipement
+    #: (`check --config-dir dossier/<équipement>/<fichier>`), quand le dossier en contient plusieurs.
+    CONFIG_FILENAMES: ClassVar[tuple[str, ...]] = ()
+
     def parse_config(self, running_config: str) -> ParsedConfig | None:
         """Analyse structurée de la running-config (voir `netcheck/confparse.py`), ou None si ce
         driver n'analyse pas la configuration. Ne lève jamais : une ligne douteuse devient un

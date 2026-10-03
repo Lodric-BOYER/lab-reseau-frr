@@ -37,6 +37,7 @@ from netcheck.drivers.registry import DRIVER_REGISTRY
 from netcheck.model import DeviceState
 from netcheck.ruletypes import (
     CAUSE_DRIVER,
+    CAUSE_NO_MODEL,
     CAUSE_NOT_IMPLEMENTED,
     Check,
     ConfigWarning,
@@ -211,14 +212,17 @@ def evaluate_config(
     rules: list[Rule],
     devices: dict[str, DeviceState],
     management_interfaces: set[str] | None = None,
+    offline: bool = False,
 ) -> ComplianceResult:
     """Applique chaque règle à chaque équipement concerné (rule.applies_to).
 
-    Trois états « non applicable », jamais conformes, jamais comptés dans le verdict : la règle ne
-    liste pas le driver de l'équipement (`drivers:`, cause « driver »), ou le driver ne sait pas
-    évaluer son kind (cause « not_implemented » : un trou de couverture, à ne pas confondre avec une
-    règle hors sujet). La configuration de chaque équipement audité est analysée une fois ; toute
-    ligne douteuse devient un `ConfigWarning` (voir `verdict()` pour son effet)."""
+    Trois causes de « non applicable », jamais conformes, jamais comptées dans le verdict : la règle ne
+    liste pas le driver de l'équipement (`drivers:`, cause « driver »), le driver ne sait pas évaluer
+    son kind (cause « not_implemented » : un trou de couverture, à ne pas confondre avec une règle
+    hors sujet), ou -- hors ligne seulement (`offline=True`, `check --config-dir`) -- la règle lit le
+    MODÈLE collecté (`Check.needs` contient « interfaces ») alors que seule la configuration existe
+    (cause « no_model » : un manque de données). La configuration de chaque équipement audité est
+    analysée une fois ; toute ligne douteuse devient un `ConfigWarning` (voir `verdict()`)."""
     mgmt = set(management_interfaces or ())
     result = ComplianceResult()
     parsed: dict[str, ParsedConfig | None] = {}
@@ -241,6 +245,11 @@ def evaluate_config(
             if check is None:
                 result.not_applicable.append(NotApplicable(rule, name,
                     f"non implémenté par le driver {state.driver}", CAUSE_NOT_IMPLEMENTED))
+                continue
+            if offline and "interfaces" in check.needs:
+                result.not_applicable.append(NotApplicable(rule, name,
+                    "lit le modèle collecté (interfaces) : indisponible hors ligne, seule la configuration "
+                    "est lue", CAUSE_NO_MODEL))
                 continue
             result.violations += check.fn(rule, management.filtered(state, mgmt), config_of(name, state))
 

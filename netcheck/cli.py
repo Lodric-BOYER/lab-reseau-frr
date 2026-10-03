@@ -9,10 +9,13 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import yaml
+
 from netcheck import (
     assertions,
     collector,
     compliance,
+    configdir,
     diff,
     expect,
     guard,
@@ -90,14 +93,48 @@ def cmd_check(args: argparse.Namespace) -> int:
         print(f"Erreur : {e}", file=sys.stderr)
         return 3
 
-    inv = inventory.load(path=args.inventory)
-    if args.snapshot:
+    if args.config_dir and args.snapshot:
+        print("Erreur : --config-dir et --snapshot s'excluent (deux sources différentes)", file=sys.stderr)
+        return 3
+    if args.driver and not args.config_dir:
+        print("Erreur : --driver n'a de sens qu'avec --config-dir", file=sys.stderr)
+        return 3
+
+    source = None
+    file_warnings: list[compliance.ConfigWarning] = []
+    if args.config_dir:
+        # Hors ligne : on ne lit que des fichiers. L'inventaire sert à déduire le driver de chaque
+        # équipement ; sans lui, --driver est obligatoire.
+        try:
+            inv = inventory.load(path=args.inventory)
+        except (OSError, KeyError, TypeError, yaml.YAMLError) as e:
+            if not args.driver:
+                print(f"Erreur : inventaire illisible ({e.__class__.__name__}) : donnez --driver",
+                      file=sys.stderr)
+                return 3
+            inv = inventory.Inventory(routers={})
+        try:
+            drivers = {n: r.get("driver", "frr") for n, r in inv.routers.items()}
+            loaded = configdir.load(args.config_dir, drivers, args.driver)
+        except configdir.ConfigDirError as e:
+            print(f"Erreur : {e}", file=sys.stderr)
+            return 3
+        if not loaded.devices:
+            for w in loaded.warnings:
+                print(f"  {w.device}: {w.warning.reason}", file=sys.stderr)
+            print("Erreur : aucune configuration lue : rien n'a été audité", file=sys.stderr)
+            return 3
+        devices, file_warnings = loaded.devices, loaded.warnings
+        source = loaded.source_info(args.config_dir, args.driver)
+    elif args.snapshot:
+        inv = inventory.load(path=args.inventory)
         try:
             devices = snapshot.load(args.snapshot)
         except FileNotFoundError as e:
             print(f"Erreur : {e}", file=sys.stderr)
             return 3
     else:
+        inv = inventory.load(path=args.inventory)
         results = collector.collect_all(inv.routers)
         devices = {}
         for name, (ok, value) in results.items():
@@ -107,20 +144,21 @@ def cmd_check(args: argparse.Namespace) -> int:
                 print(f"  {name:<8} INJOIGNABLE : {value}", file=sys.stderr)
 
     result = compliance.evaluate_config(
-        rules, devices, management_interfaces=set(inv.management_interfaces))
-    # Une ligne de configuration non lue donne au minimum le code 1 : jamais « conforme » sur une
-    # configuration que l'audit n'a pas entièrement lue.
-    compliant, code = compliance.verdict(result.violations, result.config_warnings)
+        rules, devices, management_interfaces=set(inv.management_interfaces), offline=bool(args.config_dir))
+    # Une ligne de configuration non lue (ou un fichier non audité) donne au minimum le code 1 : jamais
+    # « conforme » sur une configuration que l'audit n'a pas entièrement lue.
+    warnings = result.config_warnings + file_warnings
+    compliant, code = compliance.verdict(result.violations, warnings)
 
     report.print_compliance_terminal(result.violations, compliant, result.not_applicable,
-                                     config_warnings=result.config_warnings)
+                                     config_warnings=warnings, source=source)
     if args.json:
         report.write_compliance_json(result.violations, compliant, args.json, result.not_applicable,
-                                     result.config_warnings)
+                                     warnings, source=source)
         print(f"Constats écrits (JSON) : {args.json}")
     if args.html:
         report.write_compliance_html(result.violations, compliant, rules_path, args.html,
-                                     result.not_applicable, result.config_warnings)
+                                     result.not_applicable, warnings, source=source)
         print(f"Rapport HTML écrit : {args.html}")
     return code
 
@@ -364,6 +402,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_check = sub.add_parser("check", help="audite la conformité des configurations")
     p_check.add_argument("--snapshot", help="auditer un snapshot existant (hors ligne, sans connexion)")
+    p_check.add_argument(
+        "--config-dir", action="append", metavar="DOSSIER",
+        help="auditer des fichiers de configuration, sans aucun équipement : `DOSSIER/<équipement>.<ext>` ou "
+             "`DOSSIER/<équipement>/<fichier>` ; répétable (un dossier ultérieur remplace un équipement "
+             "du précédent). Les règles qui lisent l'état collecté sont alors non évaluables")
+    p_check.add_argument(
+        "--driver",
+        help="avec --config-dir : driver de TOUS les fichiers (défaut : celui de l'inventaire, -i)")
     p_check.add_argument("--rules", help=f"fichier de règles YAML (défaut : {DEFAULT_RULES_PATH.name})")
     p_check.add_argument("--json", help="écrire les non-conformités au format JSON dans ce fichier")
     p_check.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")

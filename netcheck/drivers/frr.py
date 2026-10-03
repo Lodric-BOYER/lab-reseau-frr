@@ -25,6 +25,7 @@ class FrrDriver(Driver):
 
     # Phase A (v4) : les règles qui lisent la syntaxe de FRR vivent dans drivers/frr_rules.py.
     CONFIG_CHECKS = frr_rules.CHECKS
+    CONFIG_FILENAMES = ("frr.conf",)
 
     def parse_config(self, running_config: str) -> ParsedConfig:
         # Blocs par indentation ; « ! » est un séparateur, « exit » une ligne comme une autre. FRR,

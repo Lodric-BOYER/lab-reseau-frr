@@ -37,6 +37,23 @@
   <strong>{{ status }}</strong>
 </p>
 
+{% if source %}
+<p class="meta"><strong>Mode hors ligne</strong> (<code>check --config-dir</code>) : {{ source.devices|length }}
+équipement(s) lu(s) depuis des fichiers, aucun équipement interrogé. Les règles qui lisent l'état collecté
+(interfaces) sont <strong class="cause-gap">non évaluables</strong> hors ligne : voir « Non applicable »,
+cause « ÉTAT REQUIS (hors ligne) ».</p>
+<table id="sources">
+  <thead>
+    <tr><th>Équipement</th><th>Driver</th><th>Fichier</th></tr>
+  </thead>
+  <tbody>
+    {% for name, info in source.devices.items() %}
+    <tr><td>{{ name }}</td><td>{{ info.driver }}</td><td><code>{{ info.file }}</code></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
 <div class="counters">
   {% for sev in ["critique", "haute", "moyenne", "basse"] %}
   <span class="badge badge-{{ sev }}">{{ counts[sev] }} {{ sev }}</span>
@@ -44,11 +61,17 @@
   {% if summary.config_lines_unread %}
   <span class="badge badge-unread">{{ summary.config_lines_unread }} ligne(s) de configuration non lue(s) ou incertaine(s)</span>
   {% endif %}
+  {% if summary.config_files_not_audited %}
+  <span class="badge badge-unread">{{ summary.config_files_not_audited }} fichier(s) non audité(s)</span>
+  {% endif %}
   {% if summary.config_notes %}
   <span class="badge badge-info">{{ summary.config_notes }} information(s) d'analyse</span>
   {% endif %}
   {% if summary.not_applicable_not_implemented %}
   <span class="badge badge-gap">{{ summary.not_applicable_not_implemented }} règle(s) non implémentée(s) par leur driver</span>
+  {% endif %}
+  {% if summary.not_applicable_no_model %}
+  <span class="badge badge-gap">{{ summary.not_applicable_no_model }} règle(s) non évaluable(s) hors ligne (état requis)</span>
   {% endif %}
 </div>
 
@@ -124,7 +147,7 @@ retour. Les secrets sont masqués.</p>
     {% for w in config_warnings %}
     <tr>
       <td>{{ w.device }}</td>
-      <td>{{ w.warning.line }}</td>
+      <td>{{ w.warning.line if w.warning.line else "—" }}</td>
       <td><span class="badge {{ 'badge-unread' if w.blocks_verdict else 'badge-info' }}">{{ warning_status(w) }}</span></td>
       <td>{{ w.warning.reason }}</td>
       <td><code>{{ w.warning.text }}</code></td>
@@ -137,9 +160,11 @@ retour. Les secrets sont masqués.</p>
 {% if not_applicable %}
 <h2>Non applicable</h2>
 <p class="meta">Règle(s) non évaluée(s) sur un équipement — ni conforme, ni non-conformité, sans effet
-sur le verdict ni le code retour. Deux causes distinctes : <strong>hors sujet</strong> (la règle ne
-liste pas le driver de l'équipement, Phase D2) et <strong class="cause-gap">non implémenté</strong>
-(la règle concerne ce driver, mais il ne sait pas l'évaluer : un trou de couverture, pas un choix).</p>
+sur le verdict ni le code retour. Causes distinctes : <strong>hors sujet</strong> (la règle ne
+liste pas le driver de l'équipement, Phase D2), <strong class="cause-gap">non implémenté</strong>
+(la règle concerne ce driver, mais il ne sait pas l'évaluer : un trou de couverture, pas un choix) et,
+hors ligne seulement, <strong class="cause-gap">état requis</strong> (la règle lit l'état collecté de
+l'équipement, que des fichiers de configuration ne contiennent pas).</p>
 <table id="not-applicable">
   <thead>
     <tr><th>Équipement</th><th>Règle</th><th>Cause</th><th>Raison</th></tr>
@@ -149,7 +174,7 @@ liste pas le driver de l'équipement, Phase D2) et <strong class="cause-gap">non
     <tr>
       <td>{{ na.device }}</td>
       <td>{{ na.rule.id }}<br><small>{{ na.rule.description }}</small></td>
-      <td>{% if na.cause == not_implemented %}<span class="cause-gap">NON IMPLÉMENTÉ</span>{% else %}hors sujet (driver){% endif %}</td>
+      <td>{% if na.cause == not_implemented %}<span class="cause-gap">NON IMPLÉMENTÉ</span>{% elif na.cause == no_model %}<span class="cause-gap">ÉTAT REQUIS (hors ligne)</span>{% else %}hors sujet (driver){% endif %}</td>
       <td>{{ na.reason }}</td>
     </tr>
     {% endfor %}

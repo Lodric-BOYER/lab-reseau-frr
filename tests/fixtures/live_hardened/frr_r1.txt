@@ -1,0 +1,47 @@
+Building configuration...
+
+Current configuration:
+!
+frr version 10.2.1_git
+frr defaults traditional
+hostname r1
+domainname localdomain
+log syslog informational
+no ipv6 forwarding
+!
+interface eth1
+ description vers-r2
+ ip address 10.1.12.1/30
+ ip ospf area 0
+ ip ospf authentication message-digest
+ ip ospf message-digest-key 1 md5 lab-ospf-r1r2
+ ip ospf network point-to-point
+exit
+!
+interface eth2
+ description vers-r3
+ ip address 10.1.13.1/30
+ ip ospf area 0
+ ip ospf authentication message-digest
+ ip ospf message-digest-key 1 md5 lab-ospf-r1r3
+ ip ospf network point-to-point
+exit
+!
+interface eth3
+ description LAN-pc1
+ ip address 192.168.1.1/24
+ ip ospf area 0
+ ip ospf passive
+exit
+!
+interface lo
+ ip address 10.1.255.1/32
+ ip ospf area 0
+ ip ospf passive
+exit
+!
+router ospf
+ ospf router-id 10.1.255.1
+exit
+!
+end

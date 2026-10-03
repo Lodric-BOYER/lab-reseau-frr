@@ -51,6 +51,9 @@ class Violation:
 # est un trou de couverture (la règle concerne ce driver, mais il ne sait pas l'évaluer).
 CAUSE_DRIVER = "driver"                    # `drivers:` de la règle ne liste pas ce driver
 CAUSE_NOT_IMPLEMENTED = "not_implemented"  # le driver n'implémente pas le kind de la règle
+# Hors ligne (`check --config-dir`), seule la configuration existe : une règle qui lit le MODÈLE collecté
+# (interfaces...) ne peut pas être évaluée. Ce n'est ni un choix ni un trou du driver : un manque de données.
+CAUSE_NO_MODEL = "no_model"
 
 
 @dataclass

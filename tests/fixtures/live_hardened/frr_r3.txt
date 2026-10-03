@@ -1,0 +1,79 @@
+Building configuration...
+
+Current configuration:
+!
+frr version 10.2.1_git
+frr defaults traditional
+hostname r3
+domainname localdomain
+log syslog informational
+no ipv6 forwarding
+!
+ip prefix-list PL-EBGP-OUT seq 10 permit 10.1.0.0/16
+ip prefix-list PL-EBGP-OUT seq 20 permit 192.168.1.0/24
+ip prefix-list PL-EBGP-IN seq 10 permit 10.2.0.0/16
+ip prefix-list PL-EBGP-IN seq 20 permit 192.168.2.0/24
+!
+ip route 10.1.0.0/16 Null0
+!
+interface eth1
+ description vers-r1
+ ip address 10.1.13.2/30
+ ip ospf area 0
+ ip ospf authentication message-digest
+ ip ospf message-digest-key 1 md5 lab-ospf-r1r3
+ ip ospf network point-to-point
+exit
+!
+interface eth2
+ description vers-r2
+ ip address 10.1.23.2/30
+ ip ospf area 0
+ ip ospf authentication message-digest
+ ip ospf message-digest-key 1 md5 lab-ospf-r2r3
+ ip ospf network point-to-point
+exit
+!
+interface eth3
+ description eBGP-vers-r4-AS65002
+ ip address 172.16.34.1/30
+ ip ospf area 0
+ ip ospf passive
+exit
+!
+interface lo
+ ip address 10.1.255.3/32
+ ip ospf area 0
+ ip ospf passive
+exit
+!
+router bgp 65001
+ bgp router-id 10.1.255.3
+ neighbor 172.16.34.2 remote-as 65002
+ neighbor 172.16.34.2 description r4-AS65002
+ neighbor 172.16.34.2 password lab-bgp-r3r4
+ neighbor 172.16.34.2 ttl-security hops 1
+ !
+ address-family ipv4 unicast
+  network 10.1.0.0/16
+  network 192.168.1.0/24
+  neighbor 172.16.34.2 maximum-prefix 10
+  neighbor 172.16.34.2 route-map RM-EBGP-IN in
+  neighbor 172.16.34.2 route-map RM-EBGP-OUT out
+ exit-address-family
+exit
+!
+router ospf
+ ospf router-id 10.1.255.3
+ redistribute bgp
+exit
+!
+route-map RM-EBGP-IN permit 10
+ match ip address prefix-list PL-EBGP-IN
+exit
+!
+route-map RM-EBGP-OUT permit 10
+ match ip address prefix-list PL-EBGP-OUT
+exit
+!
+end

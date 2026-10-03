@@ -67,6 +67,7 @@ class EosDriver(Driver):
 
     # Phase A (v4) : les règles qui lisent la syntaxe d'EOS vivent dans drivers/eos_rules.py.
     CONFIG_CHECKS = eos_rules.CHECKS
+    CONFIG_FILENAMES = ("startup-config",)
 
     def parse_config(self, running_config: str) -> ParsedConfig:
         # Blocs par indentation ; « ! » est un commentaire qui ne ferme aucun bloc (vérifié sur cEOS) ;

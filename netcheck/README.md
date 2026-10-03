@@ -62,6 +62,37 @@ D2 : conforme (aucun `Violation`), non-conforme (`Violation`), ou **non applicab
 équipement). "Non applicable" n'est ni conforme ni une violation : il apparaît dans les 3
 sorties (terminal, JSON, HTML) mais n'entre jamais dans `verdict()` ni le code retour.
 
+### Audit hors ligne : `check --config-dir` (Phase A5)
+
+```
+netcheck check --config-dir configs                                   # lab FRR (inventaire par défaut)
+netcheck check --config-dir configs --config-dir configs-multivendor \
+               -i automation/inventory-multivendor.yml               # lab mixte : r5 lu en SR Linux
+netcheck check --config-dir configs --config-dir configs-ceos \
+               -i automation/inventory-ceos.yml                      # lab cEOS : r4 lu en EOS
+netcheck check --config-dir fichiers/ --driver eos                    # sans inventaire : un driver pour tous
+```
+
+Audit de fichiers de configuration, **sans aucun équipement** (lecture seule, aucun transport). Deux
+dispositions, mélangeables : `dossier/<équipement>.<extension>` ou `dossier/<équipement>/<fichier>` (si le
+sous-dossier a plusieurs fichiers, celui que le driver nomme : `frr.conf`, `startup-config`, `config.cli`).
+Le nom de l'équipement est celui du fichier ou du sous-dossier ; son driver vient de l'inventaire (`-i`) ou de
+`--driver`. `--config-dir` se répète : un équipement d'un dossier ultérieur remplace celui d'un dossier
+précédent, et le rapport le dit. Ce sont les mêmes règles et le même moteur que le direct : sur les trois labs,
+les fichiers de démarrage du dépôt donnent le même verdict que l'audit en direct (test à l'appui).
+
+- **Rien n'est ignoré en silence.** Une entrée qui n'est pas une configuration (`daemons`, fichier caché,
+  `.md`, `.yml`, `.json`) est listée comme *information* ; une entrée qui ressemble à une configuration mais
+  n'a pas pu être lue (équipement inconnu de l'inventaire sans `--driver`, plusieurs fichiers sans nom
+  attendu, fichier vide, trop gros, illisible en UTF-8) est **NON AUDITÉE** : comme une ligne non lue, elle
+  empêche le verdict « conforme » (ANALYSE INCOMPLÈTE, code 1 au minimum). Aucun fichier lu : code 3.
+- **Les règles qui lisent l'état collecté sont non évaluables hors ligne** (`Check.needs` contient
+  `interfaces` : `lan-en-ospf-passif`, `interface-avec-description`). Elles sont « non applicables » avec
+  leur propre cause, **ÉTAT REQUIS (hors ligne)**, comptée à part dans la synthèse des trois sorties : ce n'est
+  ni une règle hors sujet ni un trou d'un driver. Les règles de `security.yml` ne lisent que la configuration :
+  aucune n'est perdue.
+- Le rapport (terminal, JSON `source`, HTML) donne, pour chaque équipement, son driver et son fichier.
+
 ## Sécurité
 
 - **C1 (lecture seule), à deux niveaux.** (1) `collector.ALLOWED_COMMANDS` est la liste des

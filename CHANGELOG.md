@@ -48,6 +48,20 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   des réglages de son groupe, et un constat la nomme (`192.0.2.64/26 (plage dynamique, peer group …)`).
   Avant, ces sessions n'étaient pas auditées du tout. Relevé en direct : FRR écrit la plage sans
   `remote-as` (celui du groupe s'applique), EOS exige le `remote-as` sur la ligne même.
+- **`netcheck check --config-dir <dossier> [--driver …]`** : audit de fichiers de configuration, sans aucun
+  équipement. Deux dispositions (`dossier/<équipement>.<ext>`, `dossier/<équipement>/<fichier>`), driver
+  déduit de l'inventaire ou donné, option répétable (lab mixte : `configs` puis `configs-multivendor`).
+  Même moteur, mêmes règles, mêmes trois sorties que le direct ; sur les trois labs, les fichiers de
+  démarrage du dépôt donnent le même verdict que l'audit en direct (mêmes violations, mêmes causes de
+  « non applicable », même code retour), avec des relevés réels comme preuve
+  (`tests/fixtures/live_hardened/`).
+- **Hors ligne, une règle qui lit l'état collecté est « non évaluable »** : cause **ÉTAT REQUIS (hors
+  ligne)**, comptée à part dans la synthèse des trois sorties (JSON : `cause: "no_model"`,
+  `summary.not_applicable_no_model`). Le rapport dit aussi d'où vient chaque équipement (JSON `source`).
+- **Rien n'est ignoré en silence dans un dossier** : une entrée hors disposition (`daemons`, fichier caché)
+  est une information ; un fichier qui ressemble à une configuration mais n'a pas pu être lu (équipement
+  inconnu, plusieurs fichiers sans nom attendu, vide, trop gros, illisible en UTF-8) est « NON AUDITÉ » et
+  bloque le verdict comme une ligne non lue (`summary.config_files_not_audited`). Aucun fichier lu : code 3.
 - Gel de référence de la conformité (`tests/golden/`, `tests/tools/golden.py`) : les réponses de la
   v0.3.0 sur des configurations réelles, leurs mutations et des sondes ; les écarts voulus sont tracés
   dans `meta.revisions`.
@@ -62,6 +76,11 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   rapportées), mais le verdict n'est jamais « conforme » : code 1 au minimum, ligne comptée avec les
   lignes non lues, affichée « STRUCTURE INCERTAINE ». Si une violation réelle existe en même temps, elle
   s'affiche (NON CONFORME) avec la mention de structure incertaine. JSON : `config_analysis[].blocks_verdict`.
+- **Bannière SR Linux : un évaluateur sur les chemins.** La règle `srlinux-banniere-de-connexion` n'est
+  plus un `line_present` sur le texte (`^\s*login-banner\s`, qui ne voyait pas la ligne
+  `set / system banner login-banner …` du fichier de démarrage) mais le kind `srlinux_login_banner_present`,
+  qui lit le chemin `login-banner <texte>` dans les deux syntaxes. Réponses identiques sur tout le gel et
+  sur les snapshots réels ; message inchangé.
 - API : `compliance.evaluate_config()` (violations, non applicables, avertissements d'analyse) ;
   `compliance.evaluate()` garde sa forme historique. `verdict()` accepte les avertissements.
 - Rapports : JSON enrichi de `status`, `summary`, `config_analysis` et de `cause` par règle non

@@ -24,7 +24,7 @@ from rich.table import Table
 from netcheck import __version__
 from netcheck.assertions import AssertionResult, Status
 from netcheck.diff import Finding, Severity
-from netcheck.ruletypes import CAUSE_NOT_IMPLEMENTED, ConfigWarning, NotApplicable, Violation
+from netcheck.ruletypes import CAUSE_NO_MODEL, CAUSE_NOT_IMPLEMENTED, ConfigWarning, NotApplicable, Violation
 from netcheck.secrets import mask_secrets
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
@@ -72,14 +72,20 @@ def _summary_counts(
     par un driver est un trou de couverture, pas une règle hors sujet ; une ligne non lue pèse sur le
     verdict, une ligne ambiguë non."""
     not_implemented = sum(1 for n in not_applicable if n.cause == CAUSE_NOT_IMPLEMENTED)
-    unread = sum(1 for w in warnings if w.blocks_verdict)
+    no_model = sum(1 for n in not_applicable if n.cause == CAUSE_NO_MODEL)
+    # Une entrée de dossier (ligne 0) n'est pas une ligne : un fichier que `check --config-dir` n'a pas pu
+    # lire est « non audité », compté à part des lignes non lues ; les deux bloquent le verdict.
+    not_audited = sum(1 for w in warnings if w.blocks_verdict and w.warning.line == 0)
+    unread = sum(1 for w in warnings if w.blocks_verdict) - not_audited
     return {
         "violations": len(violations),
         "config_lines_unread": unread,
-        "config_notes": len(warnings) - unread,
+        "config_files_not_audited": not_audited,
+        "config_notes": len(warnings) - unread - not_audited,
         "not_applicable": len(not_applicable),
         "not_applicable_not_implemented": not_implemented,
-        "not_applicable_out_of_scope": len(not_applicable) - not_implemented,
+        "not_applicable_no_model": no_model,
+        "not_applicable_out_of_scope": len(not_applicable) - not_implemented - no_model,
     }
 
 
@@ -94,8 +100,12 @@ def _status(violations: list[Violation], compliant: bool, warnings: list[ConfigW
 
 
 def _warning_status(w: ConfigWarning, markup: bool = False) -> str:
-    """Statut affiché d'un avertissement d'analyse : NON LUE, STRUCTURE INCERTAINE ou information."""
-    if not w.kept:
+    """Statut affiché d'un avertissement d'analyse : NON LUE, STRUCTURE INCERTAINE ou information (pour un
+    fichier de `check --config-dir`, ligne 0 : NON AUDITÉ ou information)."""
+    if w.warning.line == 0:
+        label, style = (("NON AUDITÉ", "bold yellow") if w.blocks_verdict
+                        else ("information (fichier)", "cyan"))
+    elif not w.kept:
         label, style = "NON LUE", "bold yellow"
     elif w.blocks_verdict:
         label, style = "STRUCTURE INCERTAINE", "bold yellow"
@@ -105,7 +115,11 @@ def _warning_status(w: ConfigWarning, markup: bool = False) -> str:
 
 
 def _na_label(n: NotApplicable) -> str:
-    return "NON IMPLÉMENTÉ" if n.cause == CAUSE_NOT_IMPLEMENTED else "hors sujet (driver)"
+    if n.cause == CAUSE_NOT_IMPLEMENTED:
+        return "NON IMPLÉMENTÉ"
+    if n.cause == CAUSE_NO_MODEL:
+        return "ÉTAT REQUIS (hors ligne)"
+    return "hors sujet (driver)"
 
 
 def _severity_counts(findings: list[Finding]) -> dict[Severity, int]:
@@ -246,11 +260,23 @@ def print_compliance_terminal(
     not_applicable: list[NotApplicable] | None = None,
     console: Console | None = None,
     config_warnings: list[ConfigWarning] | None = None,
+    source: dict | None = None,
 ) -> None:
     console = console or Console()
     violations = _masked_violations(violations)
     not_applicable = _masked_not_applicable(not_applicable or [])
     warnings = _masked_warnings(config_warnings)
+
+    if source:
+        # Mode hors ligne (check --config-dir) : dire d'où vient chaque équipement et ce que cela change.
+        devices = source["devices"]
+        console.print(f"[bold]Mode hors ligne[/bold] (--config-dir) : {len(devices)} équipement(s) lu(s) "
+                      "depuis des fichiers, aucun équipement interrogé.")
+        for name, info in devices.items():
+            console.print(f"  {name:<8} {info['driver']:<8} {escape(info['file'])}")
+        console.print("Les règles qui lisent l'état collecté (interfaces) sont "
+                      "[bold yellow]non évaluables[/] hors ligne : voir « Non applicable », cause "
+                      "« ÉTAT REQUIS (hors ligne) ».\n")
 
     if violations:
         table = Table(show_lines=False)
@@ -278,7 +304,7 @@ def print_compliance_terminal(
         analysis.add_column("Texte", overflow="fold")
         for w in sorted(warnings, key=lambda w: (not w.blocks_verdict, w.device, w.warning.line)):
             status = _warning_status(w, markup=True)
-            analysis.add_row(w.device, str(w.warning.line), status,
+            analysis.add_row(w.device, str(w.warning.line) if w.warning.line else "—", status,
                              escape(w.warning.reason), escape(w.warning.text))
         console.print(analysis)
 
@@ -299,7 +325,8 @@ def print_compliance_terminal(
         na_table.add_column("Cause")
         na_table.add_column("Raison", overflow="fold")
         for na in sorted(not_applicable, key=lambda n: (n.device, n.rule.id)):
-            cause = f"[bold yellow]{_na_label(na)}[/]" if na.cause == CAUSE_NOT_IMPLEMENTED else _na_label(na)
+            gap = na.cause in (CAUSE_NOT_IMPLEMENTED, CAUSE_NO_MODEL)
+            cause = f"[bold yellow]{_na_label(na)}[/]" if gap else _na_label(na)
             na_table.add_row(na.device, na.rule.id, cause, na.reason)
         console.print(na_table)
 
@@ -308,24 +335,29 @@ def print_compliance_terminal(
     parts = [f"{counts['violations']} non-conformité(s)"]
     if counts["config_lines_unread"]:
         parts.append(f"{counts['config_lines_unread']} ligne(s) de configuration non lue(s) ou incertaine(s)")
+    if counts["config_files_not_audited"]:
+        parts.append(f"{counts['config_files_not_audited']} fichier(s) non audité(s)")
     if counts["config_notes"]:
         parts.append(f"{counts['config_notes']} information(s) d'analyse")
     if counts["not_applicable"]:
         na_part = f"{counts['not_applicable']} non applicable(s)"
         if counts["not_applicable_not_implemented"]:
             na_part += f" dont {counts['not_applicable_not_implemented']} non implémentée(s) par leur driver"
+        if counts["not_applicable_no_model"]:
+            na_part += (f" dont {counts['not_applicable_no_model']} non évaluable(s) hors ligne "
+                        "(état requis)")
         parts.append(na_part)
     console.print(f"Conformité : [bold]{label}[/bold]  ({', '.join(parts)})")
 
 
 def compliance_to_dict(
     violations: list[Violation], compliant: bool, not_applicable: list[NotApplicable] | None = None,
-    config_warnings: list[ConfigWarning] | None = None,
+    config_warnings: list[ConfigWarning] | None = None, source: dict | None = None,
 ) -> dict:
     violations = _masked_violations(violations)
     not_applicable = _masked_not_applicable(not_applicable or [])
     warnings = _masked_warnings(config_warnings)
-    return {
+    data = {
         "compliant": compliant,
         # CONFORME | NON CONFORME (violation réelle) | ANALYSE INCOMPLÈTE (ligne non lue, aucune violation)
         "status": _status(violations, compliant, warnings),
@@ -352,15 +384,19 @@ def compliance_to_dict(
         ],
         "summary": _summary_counts(violations, not_applicable, warnings),
     }
+    if source:
+        # Présent seulement hors ligne (check --config-dir) : d'où vient chaque équipement.
+        data["source"] = source
+    return data
 
 
 def write_compliance_json(
     violations: list[Violation], compliant: bool, path: str,
     not_applicable: list[NotApplicable] | None = None,
-    config_warnings: list[ConfigWarning] | None = None,
+    config_warnings: list[ConfigWarning] | None = None, source: dict | None = None,
 ) -> None:
     Path(path).write_text(
-        json.dumps(compliance_to_dict(violations, compliant, not_applicable, config_warnings),
+        json.dumps(compliance_to_dict(violations, compliant, not_applicable, config_warnings, source),
                    indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
@@ -370,6 +406,7 @@ def render_compliance_html(
     violations: list[Violation], compliant: bool, rules_path: str,
     not_applicable: list[NotApplicable] | None = None,
     config_warnings: list[ConfigWarning] | None = None,
+    source: dict | None = None,
 ) -> str:
     """Rend le rapport HTML de conformité, autonome (aucune ressource externe)."""
     template = _ENV.get_template("compliance.html.j2")
@@ -388,6 +425,8 @@ def render_compliance_html(
         violations=sorted(violations, key=lambda v: -_COMPLIANCE_ORDER[v.rule.severity]),
         not_applicable=sorted(not_applicable, key=lambda n: (n.device, n.rule.id)),
         not_implemented=CAUSE_NOT_IMPLEMENTED,
+        no_model=CAUSE_NO_MODEL,
+        source=source,
         config_warnings=sorted(warnings, key=lambda w: (not w.blocks_verdict, w.device, w.warning.line)),
         warning_status=_warning_status,
         summary=_summary_counts(violations, not_applicable, warnings),
@@ -403,10 +442,10 @@ def render_compliance_html(
 def write_compliance_html(
     violations: list[Violation], compliant: bool, rules_path: str, path: str,
     not_applicable: list[NotApplicable] | None = None,
-    config_warnings: list[ConfigWarning] | None = None,
+    config_warnings: list[ConfigWarning] | None = None, source: dict | None = None,
 ) -> None:
     Path(path).write_text(
-        render_compliance_html(violations, compliant, rules_path, not_applicable, config_warnings),
+        render_compliance_html(violations, compliant, rules_path, not_applicable, config_warnings, source),
         encoding="utf-8",
     )
 
