@@ -45,6 +45,12 @@ KNOWN_KINDS = {
     "bgp_neighbor_no_default_route_policy",
     "bgp_neighbor_no_own_prefixes_policy",
     "srlinux_ospf_authentication_required",
+    # -- Phase F (Arista EOS) -----------------------------------------------------------------
+    "eos_ospf_authentication_required",
+    "eos_bgp_neighbor_password_required",
+    "eos_bgp_neighbor_ttl_security_required",
+    "eos_bgp_neighbor_maximum_routes_required",
+    "eos_management_api_disabled",
 }
 KNOWN_SEVERITIES = {"critique", "haute", "moyenne", "basse"}
 KNOWN_DRIVERS = set(DRIVER_REGISTRY)  # Phase D2 : validation du champ optionnel "drivers"
@@ -669,6 +675,141 @@ def _check_srlinux_ospf_authentication_required(rule: Rule, device: DeviceState)
     return violations
 
 
+# -- Règles propres à Arista EOS (Phase F) ------------------------------------------------
+#
+# La running-config EOS n'a ni « exit » (FRR) ni accolades (SR Linux) : un bloc commence par une
+# ligne en colonne 0 et se poursuit par des lignes indentées. Syntaxes toutes vérifiées sur cEOS
+# 4.34.8M (tests/fixtures/ceos/) : `ip ospf authentication message-digest`, `ip ospf message-digest-
+# key 1 md5 7 <hash>` (EOS écrit la clé en « type 7 »), `neighbor X password 7 <hash>`, `neighbor X
+# ttl maximum-hops 1`, `neighbor X maximum-routes 10`, `passive-interface <if>` sous `router ospf`.
+
+def _eos_blocks(running_config: str, header_prefix: str) -> dict[str, str]:
+    """{nom: texte_du_bloc} pour les blocs EOS '<header_prefix><nom>' suivis de lignes indentées
+    (ex. 'interface Ethernet2', 'router ospf 1', 'management api gnmi'). Un bloc se termine à la
+    première ligne non indentée (le séparateur '!' compris)."""
+    blocks: dict[str, str] = {}
+    name: str | None = None
+    lines: list[str] = []
+    for line in running_config.splitlines():
+        if line.startswith(header_prefix):
+            if name is not None:
+                blocks[name] = "\n".join(lines)
+            name, lines = line[len(header_prefix):].strip(), [line]
+        elif name is not None and line[:1] in (" ", "\t"):
+            lines.append(line)
+        elif name is not None:
+            blocks[name] = "\n".join(lines)
+            name = None
+    if name is not None:
+        blocks[name] = "\n".join(lines)
+    return blocks
+
+
+def _eos_ebgp_neighbors(device: DeviceState) -> tuple[str, list[str]]:
+    """(bloc 'router bgp', IP des voisins eBGP) ; ('', []) sans BGP. Seuls les voisins déclarés
+    un par un avec `neighbor X remote-as N` (N différent de l'AS local) sont vus : les peer
+    groups EOS n'ont pas été observés dans ce lab."""
+    blocks = _eos_blocks(device.running_config, "router bgp ")
+    if not blocks:
+        return "", []
+    local_as, block = next(iter(blocks.items()))
+    return block, [ip for ip, asn in re.findall(r"^\s*neighbor (\S+) remote-as (\d+)", block, re.MULTILINE)
+                   if asn != local_as]
+
+
+def _check_eos_ospf_authentication_required(rule: Rule, device: DeviceState) -> list[Violation]:
+    """Toute interface OSPF EOS active (non passive) doit porter `ip ospf authentication message-
+    digest` ET au moins une clé `ip ospf message-digest-key N md5 ...` : le mode seul, sans clé,
+    ne peut jamais former d'adjacence. Interopérabilité vérifiée en direct avec FRR (MD5 classique,
+    RFC 2328 Annexe D) : adjacence Full des deux côtés, et perdue avec une mauvaise clé. Une
+    interface est passive par `passive-interface <if>` sous `router ospf`, ou par `passive-
+    interface default` sans `no passive-interface <if>`."""
+    ospf = _eos_blocks(device.running_config, "router ospf ")
+    if not ospf:
+        return []
+    router_block = "\n".join(ospf.values())
+    passive_default = re.search(r"^\s*passive-interface default\s*$", router_block, re.MULTILINE) is not None
+    passive = set(re.findall(r"^\s*passive-interface (?!default\b)(\S+)", router_block, re.MULTILINE))
+    active = set(re.findall(r"^\s*no passive-interface (\S+)", router_block, re.MULTILINE))
+    violations = []
+    for name, block in _eos_blocks(device.running_config, "interface ").items():
+        if not re.search(r"^\s*ip ospf area \S+\s*$", block, re.MULTILINE):
+            continue
+        if name in passive or (passive_default and name not in active):
+            continue   # pas d'adjacence sur une interface passive : rien à authentifier
+        if not re.search(r"^\s*ip ospf authentication message-digest\s*$", block, re.MULTILINE):
+            violations.append(Violation(rule, device.name,
+                f"interface {name} : adjacence OSPF active sans authentification message-digest"))
+        elif not re.search(r"^\s*ip ospf message-digest-key \d+ md5 ", block, re.MULTILINE):
+            violations.append(Violation(rule, device.name,
+                f"interface {name} : message-digest activé mais aucune clé md5 configurée"))
+    return violations
+
+
+def _check_eos_bgp_neighbor_option(
+    rule: Rule, device: DeviceState, pattern: str, missing: str,
+) -> list[Violation]:
+    block, neighbors = _eos_ebgp_neighbors(device)
+    return [Violation(rule, device.name, f"voisin eBGP {ip} {missing}")
+            for ip in neighbors
+            if not re.search(rf"^\s*neighbor {re.escape(ip)} {pattern}", block, re.MULTILINE)]
+
+
+def _check_eos_bgp_neighbor_password_required(rule: Rule, device: DeviceState) -> list[Violation]:
+    """Chaque voisin eBGP EOS doit avoir un mot de passe TCP-MD5 (`neighbor X password [type] ...`,
+    EOS l'écrit en « type 7 »). Interopérabilité vérifiée en direct avec FRR : session Established
+    des deux côtés, et en Connect avec un mot de passe différent après réinitialisation (une
+    session déjà établie garde son socket tant qu'elle n'est pas réinitialisée)."""
+    return _check_eos_bgp_neighbor_option(
+        rule, device, r"password (?:\d+ )?\S+\s*$", "sans authentification TCP-MD5 (mot de passe)")
+
+
+def _check_eos_bgp_neighbor_ttl_security_required(rule: Rule, device: DeviceState) -> list[Violation]:
+    """Chaque voisin eBGP EOS doit avoir le GTSM (`neighbor X ttl maximum-hops N`, RFC 5082) :
+    EOS envoie alors un TTL de 255 et rejette un TTL inférieur à 255-N. Vérifié en direct : sans
+    cette commande EOS envoie un TTL de 1 et un voisin FRR en `ttl-security` ne monte jamais."""
+    return _check_eos_bgp_neighbor_option(
+        rule, device, r"ttl maximum-hops \d+\s*$", "sans GTSM (ttl maximum-hops)")
+
+
+def _check_eos_bgp_neighbor_maximum_routes_required(rule: Rule, device: DeviceState) -> list[Violation]:
+    """Chaque voisin eBGP EOS doit avoir `neighbor X maximum-routes N` avec N > 0 (0 = illimité).
+    ATTENTION : `maximum-routes` (EOS) n'est PAS strictement équivalent au `maximum-prefix` de
+    FRR -- voir la description de la règle dans security.yml."""
+    block, neighbors = _eos_ebgp_neighbors(device)
+    violations = []
+    for ip in neighbors:
+        match = re.search(rf"^\s*neighbor {re.escape(ip)} maximum-routes (\d+)\b", block, re.MULTILINE)
+        if not match:
+            violations.append(Violation(rule, device.name, f"voisin eBGP {ip} sans limite maximum-routes"))
+        elif int(match.group(1)) == 0:
+            violations.append(Violation(rule, device.name,
+                f"voisin eBGP {ip} : maximum-routes 0 (illimité) n'est pas une limite"))
+    return violations
+
+
+def _check_eos_management_api_disabled(rule: Rule, device: DeviceState) -> list[Violation]:
+    """Aucune API de gestion EOS ne doit être active : eAPI, gNMI, NETCONF. Seul SSH est utilisé
+    par netcheck, et un lab de sécurité n'expose pas d'API inutiles (chacune est un service réseau
+    de plus, avec sa propre authentification et sa propre surface d'attaque). Formes observées
+    sur cEOS 4.34.8M : eAPI active = `management api http-commands` + `no shutdown` ; gNMI ou
+    NETCONF actifs = `management api gnmi|netconf` + une ligne `transport ...` ; section absente =
+    API désactivée. Le mécanisme de désactivation par `shutdown` d'un transport n'a pas été
+    observé : une section présente avec `transport` est donc toujours signalée."""
+    blocks = _eos_blocks(device.running_config, "management api ")
+    violations = []
+    http = blocks.get("http-commands")
+    if http is not None and re.search(r"^\s*no shutdown\s*$", http, re.MULTILINE):
+        violations.append(Violation(rule, device.name,
+            "API de gestion eAPI (management api http-commands) active (no shutdown)"))
+    for api, label in (("gnmi", "gNMI"), ("netconf", "NETCONF")):
+        block = blocks.get(api)
+        if block is not None and re.search(r"^\s*transport \S+", block, re.MULTILINE):
+            violations.append(Violation(rule, device.name,
+                f"API de gestion {label} (management api {api}) active (transport configuré)"))
+    return violations
+
+
 _EVALUATORS = {
     "line_present": _check_line_present,
     "line_absent": _check_line_absent,
@@ -686,4 +827,10 @@ _EVALUATORS = {
     "bgp_neighbor_no_default_route_policy": _check_bgp_neighbor_no_default_route_policy,
     "bgp_neighbor_no_own_prefixes_policy": _check_bgp_neighbor_no_own_prefixes_policy,
     "srlinux_ospf_authentication_required": _check_srlinux_ospf_authentication_required,
+    # -- Phase F (Arista EOS) -----------------------------------------------------------------
+    "eos_ospf_authentication_required": _check_eos_ospf_authentication_required,
+    "eos_bgp_neighbor_password_required": _check_eos_bgp_neighbor_password_required,
+    "eos_bgp_neighbor_ttl_security_required": _check_eos_bgp_neighbor_ttl_security_required,
+    "eos_bgp_neighbor_maximum_routes_required": _check_eos_bgp_neighbor_maximum_routes_required,
+    "eos_management_api_disabled": _check_eos_management_api_disabled,
 }

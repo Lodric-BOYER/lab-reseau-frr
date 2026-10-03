@@ -21,6 +21,13 @@
 #   srlinux_ospf_authentication_required     chaque interface OSPF SR Linux active référence une
 #                                             keychain existante, de type ospf
 #
+# Nouveaux kind (Phase F, Arista EOS) :
+#   eos_ospf_authentication_required         interface OSPF active : message-digest + clé md5
+#   eos_bgp_neighbor_password_required       chaque voisin eBGP a "neighbor X password ..."
+#   eos_bgp_neighbor_ttl_security_required   chaque voisin eBGP a "neighbor X ttl maximum-hops N"
+#   eos_bgp_neighbor_maximum_routes_required chaque voisin eBGP a "neighbor X maximum-routes N" (N>0)
+#   eos_management_api_disabled              aucune API de gestion active (eAPI, gNMI, NETCONF)
+#
 # TCP-AO (RFC 5925) volontairement absent du périmètre : ni le kernel WSL2 de ce lab
 # (CONFIG_TCP_AO absent de /proc/config.gz, vérifié en direct) ni bgpd (FRRouting/frr#7240,
 # feature request ouverte depuis 2020, jamais mergée) ne le supportent. TCP-MD5 (RFC 2385) est
@@ -162,4 +169,74 @@ rules:
     kind: line_present
     pattern: "^log syslog informational$"
     # Aucune source vérifiée cette session pour ce point précis (C14) : champ volontairement
+    # absent plutôt qu'une référence inventée.
+
+  # ==============================================================================================
+  # Arista EOS (Phase F) -- `drivers: [eos]` : ces règles lisent le TEXTE de la running-config
+  # EOS (blocs indentés, secrets « type 7 »). Les règles FRR et SR Linux ci-dessus sont, sur un
+  # routeur EOS, « non applicables » (jamais une fausse violation), et inversement.
+  # Syntaxes vérifiées en direct sur cEOS 4.34.8M, interopérabilité vérifiée avec FRR (tests
+  # négatifs rejoués : mauvaise clé OSPF, mauvais mot de passe BGP, GTSM retiré, dépassement de
+  # la limite de routes).
+  # ==============================================================================================
+  - id: eos-ospf-authentification-message-digest
+    description: "Chaque interface OSPF EOS active (non passive) doit être authentifiée : ip ospf authentication message-digest et une clé ip ospf message-digest-key N md5 (MD5 classique, interopérable avec FRR ; EOS stocke la clé en type 7, réversible)."
+    severity: haute
+    applies_to: all
+    drivers: [eos]
+    category: ospf
+    kind: eos_ospf_authentication_required
+    references:
+      - title: "RFC 2328 — OSPF Version 2 (Appendix D: Authentication)"
+        url: "https://www.rfc-editor.org/rfc/rfc2328.html"
+      - title: "EOS 4.36.2F - Open Shortest Path First-Version 2"
+        url: "https://www.arista.com/en/um-eos/eos-open-shortest-path-first-version-2"
+
+  - id: eos-ebgp-authentification-tcp-md5
+    description: "Chaque voisin eBGP EOS doit avoir un mot de passe TCP-MD5 (neighbor X password ; EOS le stocke en type 7, réversible)."
+    severity: haute
+    applies_to: all
+    drivers: [eos]
+    category: bgp
+    kind: eos_bgp_neighbor_password_required
+    references:
+      - title: "RFC 2385 — Protection of BGP Sessions via the TCP MD5 Signature Option"
+        url: "https://www.rfc-editor.org/rfc/rfc2385.html"
+      - title: "RFC 7454 — BGP Operations and Security"
+        url: "https://www.rfc-editor.org/rfc/rfc7454.html"
+
+  - id: eos-ebgp-gtsm-ttl-maximum-hops
+    description: "Chaque voisin eBGP EOS doit avoir le GTSM activé (neighbor X ttl maximum-hops N) : EOS envoie alors un TTL de 255 et rejette un TTL inférieur à 255-N. Équivalent du ttl-security hops de FRR, interopérable (vérifié : sans cette commande EOS envoie un TTL de 1 et un voisin FRR en ttl-security ne monte jamais)."
+    severity: moyenne
+    applies_to: all
+    drivers: [eos]
+    category: bgp
+    kind: eos_bgp_neighbor_ttl_security_required
+    references:
+      - title: "RFC 5082 — The Generalized TTL Security Mechanism (GTSM)"
+        url: "https://www.rfc-editor.org/rfc/rfc5082.html"
+      - title: "RFC 7454 — BGP Operations and Security"
+        url: "https://www.rfc-editor.org/rfc/rfc7454.html"
+
+  - id: eos-ebgp-maximum-routes
+    description: "Chaque voisin eBGP EOS doit avoir une limite neighbor X maximum-routes N (N > 0). ATTENTION : maximum-routes (EOS) n'est PAS strictement équivalent au maximum-prefix de FRR. EOS compte les routes REÇUES, avant la politique d'entrée (vérifié : la limite est dépassée même quand la politique n'en accepte que 2 sur 14) ; FRR compte par défaut les préfixes ACCEPTÉS après filtre, sauf avec maximum-prefix N force. L'effet de protection est le même (vérifié en direct : dépassement -> session Idle(MaxPath), « Put into idle state forever », rétablissement uniquement par clear ip bgp <ip>), le seuil ne l'est pas. Valeur retenue : 10."
+    severity: moyenne
+    applies_to: all
+    drivers: [eos]
+    category: bgp
+    kind: eos_bgp_neighbor_maximum_routes_required
+    references:
+      - title: "RFC 7454 — BGP Operations and Security"
+        url: "https://www.rfc-editor.org/rfc/rfc7454.html"
+      - title: "BGP — FRR latest documentation - FRRouting"
+        url: "https://docs.frrouting.org/en/stable-8.2/bgp.html"
+
+  - id: eos-api-gestion-exposee
+    description: "Aucune API de gestion EOS ne doit être active (eAPI, gNMI, NETCONF) : seul SSH est utilisé, et chaque API est un service réseau de plus à protéger."
+    severity: haute
+    applies_to: all
+    drivers: [eos]
+    category: acces
+    kind: eos_management_api_disabled
+    # Aucune source Arista vérifiée cette session pour ce point précis (C14) : champ volontairement
     # absent plutôt qu'une référence inventée.

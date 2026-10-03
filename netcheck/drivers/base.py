@@ -33,9 +33,28 @@ class Driver(ABC):
     #: Commandes logiques nécessaires à ce driver, prises dans la liste blanche du collecteur.
     REQUIRED_COMMANDS: list[str] = []
 
+    #: Phase F (3e constructeur) : l'équipement ouvre la session en mode utilisateur et exige
+    #: `enable` pour lire la configuration (Arista EOS : `show running-config` répond « %
+    #: Invalid input (privileged mode required) » sinon). Le collecteur appelle alors la
+    #: méthode `enable()` de Netmiko, jamais `send_command("enable")`.
+    NEEDS_ENABLE: bool = False
+
+    #: Phase F : liste blanche des commandes CLI RÉELLES, en correspondance EXACTE de la chaîne
+    #: complète (None = pas de contrôle supplémentaire : FRR et SR Linux, historique). La liste
+    #: blanche des commandes LOGIQUES du collecteur ne voit pas ce que `translate()` fabrique ;
+    #: ce second contrôle, lui, porte sur ce qui part réellement vers l'équipement.
+    ALLOWED_CLI: frozenset[str] | None = None
+
     def translate(self, command: str) -> str:
         """Traduit une commande logique (ex. 'show ip route json') en commande CLI réelle."""
         return command
+
+    def check_cli(self, cli: str) -> None:
+        """Refuse (PermissionError) toute commande CLI réelle hors de ALLOWED_CLI quand ce
+        driver en déclare une. Appelé par le collecteur avant la connexion, puis avant chaque
+        envoi."""
+        if self.ALLOWED_CLI is not None and cli not in self.ALLOWED_CLI:
+            raise PermissionError(f"commande CLI hors liste blanche exacte du driver : {cli!r}")
 
     def clean_output(self, raw: str) -> str:
         """Retire un bruit propre au constructeur avant analyse (par défaut : rien à faire)."""

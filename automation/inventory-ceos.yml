@@ -1,0 +1,36 @@
+# Inventaire du lab Arista cEOS (Phase F, SPEC_v3.md), utilisé avec
+# `netcheck <sous-commande> ... -i automation/inventory-ceos.yml`. Mêmes adresses de management
+# que lab-cEOS.clab.yml (172.20.22.0/24). r1-r3 et r5 = FRR, identiques à inventory.yml (C9) ;
+# r4 = Arista cEOS (driver "eos", Netmiko "arista_eos").
+#
+# Identifiants r4 (admin / admin) : ce sont les identifiants PAR DÉFAUT de l'image cEOS selon la
+# documentation containerlab, valables uniquement sur ce lab de développement -- jamais des
+# identifiants de production. Acceptés en clair ici car ce fichier est l'un des seuls
+# emplacements autorisés à les contenir (C11), l'autre étant les variables d'environnement
+# (NETCHECK_EOS_USER / NETCHECK_EOS_PASS, prioritaires sur les variables génériques : voir
+# netcheck/inventory.py). Sur un vrai déploiement, surcharger par l'environnement.
+defaults:
+  device_type: linux      # Netmiko se connecte au shell Alpine, puis lance vtysh
+  username: netops
+  password: netops
+  vtysh: vtysh
+
+# Interfaces de management ignorées par netcheck (diff, conformité, assertions) : eth0 (FRR, kind
+# "linux") et Management0 (cEOS) -- leur sous-réseau connecté et ses routes sont retirés avec elles.
+management_interfaces: [eth0, Management0]
+
+# ospf_neighbors : nombre de voisins OSPF attendus en état Full
+# bgp_peers      : voisin BGP -> nombre minimal de préfixes reçus attendus
+routers:
+  r1: {host: 172.20.22.11, ospf_neighbors: 2}
+  r2: {host: 172.20.22.12, ospf_neighbors: 2}
+  r3: {host: 172.20.22.13, ospf_neighbors: 2, bgp_peers: {172.16.34.2: 2}}
+  r4:
+    host: 172.20.22.14
+    driver: eos
+    device_type: arista_eos
+    username: admin
+    password: admin
+    ospf_neighbors: 1
+    bgp_peers: {172.16.34.1: 2}
+  r5: {host: 172.20.22.15, ospf_neighbors: 1}

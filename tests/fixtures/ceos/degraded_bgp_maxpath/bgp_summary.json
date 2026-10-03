@@ -1,0 +1,27 @@
+{
+    "vrfs": {
+        "default": {
+            "vrf": "default",
+            "routerId": "10.2.255.4",
+            "asn": "65002",
+            "peers": {
+                "172.16.34.1": {
+                    "peerStateIdleReason": "MaxPath",
+                    "description": "r3-AS65001",
+                    "version": 4,
+                    "msgReceived": 39,
+                    "msgSent": 48,
+                    "inMsgQueue": 0,
+                    "outMsgQueue": 0,
+                    "asn": "65001",
+                    "prefixAccepted": 0,
+                    "prefixReceived": 0,
+                    "upDownTime": 1791030695.734125,
+                    "underMaintenance": false,
+                    "peerState": "Idle",
+                    "prefixAdvertised": 0
+                }
+            }
+        }
+    }
+}

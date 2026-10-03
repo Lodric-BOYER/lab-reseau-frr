@@ -31,7 +31,8 @@ netcheck/
 ├── drivers/
 │   ├── base.py             # interface commune d'un constructeur (voir plus bas)
 │   ├── frr.py               # driver FRRouting
-│   └── srlinux.py           # driver Nokia SR Linux (lab multi-constructeurs, Phase D1)
+│   ├── srlinux.py           # driver Nokia SR Linux (lab multi-constructeurs, Phase D1)
+│   └── eos.py               # driver Arista EOS / cEOS (Phase F) : enable(), liste blanche exacte
 ├── snapshot.py             # sauvegarde/chargement JSON (snapshots/<nom>/*.json + meta.json)
 ├── diff.py                  # compare deux DeviceState -> Finding (CRITIQUE/ATTENTION/INFO)
 ├── compliance.py           # charge des règles YAML (yaml.safe_load), les applique -> Violation

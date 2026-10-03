@@ -140,6 +140,18 @@ grep -q '"id": "ospf-r5-voisin-srlinux"' "$JSON_DIR/a2.json" && ok "assertion OS
 title "M1 : monitor sur le lab mixte (FRR + SR Linux) -> OK, aucune alerte (lecture seule)"
 M_STATE="$JSON_DIR/m1_state.json"
 rm -f "$M_STATE" "$M_STATE.lock"
+# La référence ne doit pas être prise PENDANT une reconvergence : A2 vient de rétablir le lien
+# r4 <-> r5, et OSPF « Full » des deux côtés précède la fin du recalcul des routes. On attend un
+# réseau STABLE : deux relevés espacés de 4 s sans le moindre constat.
+wait_stable() {
+  for _ in $(seq 1 15); do
+    $NC snapshot m1_stable_a --force "${INV[@]}" >/dev/null 2>&1; sleep 4
+    $NC snapshot m1_stable_b --force "${INV[@]}" >/dev/null 2>&1
+    $NC diff m1_stable_a m1_stable_b "${INV[@]}" >/dev/null 2>&1 && return 0
+  done
+  return 1
+}
+wait_stable && ok "réseau stable avant la référence (deux relevés identiques)" || ko "réseau jamais stable"
 $NC snapshot m1_nominal --force "${INV[@]}" >/dev/null
 # shellcheck disable=SC2086  # $NC est volontairement découpé en mots (interpréteur + -m netcheck)
 out=$(env -u NETCHECK_WEBHOOK_URL $NC monitor --baseline m1_nominal --intent intents/lab-multivendor.yml \

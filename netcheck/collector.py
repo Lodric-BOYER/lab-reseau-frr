@@ -13,6 +13,7 @@ from pathlib import Path
 from netmiko import ConnectHandler
 
 from netcheck.drivers.base import Driver
+from netcheck.drivers.eos import EosDriver
 from netcheck.drivers.frr import FrrDriver
 from netcheck.drivers.srlinux import SrlinuxDriver
 from netcheck.model import DeviceState
@@ -54,6 +55,7 @@ ALLOWED_COMMANDS = {
 DRIVER_REGISTRY: dict[str, type[Driver]] = {
     "frr": FrrDriver,
     "srlinux": SrlinuxDriver,
+    "eos": EosDriver,
 }
 
 
@@ -99,6 +101,11 @@ def collect(router: dict, driver: Driver | None = None) -> DeviceState:
     """
     driver = driver or _resolve_driver(router)
     _ensure_allowed(driver.REQUIRED_COMMANDS)
+    # Phase F : second contrôle, sur la commande CLI RÉELLE que le driver fabrique (la liste
+    # blanche logique ci-dessus ne voit pas le résultat de translate()). Un driver qui déclare
+    # ALLOWED_CLI (EOS) est vérifié en correspondance exacte AVANT la connexion.
+    for command in driver.REQUIRED_COMMANDS:
+        driver.check_cli(driver.translate(command))
 
     conn = ConnectHandler(
         device_type=router["device_type"], host=router["host"],
@@ -106,10 +113,14 @@ def collect(router: dict, driver: Driver | None = None) -> DeviceState:
         timeout=10, conn_timeout=10,
     )
     try:
+        if driver.NEEDS_ENABLE:
+            conn.enable()   # méthode Netmiko, jamais send_command("enable")
         raw = {}
         for command in driver.REQUIRED_COMMANDS:
             _ensure_allowed([command])
-            out = conn.send_command(driver.translate(command), read_timeout=30)
+            cli = driver.translate(command)
+            driver.check_cli(cli)
+            out = conn.send_command(cli, read_timeout=30)
             raw[command] = driver.clean_output(out)
     finally:
         conn.disconnect()

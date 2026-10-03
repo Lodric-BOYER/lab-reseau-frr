@@ -60,18 +60,23 @@ configs-multivendor/r5/         config de démarrage SR Linux (syntaxe "set", la
 automation/                     phase 2 : scripts Netmiko (health, backup, drift)
 automation/inventory.yml            inventaire du lab FRR
 automation/inventory-multivendor.yml inventaire du lab v2 (driver par routeur)
+automation/inventory-ceos.yml       inventaire du lab Arista cEOS (r4 = driver eos)
+lab-cEOS.clab.yml               topologie containerlab (lab v3 : FRR + Arista cEOS ; image importée localement)
+configs-ceos/r4/startup-config  configuration de démarrage de r4 (cEOS, syntaxe EOS)
 automation/monitor.sh               enveloppe à planifier (cron/systemd) pour `netcheck monitor`
 netcheck/                       validation de changement et conformité (snapshot/diff/check/assert/guard/monitor)
 netcheck/rules/                 règles de conformité (default.yml) et d'audit de sécurité (security.yml)
-intents/                        états attendus du réseau, pour `netcheck assert` (lab FRR, lab v2)
+intents/                        états attendus du réseau, pour `netcheck assert` (lab FRR, lab v2, lab cEOS)
 docs/audit/                     rapports d'audit de sécurité avant/après durcissement (v3)
 tests/                          fixtures et scénarios de bout en bout de netcheck
 tests/expect/                   fichiers --expect de référence (changement prévu, effet de bord oublié)
 tests/tools/webhook_recorder.py récepteur de webhook LOCAL (tests et scénarios, aucun appel externe)
 tests/integration.sh                lab FRR (S1-S5, C1/C2, guard, A1/A2 assert, D1/D2 --expect et rollback, E1 monitor)
 tests/integration_multivendor.sh    lab v2 (S1, coupure r4<->r5, C1, A1/A2 assert, M1 monitor)
+tests/integration_ceos.sh           lab cEOS (S1, C1, A1, N1 mauvaise clé OSPF, N2 API exposée, G1 guard, M1 monitor)
 test_lab.sh                     scénario de bout en bout du lab FRR (phases 1 et 2), 28 contrôles
 test_lab_multivendor.sh         scénario de bout en bout du lab v2 (topologie + routage)
+test_lab_ceos.sh                scénario de bout en bout du lab cEOS (topologie, routage, durcissement), 26 contrôles
 ```
 
 ---
@@ -489,6 +494,137 @@ python -m netcheck check -i automation/inventory-multivendor.yml
 tests/integration_multivendor.sh` (netcheck sur les deux drivers à la fois : diff, coupure du
 lien r4↔r5 vue des deux côtés, conformité, 13/13) couvrent ce lab de bout en bout -- voir
 [netcheck/README.md](netcheck/README.md) pour le détail du registre de drivers.
+
+## Lab Arista cEOS (v3 : FRR + Arista EOS)
+
+Troisième constructeur, troisième topologie : [`lab-cEOS.clab.yml`](lab-cEOS.clab.yml). Mêmes
+adresses et même logique que le lab FRR (`configs/` **strictement inchangé**), mais **r4 devient un
+Arista cEOS** (`ceos:4.34.8M`), configuré par
+[`configs-ceos/r4/startup-config`](configs-ceos/r4/startup-config). Nom de lab `frr-lab-ceos`,
+réseau de management `172.20.22.0/24`. Un seul lab tourne à la fois (même règle que pour les deux
+autres : `containerlab destroy` avant de déployer le suivant).
+
+**Pourquoi r4.** C'est le routeur qui porte *tout* : eBGP avec r3 (TCP-MD5, GTSM, limite de routes,
+prefix-lists, route-maps, agrégat `Null0`), OSPF avec r5 (MD5) et la redistribution BGP → OSPF.
+L'interopérabilité avec FRR est donc testée des deux côtés, sur OSPF **et** sur BGP, et chaque
+type de donnée du modèle (voisins OSPF, sessions et préfixes BGP, routes, interfaces) est
+exercé par le nouveau driver.
+
+### Obtenir l'image (à faire soi-même, jamais dans le dépôt)
+
+Arista exige un compte gratuit sur arista.com pour télécharger l'image (documentation containerlab,
+« Arista cEOS », <https://containerlab.dev/manual/kinds/ceos/>). Télécharger le fichier x86
+`cEOS-lab-<version>.tar.xz` (testé ici avec **4.34.8M**), puis :
+
+```bash
+docker import cEOS-lab-4.34.8M.tar.xz ceos:4.34.8M
+docker image inspect ceos:4.34.8M --format '{{.Architecture}} {{.Size}}'   # amd64 3105225191
+```
+
+**Version minimale : 4.32.0F**. Avant elle, cEOS exige cgroups v1 ; WSL2 récent est en cgroup v2
+(`stat -fc %T /sys/fs/cgroup` affiche `cgroup2fs`), et l'image détecte v1 ou v2 seule depuis
+4.32.0F. L'archive n'est **jamais commitée** : `.gitignore` ignore `*.tar`, `*.tar.xz`, `*.tar.gz`,
+`*.tgz` et `*.txz` (vérifié avec `git check-ignore` sur le vrai nom du fichier). Les identifiants par
+défaut de l'image sont `admin` / `admin` (lab uniquement, uniquement dans
+`automation/inventory-ceos.yml` et `NETCHECK_EOS_USER` / `NETCHECK_EOS_PASS`).
+
+### Démarrage et mesures réelles
+
+```bash
+bash test_lab_ceos.sh            # déploie, vérifie topologie + routage + durcissement (26 contrôles)
+bash tests/integration_ceos.sh   # netcheck sur FRR + cEOS, avec tests négatifs (38 contrôles)
+```
+
+| Mesure (WSL2, 15 Gi de RAM) | Valeur |
+|---|---|
+| Image dans Docker | 3,11 Go (contenu 801 Mo ; `Architecture: i686` dans `show version` : image 32 bits, normal pour cEOS-lab) |
+| `containerlab deploy` à froid | 26 à 27 s |
+| OSPF Full + BGP Established sur cEOS | environ 36 s après le début du déploiement |
+| RAM de r4 (`docker stats`) | 952 à 1014 MiB, soit **environ +1 GiB** ; lab complet environ +1,15 GiB (SR Linux : +1,8 Go) |
+
+La doc containerlab signale que « When running under WSL2 ceos datapath might appear not working »
+(contournement `iptables -P INPUT ACCEPT` daté de février 2022) : **inutile ici**, OSPF, BGP et le
+ping de bout en bout fonctionnent sans lui sur cEOS 4.34.8M.
+
+### Le durcissement est identique, et prouvé des deux côtés
+
+OSPF MD5 vers r5, eBGP avec r3 en TCP-MD5 + GTSM + limite de routes. Preuves **négatives** rejouées
+(chacune suivie d'un retour à l'état nominal) : mauvaise clé OSPF → adjacence perdue des deux
+côtés ; mauvais mot de passe BGP **plus réinitialisation** → les deux côtés en `Connect` ; GTSM
+retiré côté EOS → EOS envoie un TTL de 1 (`TTL is 1`) et r3 reste en `Idle` ; 14 préfixes annoncés
+pour une limite de 10 → `Idle(MaxPath)`, « Put into idle state forever ». **Aucune API de gestion**
+(eAPI, gNMI, NETCONF) n'est activée : seul SSH écoute (et BGP), vérifié par `ss -ltn` dans le
+conteneur.
+
+### Différences FRR / SR Linux / EOS qui comptent pour netcheck
+
+| | FRR | SR Linux | Arista EOS |
+|---|---|---|---|
+| Accès | `vtysh -c` | `sr_cli --` | SSH, Netmiko `arista_eos`, **mode utilisateur (`r4>`) : `enable()` obligatoire** pour `show running-config` |
+| Sorties structurées | `... json` | `... \| as json` | `... \| json` |
+| Config texte | blocs `... exit` | accolades imbriquées | blocs **indentés**, séparateur `!` |
+| Secrets | clair | `$aes1$...` | **« type 7 » réversible** (`md5 7 <hash>`, `password 7 <hash>`), `secret sha512 $6$...` ; le hash est déterministe (même clé, même hash) |
+| Réinitialiser une session BGP | `clear bgp <ip>` | — | **`clear ip bgp <ip>`** (`clear ip bgp neighbor <ip>` est refusé) |
+| GTSM | `ttl-security hops N` | — | `ttl maximum-hops N` (envoie un TTL de 255) |
+| Limite de routes BGP | `maximum-prefix N` | — | `maximum-routes N` — **voir ci-dessous** |
+| Route de rejet | nexthop `blackhole` | — | `routeType: dropRoute`, `vias: []` (mais `directlyConnected: true`, trompeur) |
+| Interface de management | `eth0` | `mgmt0` | `Management0` (+ son sous-réseau connecté) |
+
+**`maximum-routes` (EOS) n'est PAS strictement équivalent à `maximum-prefix` (FRR).** EOS compte
+les routes **reçues, avant la politique d'entrée** (constaté : la limite est dépassée même quand la
+politique n'en accepte que 2 sur 14) ; FRR compte par défaut les préfixes **acceptés après filtre**,
+sauf avec `maximum-prefix N force` (documentation FRR, « BGP — FRR latest documentation »,
+<https://docs.frrouting.org/en/stable-8.2/bgp.html>). L'effet de protection est le même, le seuil ne
+l'est pas : une valeur de 10 n'a pas la même marge sur les deux constructeurs.
+
+**Deux pièges constatés en direct.** (1) Une session BGP déjà établie **garde son socket** quand on
+change le mot de passe ou le GTSM : sans réinitialisation, un test « mauvais mot de passe » ne prouve
+rien. (2) EOS écrit ses secrets en type 7 : le masquage de `netcheck/secrets.py` laissait fuir
+**les trois formes** (`md5 7`, `password 7`, `secret sha512`) avant la Phase F ; il applique
+maintenant une règle générique (mot-clé, type facultatif, valeur ; tout est masqué sauf le
+mot-clé), avec des tests sur les lignes réelles et un test qui échoue si un hash survit.
+
+### Utiliser netcheck sur ce lab
+
+```bash
+python -m netcheck snapshot avant -i automation/inventory-ceos.yml
+python -m netcheck check --rules netcheck/rules/security.yml -i automation/inventory-ceos.yml
+python -m netcheck assert --intent intents/lab-ceos.yml -i automation/inventory-ceos.yml
+```
+
+`check` applique cinq règles `drivers: [eos]` à r4 (authentification OSPF, mot de passe BGP,
+GTSM, limite de routes, **API de gestion exposée**) ; les règles FRR et SR Linux y sont « non
+applicables » (jamais une fausse violation), et inversement. `assert` utilise les mêmes types
+d'assertion que sur les autres labs, y compris `path`, qui traverse r4 : une route `dropRoute`
+(Null0) y est un **trou noir → ÉCHEC**, même sémantique qu'en Phase C.
+
+**Liste blanche à deux niveaux.** La liste blanche *logique* du collecteur n'a pas changé. Le
+driver EOS ajoute une liste blanche en **correspondance exacte de la commande complète**, suffixe
+`| json` compris : seules six chaînes peuvent partir (`show interfaces | json`, `show ip route |
+json`, `show ip ospf neighbor | json`, `show ip bgp summary | json`, `show ip bgp | json`, `show
+running-config`). Une redirection (`>`), un ajout (`>>`), `tee`, un second pipe, une variante
+d'espacement ou de casse sont refusés **avant la connexion**, un test par cas. `enable()` est la
+méthode Netmiko, jamais `send_command("enable")`.
+
+### Ce que ce troisième constructeur a changé hors de `drivers/`
+
+C'est le vrai test de l'architecture. Mesure honnête (`git diff`, lignes ajoutées) :
+
+| Fichier | Changement |
+|---|---|
+| `netcheck/drivers/eos.py` | **nouveau**, 192 lignes : tout le dialecte EOS |
+| `netcheck/drivers/base.py` | +19 : deux crochets génériques (`NEEDS_ENABLE`, `ALLOWED_CLI` + `check_cli`), sans effet pour FRR et SR Linux |
+| `netcheck/collector.py` | +12 : une ligne de registre, l'appel à `enable()`, le contrôle exact de la commande CLI |
+| `netcheck/compliance.py` | **+147** : cinq évaluateurs `eos_*` et leur analyse de blocs indentés — la syntaxe d'un constructeur vit encore dans ce fichier (c'était déjà vrai de SR Linux) |
+| `netcheck/secrets.py` | +35 / −11 : règle générique de masquage (faille réelle trouvée, voir plus haut) |
+| `netcheck/rules/security.yml` | +77 : cinq règles EOS |
+| `automation/inventory-ceos.yml`, `intents/lab-ceos.yml` | nouveaux (aucun code : les identifiants par driver existaient déjà) |
+
+**Rien d'autre** : `model.py`, `diff.py`, `assertions.py`, `management.py`, `report.py`, `guard.py`,
+`monitor.py`, `cli.py`, `inventory.py` et les gabarits n'ont pas bougé d'une ligne. `diff`, `assert`
+(trou noir compris), `guard --rollback` et `monitor` fonctionnent sur EOS sans modification. Le
+point faible reste `compliance.py` : tant que les évaluateurs de texte de configuration y vivent,
+chaque constructeur y ajoute son dialecte.
 
 ## Audit de sécurité (v3)
 

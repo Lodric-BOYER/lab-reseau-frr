@@ -1,0 +1,85 @@
+! Command: show running-config
+! device: r4 (cEOSLab, EOS-4.34.8M-49719955.4348M.1 (engineering build))
+!
+no aaa root
+!
+username admin privilege 15 role network-admin secret sha512 $6$BfyQeqMEAOYfFIFW$2TgamS6RUy/xvOEvKUwPWTVOBo3/XKjMOv0OJc1jq0e5avT1XGjkSpRvtprKpxM3u/HbtqsRiDweed98L7PYS.
+!
+no service interface inactive port-id allocation disabled
+!
+transceiver qsfp default-mode 4x10G
+!
+service routing protocols model multi-agent
+!
+hostname r4
+!
+spanning-tree mode mstp
+!
+system l1
+   unsupported speed action error
+   unsupported error-correction action error
+!
+interface Ethernet1
+   description eBGP-vers-r3-AS65001
+   no switchport
+   ip address 172.16.34.2/30
+   ip ospf area 0.0.0.0
+!
+interface Ethernet2
+   description vers-r5
+   no switchport
+   ip address 10.2.45.1/30
+   ip ospf network point-to-point
+   ip ospf authentication message-digest
+   ip ospf area 0.0.0.0
+   ip ospf message-digest-key 1 md5 7 Xa3hY/loCKnuF1M4pSYh4fkunbQLFopl
+!
+interface Loopback0
+   ip address 10.2.255.4/32
+   ip ospf area 0.0.0.0
+!
+interface Management0
+   ip address 172.20.22.14/24
+!
+ip routing
+!
+ip prefix-list PL-EBGP-IN seq 10 permit 10.1.0.0/16
+ip prefix-list PL-EBGP-IN seq 20 permit 192.168.1.0/24
+ip prefix-list PL-EBGP-OUT seq 10 permit 10.2.0.0/16
+ip prefix-list PL-EBGP-OUT seq 20 permit 192.168.2.0/24
+!
+ip route 10.2.0.0/16 Null0
+!
+route-map RM-EBGP-IN permit 10
+   match ip address prefix-list PL-EBGP-IN
+!
+route-map RM-EBGP-OUT permit 10
+   match ip address prefix-list PL-EBGP-OUT
+!
+router bgp 65002
+   router-id 10.2.255.4
+   neighbor 172.16.34.1 remote-as 65001
+   neighbor 172.16.34.1 description r3-AS65001
+   neighbor 172.16.34.1 ttl maximum-hops 1
+   neighbor 172.16.34.1 route-map RM-EBGP-IN in
+   neighbor 172.16.34.1 route-map RM-EBGP-OUT out
+   neighbor 172.16.34.1 password 7 bKfudwH6bUwtTELPdh1MSQ==
+   neighbor 172.16.34.1 maximum-routes 10
+   network 10.2.0.0/16
+   network 192.168.2.0/24
+!
+router multicast
+   ipv4
+      software-forwarding kernel
+   !
+   ipv6
+      software-forwarding kernel
+!
+router ospf 1
+   router-id 10.2.255.4
+   passive-interface Ethernet1
+   passive-interface Loopback0
+   redistribute bgp
+   max-lsa 12000
+!
+end

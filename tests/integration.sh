@@ -287,6 +287,18 @@ title "E1 : monitor -- panne -> UNE alerte, rien ensuite, réparation -> retour 
 E_STATE="$JSON_DIR/e1_state.json"; E_LOG="$JSON_DIR/e1_messages.jsonl"; E_PORT="$JSON_DIR/e1_port"
 E_OUT="$JSON_DIR/e1_all_output.txt"
 rm -f "$E_STATE" "$E_STATE.lock" "$E_STATE.corrupt" "$E_PORT" "$E_OUT"
+# La référence ne doit pas être prise PENDANT une reconvergence (le scénario précédent vient de
+# rétablir un lien : health.py est vert dès que OSPF/BGP sont montés, avant que les routes aient
+# fini de se recalculer). On attend donc un réseau STABLE : deux relevés espacés de 4 s sans constat.
+wait_stable() {
+  for _ in $(seq 1 15); do
+    $NC snapshot e1_stable_a --force >/dev/null 2>&1; sleep 4
+    $NC snapshot e1_stable_b --force >/dev/null 2>&1
+    $NC diff e1_stable_a e1_stable_b >/dev/null 2>&1 && return 0
+  done
+  return 1
+}
+wait_stable && ok "réseau stable avant la référence (deux relevés identiques)" || ko "réseau jamais stable"
 $NC snapshot e1_nominal --force >/dev/null
 python3 tests/tools/webhook_recorder.py --port-file "$E_PORT" --log "$E_LOG" &
 recorder_pid=$!
@@ -334,7 +346,18 @@ kill "$locker_pid" 2>/dev/null; wait "$locker_pid" 2>/dev/null
 
 docker exec "$LAB-r1" ip link set eth2 up
 wait_healthy && ok "retour à la normale (health.py)" || ko "health.py toujours KO après réparation"
-sleep 3
+# health.py est vert avant la fin du recalcul des routes : on attend que le réseau soit revenu à
+# l'état de la RÉFÉRENCE (diff vide) avant de demander à monitor de conclure à « OK ». Un monitor
+# lancé trop tôt dit la vérité (état transitoire) : c'est précisément ce que --confirm N amortit.
+wait_nominal_again() {
+  for _ in $(seq 1 30); do
+    $NC snapshot e1_now --force >/dev/null 2>&1
+    $NC diff e1_nominal e1_now >/dev/null 2>&1 && return 0
+    sleep 3
+  done
+  return 1
+}
+wait_nominal_again && ok "réseau revenu à l'état de la référence (diff vide)" || ko "le réseau n'est jamais revenu à la référence"
 out=$(mon); code=$?; echo "$out" >> "$E_OUT"
 [[ "$code" == "0" ]] && ok "réparation : code retour = 0" || { ko "réparation : code $code (attendu 0)"; echo "$out"; }
 [[ "$(count_msgs)" == "2" && "$(msg_field 2 event)" == "recovery" ]] \

@@ -76,11 +76,21 @@ def test_ensure_allowed_rejects_unknown_command():
 
 # -- Registre de drivers (Phase D1) ----------------------------------------------------------
 
-@pytest.mark.parametrize("driver_cls", [FrrDriver, SrlinuxDriver])
+@pytest.mark.parametrize("driver_cls", list(collector.DRIVER_REGISTRY.values()))
 def test_whitelist_covers_every_registered_driver(driver_cls):
-    """Liste blanche vérifiée pour CHAQUE driver du registre, pas seulement FRR : un driver
-    mal écrit qui demanderait une commande hors liste doit être détectable statiquement."""
+    """Liste blanche vérifiée pour CHAQUE driver du registre (parcouru, pas listé à la main :
+    un futur driver est couvert dès son enregistrement) : un driver mal écrit qui demanderait
+    une commande hors liste doit être détectable statiquement."""
     assert set(driver_cls().REQUIRED_COMMANDS) <= collector.ALLOWED_COMMANDS
+
+
+@pytest.mark.parametrize("driver_cls", list(collector.DRIVER_REGISTRY.values()))
+def test_every_registered_driver_translation_passes_its_own_cli_check(driver_cls):
+    """Phase F : ce que translate() fabrique doit passer le contrôle de la commande CLI réelle
+    du driver lui-même (no-op pour FRR et SR Linux, correspondance exacte pour EOS)."""
+    driver = driver_cls()
+    for command in driver.REQUIRED_COMMANDS:
+        driver.check_cli(driver.translate(command))
 
 
 def test_resolve_driver_defaults_to_frr_when_field_absent():

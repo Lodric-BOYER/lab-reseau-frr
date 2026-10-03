@@ -1,0 +1,86 @@
+# intents/lab-ceos.yml — état attendu du lab Arista cEOS (Phase F), même format que lab.yml.
+#
+# r4 = Arista cEOS (driver "eos"), les autres routeurs = FRR : les MÊMES types d'assertion
+# fonctionnent sur les deux constructeurs, y compris `path` qui traverse r4. Valeurs vérifiées
+# sur un snapshot réel du lab (snapshot, check et assert exécutés en direct), pas devinées.
+# À utiliser avec : assert --intent intents/lab-ceos.yml -i automation/inventory-ceos.yml
+# (le drapeau -i vient APRÈS la sous-commande).
+
+assertions:
+
+  - id: bgp-r3-vers-r4
+    description: "Session eBGP r3 (FRR) -> 172.16.34.2 (r4, cEOS) Established, au moins 2 préfixes reçus"
+    device: r3
+    type: bgp_session
+    neighbor: 172.16.34.2
+    min_prefixes_received: 2
+
+  - id: bgp-r4-vers-r3
+    description: "Session eBGP r4 (cEOS) -> 172.16.34.1 (r3, FRR) Established, au moins 2 préfixes reçus"
+    device: r4
+    type: bgp_session
+    neighbor: 172.16.34.1
+    min_prefixes_received: 2
+
+  - id: ospf-r1-voisins
+    description: "r1 a exactement 2 voisins OSPF Full (r2 et r3)"
+    device: r1
+    type: ospf_neighbors
+    count: 2
+
+  - id: ospf-r4-voisin-frr
+    description: "r4 (cEOS) a exactement 1 voisin OSPF Full (r5, FRR), avec authentification MD5"
+    device: r4
+    type: ospf_neighbors
+    count: 1
+
+  - id: ospf-r5-voisin-ceos
+    description: "r5 (FRR) a exactement 1 voisin OSPF Full (r4, cEOS)"
+    device: r5
+    type: ospf_neighbors
+    count: 1
+
+  - id: route-r1-vers-lan-r5
+    description: "r1 connaît 192.168.2.0/24 (LAN de pc2), via OSPF, next-hop r3 par eth2"
+    device: r1
+    type: route_present
+    prefix: 192.168.2.0/24
+    protocol: ospf
+    next_hop: 10.1.13.2
+    interface: eth2
+
+  - id: route-r4-vers-lan-r5
+    description: "r4 (cEOS) connaît 192.168.2.0/24 via OSPF, next-hop r5 par Ethernet2"
+    device: r4
+    type: route_present
+    prefix: 192.168.2.0/24
+    protocol: ospf
+    next_hop: 10.2.45.2
+    interface: Ethernet2
+
+  - id: route-r4-agregat-null0
+    description: "r4 (cEOS) porte l'agrégat 10.2.0.0/16 par une route de rejet (Null0, vue comme 'static')"
+    device: r4
+    type: route_present
+    prefix: 10.2.0.0/16
+    protocol: static
+
+  - id: route-r4-sans-lan-r1-direct
+    description: "r4 n'a pas d'entrée EXACTE pour 10.1.12.0/30 (il l'atteint seulement via l'agrégat 10.1.0.0/16 appris en eBGP : voulu)"
+    device: r4
+    type: route_absent
+    prefix: 10.1.12.0/30
+
+  - id: interface-r4-vers-r5
+    description: "r4 (cEOS) Ethernet2 (vers r5) opérationnelle"
+    device: r4
+    type: interface_up
+    interface: Ethernet2
+
+  - id: chemin-r1-vers-lan-r5
+    description: "Le chemin logique de r1 vers 192.168.2.0/24 passe par r3 (OSPF), puis r4 (cEOS, eBGP), puis r5 où le préfixe est directement connecté"
+    device: r1
+    type: path
+    prefix: 192.168.2.0/24
+    via: [r3, r4, r5]
+    mode: all

@@ -22,21 +22,45 @@ import re
 # compliance._check_line_absent : "ligne interdite trouvée : 'password secret123'").
 _VALUE = r"""[^\s'"]+"""
 
+# Phase F (3e constructeur, Arista EOS) : une règle GÉNÉRIQUE plutôt qu'un cas par ligne. Après un
+# mot-clé, un TYPE facultatif puis la valeur ; tout est masqué sauf le mot-clé. EOS écrit ses
+# secrets en « type 7 » (réversible), « sha512 » ou « 5 », et le hash ne ressemble à rien de connu :
+#   ip ospf message-digest-key 1 md5 7 Xa3hY/lo...      neighbor 172.16.34.1 password 7 tYPpD4...==
+#   username admin ... secret sha512 $6$salt$hash...
+# Un motif écrit pour « md5 X » prenait le « 7 » pour la valeur et LAISSAIT FUIR le hash (constaté
+# sur les trois lignes réelles de cEOS 4.34.8M). Les types ci-dessous sont ceux qu'EOS écrit.
+_TYPE = r"(?:(?:0|5|7|8a|9|sha512|sha256|scrypt)\s+)?"
+_STRICT_TYPE = r"(?:0|5|7|8a|9|sha512|sha256|scrypt)"
+_DIGEST_ALGO = r"(?:md5|sha1|sha256|sha384|sha512)"
+
 _SECRET_PATTERNS = [
-    # FRR : mot de passe VTY/enable local ("password X", "enable password X") et mot de passe
-    # TCP-MD5 d'un voisin BGP ("neighbor <ip> password X") -- même mot-clé final "password",
-    # un seul motif suffit pour les deux.
-    re.compile(rf"\b((?:enable )?password)\s+{_VALUE}"),
-    # FRR : clé OSPF message-digest ("ip ospf message-digest-key <id> md5 X").
-    re.compile(rf"\b(message-digest-key \d+ md5)\s+{_VALUE}"),
-    # FRR : "key-string X" d'un key chain générique (RIP/EIGRP -- non utilisé dans ce lab
-    # aujourd'hui, mais une commande FRR réelle qui porte un secret).
-    re.compile(rf"\b(key-string)\s+{_VALUE}"),
+    # Mot de passe VTY/enable local ("password X"), TCP-MD5 d'un voisin BGP ("neighbor <ip>
+    # password X", FRR) et, sur EOS, "neighbor <ip> password 7 Y", "username U ... password 7 Y".
+    re.compile(rf"\b((?:enable )?password)\s+{_TYPE}{_VALUE}"),
+    # Clé OSPF message-digest ("ip ospf message-digest-key <id> md5 X", FRR et EOS) et clé NTP
+    # ("ntp authentication-key <id> md5 7 X", EOS) : numéro de clé, algorithme, type, valeur.
+    re.compile(rf"\b((?:message-digest-key|authentication-key)\s+\d+\s+{_DIGEST_ALGO})\s+{_TYPE}{_VALUE}"),
+    # "key-string X" d'un key chain (FRR, EOS "key-string 7 X").
+    re.compile(rf"\b(key-string)\s+{_TYPE}{_VALUE}"),
     # SR Linux : clé d'une keychain ("authentication-key X", déjà obscurcie en "$aes1$..." par
     # la plateforme elle-même -- voir la vérification en direct dans le rapport de phase --
     # mais masquée quand même : ce n'est pas un chiffrement documenté comme sûr pour un rapport
-    # public, seulement un stockage local protégé).
-    re.compile(rf"\b(authentication-key)\s+{_VALUE}"),
+    # public, seulement un stockage local protégé). EOS : "ip ospf authentication-key 7 X".
+    # Le lookahead laisse au motif précédent les formes "authentication-key <id> md5 ..." (sinon
+    # le numéro de clé serait masqué à son tour).
+    re.compile(rf"\b(authentication-key)\s+(?!\d+\s+{_DIGEST_ALGO}\b){_TYPE}{_VALUE}"),
+    # EOS : "secret <type> <hash>" (username, enable). Le type est toujours écrit dans une
+    # running-config ; une forme SANS type ("enable secret motdepasse", "username u secret x"),
+    # possible dans un script de changement, n'est masquée que dans un contexte de configuration
+    # (ligne qui commence par enable / username) : le mot « secret » d'une phrase française
+    # ("secret en clair") ne doit pas être mangé.
+    re.compile(rf"\b(secret)\s+{_STRICT_TYPE}\s+{_VALUE}"),
+    re.compile(rf"(?m)^([ \t+\-]*(?:enable\s+|username\b[^\n]*?\s)secret)\s+{_VALUE}"),
+    # EOS : "tacacs-server [host <ip>] key 7 X", "radius-server [host <ip>] key 7 X".
+    re.compile(rf"\b((?:tacacs|radius)-server\b[^\n]*?\bkey)\s+{_TYPE}{_VALUE}"),
+    # EOS : communauté SNMP en clair ("snmp-server community X ro") -- un secret d'accès, à ne
+    # jamais confondre avec "set community" / "match community" des route-maps BGP.
+    re.compile(rf"\b(snmp-server community)\s+{_VALUE}"),
     # SR Linux : communauté SNMP ("community $aes1$..."), UNIQUEMENT sous cette forme
     # obscurcie précise -- jamais un "set community"/"match community" de route-map BGP, qui
     # n'est pas un secret mais une étiquette de politique de routage (valeur "65001:100", pas
