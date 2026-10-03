@@ -45,6 +45,12 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
 
 - **Refus au chargement** d'une règle dont `drivers:` cite un driver qui n'implémente pas son `kind`
   (elle ne vérifierait rien sur cet équipement). Les règles de la v0.3.0 se chargent sans modification.
+- **Verdict et structure incertaine.** Un avertissement d'analyse peut bloquer le verdict sans retirer
+  la ligne (`ParseWarning.blocking`) : c'est le cas d'une accolade fermante manquante, qui rend
+  incertaine la place de tout ce qui suit. La ligne reste lue et évaluée (ses violations sont
+  rapportées), mais le verdict n'est jamais « conforme » : code 1 au minimum, ligne comptée avec les
+  lignes non lues, affichée « STRUCTURE INCERTAINE ». Si une violation réelle existe en même temps, elle
+  s'affiche (NON CONFORME) avec la mention de structure incertaine. JSON : `config_analysis[].blocks_verdict`.
 - API : `compliance.evaluate_config()` (violations, non applicables, avertissements d'analyse) ;
   `compliance.evaluate()` garde sa forme historique. `verdict()` accepte les avertissements.
 - Rapports : JSON enrichi de `status`, `summary`, `config_analysis` et de `cause` par règle non
