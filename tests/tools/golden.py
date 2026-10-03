@@ -417,13 +417,26 @@ def add_cases(case_ids: list[str], reason: str, reference_commit: str | None = N
             print(f"{rules_name} : + {case_id} : {detail}, conforme={case['base'].get('compliant')}")
 
 
+def _base_now(rules, case_id: str) -> dict | None:
+    """La réponse de base du moteur courant pour ce cas (équipement, lab ou scénario), ou None."""
+    if case_id in (states := devices()):
+        return record(rules, {states[case_id].name: states[case_id]})
+    if case_id in (labs_ := labs()):
+        return record(rules, labs_[case_id], LAB_MGMT[case_id])
+    if case_id in (scenes := scenarios()):
+        return record(rules, scenes[case_id])
+    return None
+
+
 def replace_mutants(rules_name: str, targets: list[str], reason: str) -> None:
-    """Met à jour des MUTATIONS précises du gel après un écart voulu et validé. Jamais en bloc :
-    chaque cible est nommée `<cas>@<clé de mutation>` (la clé = numéro de ligne:empreinte, telle que
-    `compare` l'affiche), doit être réellement en écart avec le moteur courant (sinon refus : rien à
-    justifier), et n'est mise à jour qu'à cette seule entrée. Les autres entrées, les bases et les
-    sondes restent identiques à l'octet. Refuse de tourner si netcheck/ a des modifications non
-    commitées : la réponse enregistrée doit venir d'un code qui existe dans l'historique."""
+    """Met à jour des entrées précises du gel après un écart voulu et validé. Jamais en bloc : chaque
+    cible est nommée `<cas>@<clé de mutation>` (la clé = numéro de ligne:empreinte, telle que `compare`
+    l'affiche) ou `<cas>@base` (la réponse de base du cas : équipement, lab ou scénario), doit être
+    réellement en écart avec le moteur courant (sinon refus : rien à justifier), et n'est mise à jour
+    qu'à cette seule entrée. Les autres entrées, bases et sondes restent identiques à l'octet. Quand une
+    base et des mutations du même cas changent, la base se nomme EN PREMIER : les mutations sont des
+    écarts par rapport à elle. Refuse de tourner si netcheck/ a des modifications non commitées : la
+    réponse enregistrée doit venir d'un code qui existe dans l'historique."""
     if _netcheck_dirty():
         raise SystemExit("netcheck/ a des modifications non commitées : commitez le code d'abord, "
                          "le gel enregistre la réponse d'un code qui existe dans l'historique")
@@ -435,6 +448,16 @@ def replace_mutants(rules_name: str, targets: list[str], reason: str) -> None:
     for target in targets:
         case_id, _, key = target.partition("@")
         case = data["cases"].get(case_id)
+        if case is not None and key == "base":
+            before, after = case["base"], _base_now(rules, case_id)
+            if after is None or json.loads(json.dumps(after)) == before:
+                raise SystemExit(f"{target} : déjà identique au moteur courant (ou cas inconnu), "
+                                 "rien à mettre à jour")
+            case["base"] = after
+            revisions.append({"case": case_id, "mutation": "base",
+                              "rules_before": [v[1] for v in before.get("violations", [])],
+                              "rules_after": [v[1] for v in after.get("violations", [])]})
+            continue
         if case is None or case_id not in states or "mutants_changed" not in case:
             raise SystemExit(f"{target} : cas inconnu ou sans mutations")
         mutated = dict(mutants(states[case_id])).get(key)

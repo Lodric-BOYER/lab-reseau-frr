@@ -4,6 +4,7 @@ Le gel ne doit jamais bouger sans qu'on l'ait voulu : l'ajout refuse d'écraser 
 tourner sur un code non commité (la réponse gelée doit venir d'un code qui existe dans l'historique).
 Ces tests travaillent sur une COPIE du gel, jamais sur tests/golden/.
 """
+import copy
 import json
 import shutil
 
@@ -88,3 +89,50 @@ def test_nothing_is_written_when_one_of_the_files_refuses(sandbox, monkeypatch):
 def test_the_two_evaluation_modes_exclude_each_other(sandbox):
     with pytest.raises(SystemExit, match="s'excluent"):
         golden.add_cases(["scenario:x"], "x", reference_commit="b56a775", current_code=True)
+
+
+# ------------------------------------------------------------------------------------------
+# `replace <règles> <cas>@base` : mettre à jour la réponse de base d'UN cas après un écart validé
+# ------------------------------------------------------------------------------------------
+
+CASE = "scenario:frr-r3-reinjection"       # une base qui porte des violations dans « security »
+
+
+def tamper_base(rules_name="security"):
+    path = golden.golden_path(rules_name)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    original = copy.deepcopy(data)
+    data["cases"][CASE]["base"]["violations"][0][3] = "ancien message"
+    path.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    return original
+
+
+def test_replace_base_updates_that_base_only_and_traces_the_revision(sandbox):
+    original = tamper_base()
+    golden.replace_mutants("security", [f"{CASE}@base"], "message de la règle")
+    new = read("security")
+    assert new["cases"] == original["cases"]       # ce cas est revenu, tout le reste n'a pas bougé
+    revision = new["meta"]["revisions"][-1]
+    assert revision["reason"] == "message de la règle"
+    assert revision["code_commit"] == golden._code_commit()
+    assert [(t["case"], t["mutation"]) for t in revision["targets"]] == [(CASE, "base")]
+    assert revision["targets"][0]["rules_before"] == revision["targets"][0]["rules_after"] != []
+    assert len(new["meta"]["revisions"]) == len(original["meta"].get("revisions", [])) + 1
+    default = sandbox.joinpath("compliance_default.json").read_text(encoding="utf-8")
+    assert read("default") == json.loads(default)
+
+
+def test_replace_base_refuses_a_base_that_already_matches_the_engine(sandbox):
+    frozen = snapshot_bytes()
+    with pytest.raises(SystemExit, match="déjà identique"):
+        golden.replace_mutants("security", [f"{CASE}@base"], "x")
+    assert snapshot_bytes() == frozen
+
+
+def test_replace_base_refuses_uncommitted_code_and_writes_nothing(sandbox, monkeypatch):
+    tamper_base()
+    monkeypatch.setattr(golden, "_netcheck_dirty", lambda: " M netcheck/compliance.py")
+    frozen = snapshot_bytes()
+    with pytest.raises(SystemExit, match="non commitées"):
+        golden.replace_mutants("security", [f"{CASE}@base"], "x")
+    assert snapshot_bytes() == frozen
