@@ -28,7 +28,7 @@ def test_golden_is_not_vacuous(rules_name):
     assert data["meta"]["netcheck_version"] == "0.3.0"
     for needed in ("fixture:frr-r3", "fixture:srlinux-r5", "fixture:srlinux-r5-hardened",
                    "fixture:eos-r4", "config:frr-r3", "config:eos-r4", "lab:frr", "lab:multivendor",
-                   "lab:ceos", "lab:config-frr"):
+                   "lab:ceos", "lab:config-frr", "scenario:frr-r3-reinjection"):
         assert needed in cases, needed
     # Le r5 durci (relevé sur le lab mixte) est conforme : c'est le chemin « conforme » de SR Linux.
     assert cases["fixture:srlinux-r5-hardened"]["base"]["compliant"] is True

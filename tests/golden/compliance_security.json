@@ -25,6 +25,13 @@
     ],
     "code_commit": "b56a775",
     "reason": "r5 durci relevé sur le lab mixte (snapshot v4a-ref-mixte) : keychain OSPF en aes1, bannière ; comble le trou de couverture SR Linux durci du gel A1"
+   },
+   {
+    "cases": [
+     "scenario:frr-r3-reinjection"
+    ],
+    "code_commit": "b56a775",
+    "reason": "A3a : chemin « violation réelle » de ebgp-pas-de-reinjection-de-prefixes-locaux. Le gel ne l'exerçait que par les faux positifs de la v0.3.0 (suppression d'un exit), corrigés ensuite. Réponse évaluée par le code de b56a775 (git archive), pas par le moteur courant."
    }
   ],
   "revisions": [
@@ -5502,6 +5509,58 @@
       ]
      ]
     }
+   }
+  },
+  "scenario:frr-r3-reinjection": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r3",
+      "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 10.1.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+      "bgp"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
    }
   }
  }

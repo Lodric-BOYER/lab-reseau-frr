@@ -25,6 +25,13 @@
     ],
     "code_commit": "b56a775",
     "reason": "r5 durci relevé sur le lab mixte (snapshot v4a-ref-mixte) : keychain OSPF en aes1, bannière ; comble le trou de couverture SR Linux durci du gel A1"
+   },
+   {
+    "cases": [
+     "scenario:frr-r3-reinjection"
+    ],
+    "code_commit": "b56a775",
+    "reason": "A3a : chemin « violation réelle » de ebgp-pas-de-reinjection-de-prefixes-locaux. Le gel ne l'exerçait que par les faux positifs de la v0.3.0 (suppression d'un exit), corrigés ensuite. Réponse évaluée par le code de b56a775 (git archive), pas par le moteur courant."
    }
   ],
   "revisions": [
@@ -2310,6 +2317,25 @@
       ]
      ]
     }
+   }
+  },
+  "scenario:frr-r3-reinjection": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
    }
   }
  }

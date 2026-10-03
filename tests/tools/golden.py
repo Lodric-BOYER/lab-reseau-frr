@@ -26,15 +26,21 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 from dataclasses import replace
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
+# Le code de netcheck évalué : le dépôt, sauf dans le sous-processus qui rejoue le code de référence
+# (GOLDEN_CODE_ROOT = arbre extrait de git, voir evaluate_with_reference).
+CODE_ROOT = Path(os.environ.get("GOLDEN_CODE_ROOT", REPO))
+if str(CODE_ROOT) not in sys.path:
+    sys.path.insert(0, str(CODE_ROOT))
 
 from netcheck import __version__, compliance, inventory, report, snapshot  # noqa: E402
 from netcheck.drivers.eos import EosDriver  # noqa: E402
@@ -101,10 +107,14 @@ def _from_state_file(path: Path) -> DeviceState:
     return DeviceState.from_dict(json.loads(path.read_text(encoding="utf-8")))
 
 
+def _config_text(name: str, driver_name: str, text: str) -> DeviceState:
+    return DeviceState(name=name, host="-", timestamp="", reachable=True, running_config=text,
+                       driver=driver_name)
+
+
 def _config_only(name: str, driver_name: str, path: Path) -> DeviceState:
     """Configuration seule, sans aucun modèle : l'état que produira `check --config-dir`."""
-    return DeviceState(name=name, host="-", timestamp="", reachable=True,
-                       running_config=path.read_text(encoding="utf-8"), driver=driver_name)
+    return _config_text(name, driver_name, path.read_text(encoding="utf-8"))
 
 
 def devices() -> dict[str, DeviceState]:
@@ -123,6 +133,18 @@ def devices() -> dict[str, DeviceState]:
         out[f"config:frr-{r}"] = _config_only(r, "frr", INPUTS / f"frr_{r}.conf")
     out["config:eos-r4"] = _config_only("r4", "eos", INPUTS / "eos_r4.startup-config")
     return out
+
+
+def scenarios() -> dict[str, dict[str, DeviceState]]:
+    """Cas « scénario » (réponse de base seulement) : une configuration réelle modifiée pour atteindre
+    un chemin que ni les mutations ni les sondes n'atteignent. Leur réponse attendue est celle du CODE
+    DE RÉFÉRENCE (`add --reference-code`), jamais celle du moteur courant."""
+    r3 = (INPUTS / "frr_r3.conf").read_text(encoding="utf-8")
+    anchor = "ip prefix-list PL-EBGP-IN seq 20 permit 192.168.2.0/24\n"
+    assert r3.count(anchor) == 1
+    # La politique d'entrée autorise 10.1.0.0/16, un préfixe que r3 annonce lui-même : réinjection.
+    reinjection = r3.replace(anchor, anchor + "ip prefix-list PL-EBGP-IN seq 30 permit 10.1.0.0/16\n")
+    return {"scenario:frr-r3-reinjection": {"r3": _config_text("r3", "frr", reinjection)}}
 
 
 def labs() -> dict[str, dict[str, DeviceState]]:
@@ -263,6 +285,9 @@ def build_cases(rules_name: str, only: list[str] | None = None) -> dict[str, dic
     for case_id, devs in labs().items():
         if only is None or case_id in only:
             cases[case_id] = {"base": record(rules, devs, LAB_MGMT[case_id])}
+    for case_id, devs in scenarios().items():
+        if only is None or case_id in only:
+            cases[case_id] = {"base": record(rules, devs)}
     unknown = set(only or ()) - set(cases)
     if unknown:
         raise SystemExit(f"cas inconnu(s) : {sorted(unknown)}")
@@ -296,30 +321,65 @@ def _write(path: Path, data: dict) -> None:
     path.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-def add_cases(case_ids: list[str], reason: str) -> None:
-    """Ajoute des cas NOUVEAUX au gel, sans toucher aux autres. Refuse d'écraser un cas existant, et
-    refuse de tourner si netcheck/ diffère du code de référence du gel : un ajout n'est légitime que
-    tant que le moteur répond encore comme la v0.3.0. Les autres cas restent identiques à l'octet."""
+def evaluate_with_reference(commit: str, rules_name: str, cases: dict[str, dict[str, DeviceState]]) -> dict:
+    """Évalue ces cas avec le code de netcheck tel qu'il était à `commit` : l'arbre est extrait de git
+    dans un dossier temporaire et exécuté dans un sous-processus. Rend {cas: réponse}. La preuve que
+    c'est bien l'ancien moteur est vérifiée (il ne connaît pas `evaluate_config`, ajouté en A3)."""
+    tree = Path(tempfile.mkdtemp(prefix="golden_reference_"))
+    try:
+        archive = subprocess.run(["git", "-C", str(REPO), "archive", commit, "netcheck", "automation"],
+                                 capture_output=True, check=True).stdout
+        subprocess.run(["tar", "-x", "-C", str(tree)], input=archive, check=True)
+        payload = {cid: {name: s.to_dict() for name, s in devs.items()} for cid, devs in cases.items()}
+        env = {**os.environ, "GOLDEN_CODE_ROOT": str(tree), "PYTHONPATH": str(tree)}
+        out = subprocess.run([sys.executable, str(Path(__file__).resolve()), "_eval-reference", rules_name],
+                             input=json.dumps(payload), capture_output=True, text=True, env=env, cwd=tree)
+        if out.returncode:
+            raise SystemExit(f"évaluation du code de référence en échec :\n{out.stderr}")
+        result = json.loads(out.stdout)
+        if result["engine_has_evaluate_config"]:
+            raise SystemExit(f"{commit} contient déjà evaluate_config : ce n'est pas l'ancien moteur")
+        return result["records"]
+    finally:
+        shutil.rmtree(tree, ignore_errors=True)
+
+
+def add_cases(case_ids: list[str], reason: str, reference_commit: str | None = None) -> None:
+    """Ajoute des cas NOUVEAUX au gel, sans toucher aux autres. Refuse d'écraser un cas existant.
+
+    Sans `reference_commit`, refuse de tourner si netcheck/ diffère du code de référence du gel : un
+    ajout n'est légitime que tant que le moteur répond encore comme la v0.3.0. Avec, les cas (des
+    scénarios seulement) sont évalués par le code de ce commit, extrait de git : la réponse gelée est
+    celle de la v0.3.0 même si le moteur courant a changé. Les autres cas restent identiques à l'octet."""
     for rules_name in RULE_FILES:
         data = json.loads(golden_path(rules_name).read_text(encoding="utf-8"))
         reference = data["meta"]["code_commit"]
-        changed = subprocess.run(["git", "-C", str(REPO), "diff", "--quiet", reference, "--", "netcheck/"],
-                                 check=False).returncode
-        if changed:
-            raise SystemExit(f"netcheck/ diffère du code de référence {reference} : ajout refusé "
-                             "(un écart voulu se traite cas par cas, après validation)")
+        if reference_commit is None:
+            diff_cmd = ["git", "-C", str(REPO), "diff", "--quiet", reference, "--", "netcheck/"]
+            changed = subprocess.run(diff_cmd, check=False).returncode
+            if changed:
+                raise SystemExit(f"netcheck/ diffère du code de référence {reference} : ajout refusé "
+                                 "(--reference-code pour un scénario, ou traitez l'écart cas par cas)")
         clash = [c for c in case_ids if c in data["cases"]]
         if clash:
             raise SystemExit(f"{rules_name} : cas déjà gelé(s) {clash}, jamais écrasés")
-        data["cases"].update(build_cases(rules_name, only=case_ids))
+        if reference_commit is None:
+            data["cases"].update(build_cases(rules_name, only=case_ids))
+        else:
+            wanted = {cid: scenarios()[cid] for cid in case_ids if cid in scenarios()}
+            if set(wanted) != set(case_ids):
+                raise SystemExit("--reference-code ne s'applique qu'aux cas « scenario: »")
+            records = evaluate_with_reference(reference_commit, rules_name, wanted)
+            data["cases"].update({cid: {"base": records[cid]} for cid in case_ids})
         data["meta"].setdefault("additions", []).append(
-            {"cases": case_ids, "code_commit": reference, "reason": reason})
+            {"cases": case_ids, "code_commit": reference_commit or reference, "reason": reason})
         _write(golden_path(rules_name), data)
         for case_id in case_ids:
             case = data["cases"][case_id]
-            print(f"{rules_name} : + {case_id} : {case['mutants_total']} mutations "
-                  f"({len(case['mutants_changed'])} changent la réponse), "
-                  f"conforme={case['base'].get('compliant')}")
+            changed_count = len(case.get("mutants_changed", {}))
+            detail = (f"{case['mutants_total']} mutations ({changed_count} changent la réponse)"
+                      if "mutants_total" in case else "réponse de base")
+            print(f"{rules_name} : + {case_id} : {detail}, conforme={case['base'].get('compliant')}")
 
 
 def replace_mutants(rules_name: str, targets: list[str], reason: str) -> None:
@@ -426,6 +486,8 @@ def main(argv: list[str] | None = None) -> int:
     add = sub.add_parser("add", help="ajoute des cas nouveaux au gel (jamais d'écrasement)")
     add.add_argument("cases", nargs="+")
     add.add_argument("--reason", required=True)
+    add.add_argument("--reference-code", help="commit dont le code évalue les scénarios (ex. b56a775)")
+    sub.add_parser("_eval-reference", help=argparse.SUPPRESS).add_argument("rules")
     rep = sub.add_parser("replace", help="met à jour des mutations NOMMÉES après un écart voulu et validé")
     rep.add_argument("rules", choices=sorted(RULE_FILES))
     rep.add_argument("targets", nargs="+", help="<cas>@<clé de mutation>, une par écart validé")
@@ -448,7 +510,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "add":
-        add_cases(args.cases, args.reason)
+        add_cases(args.cases, args.reason, args.reference_code)
+        return 0
+
+    if args.command == "_eval-reference":     # exécuté dans le sous-processus, avec l'ancien code
+        scene = json.loads(sys.stdin.read())
+        rules = compliance.load_rules(RULE_FILES[args.rules])
+        records = {cid: record(rules, {n: DeviceState.from_dict(d) for n, d in devs.items()})
+                   for cid, devs in scene.items()}
+        print(json.dumps({"engine_has_evaluate_config": hasattr(compliance, "evaluate_config"),
+                          "records": records}))
         return 0
 
     if args.command == "replace":
