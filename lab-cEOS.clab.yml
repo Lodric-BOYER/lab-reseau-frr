@@ -1,0 +1,105 @@
+# Lab v3 / Phase F (O6) : meme topologie et adressage que lab.clab.yml, mais r4 = Arista cEOS
+# au lieu de FRR. r1, r2, r3, r5 reutilisent configs/ SANS MODIFICATION (C9) ; seul r4 a sa
+# propre configuration, dans configs-ceos/r4/ (syntaxe EOS).
+#
+# Pourquoi r4 : c'est le routeur qui porte TOUT le durcissement (OSPF MD5 vers r5, eBGP vers r3
+# avec TCP-MD5, GTSM, maximum-prefix) et la redistribution BGP -> OSPF : l'interoperabilite
+# avec FRR est donc testee des deux cotes, sur OSPF et sur BGP.
+#
+# Nom de lab et reseau de management distincts des deux autres labs (C10) : les labs ne
+# tournent jamais en meme temps, mais leurs noms de conteneurs ne doivent jamais se melanger.
+#
+# Image : ceos:4.34.8M, importee LOCALEMENT depuis cEOS-lab-4.34.8M.tar.xz (telechargement
+# avec un compte arista.com, jamais commite : voir .gitignore). Identifiants par defaut de
+# l'image selon la doc containerlab : admin / admin (lab uniquement, C11).
+#
+# MTU 1500 sur les deux liens de r4 : meme lecon que le lab mixte (README, « Deux pièges
+# MTU ») -- OSPF controle la MTU annoncee dans les DBD ; le veth containerlab est a 9500 par
+# defaut alors qu'EOS reste a 1500.
+name: frr-lab-ceos
+
+mgmt:
+  network: clab-mgmt-ceos
+  ipv4-subnet: 172.20.22.0/24
+
+topology:
+  nodes:
+    # --- Routeurs AS65001 (inchanges, configs/ existant, C9) ---
+    r1:
+      kind: linux
+      image: frr-ssh:10.2.1
+      mgmt-ipv4: 172.20.22.11
+      binds:
+        - configs/daemons:/etc/frr/daemons
+        - configs/r1/frr.conf:/etc/frr/frr.conf
+      exec:
+        - sysctl -w net.ipv4.ip_forward=1
+        - /usr/sbin/sshd
+    r2:
+      kind: linux
+      image: frr-ssh:10.2.1
+      mgmt-ipv4: 172.20.22.12
+      binds:
+        - configs/daemons:/etc/frr/daemons
+        - configs/r2/frr.conf:/etc/frr/frr.conf
+      exec:
+        - sysctl -w net.ipv4.ip_forward=1
+        - /usr/sbin/sshd
+    r3:
+      kind: linux
+      image: frr-ssh:10.2.1
+      mgmt-ipv4: 172.20.22.13
+      binds:
+        - configs/daemons:/etc/frr/daemons
+        - configs/r3/frr.conf:/etc/frr/frr.conf
+      exec:
+        - sysctl -w net.ipv4.ip_forward=1
+        - /usr/sbin/sshd
+
+    # --- Routeurs AS65002 : r4 = Arista cEOS (O6), r5 = FRR inchange ---
+    r4:
+      kind: arista_ceos
+      image: ceos:4.34.8M
+      mgmt-ipv4: 172.20.22.14
+      startup-config: configs-ceos/r4/startup-config
+    r5:
+      kind: linux
+      image: frr-ssh:10.2.1
+      mgmt-ipv4: 172.20.22.15
+      binds:
+        - configs/daemons:/etc/frr/daemons
+        - configs/r5/frr.conf:/etc/frr/frr.conf
+      exec:
+        - sysctl -w net.ipv4.ip_forward=1
+        - /usr/sbin/sshd
+
+    # --- Postes clients (adresse + routes vers le reste du lab) ---
+    pc1:
+      kind: linux
+      image: ghcr.io/hellt/network-multitool
+      mgmt-ipv4: 172.20.22.21
+      exec:
+        - ip addr add 192.168.1.10/24 dev eth1
+        - ip route add 10.0.0.0/8 via 192.168.1.1
+        - ip route add 172.16.34.0/30 via 192.168.1.1
+        - ip route add 192.168.2.0/24 via 192.168.1.1
+    pc2:
+      kind: linux
+      image: ghcr.io/hellt/network-multitool
+      mgmt-ipv4: 172.20.22.22
+      exec:
+        - ip addr add 192.168.2.10/24 dev eth1
+        - ip route add 10.0.0.0/8 via 192.168.2.1
+        - ip route add 172.16.34.0/30 via 192.168.2.1
+        - ip route add 192.168.1.0/24 via 192.168.2.1
+
+  links:
+    - endpoints: ["r1:eth1", "r2:eth1"]   # 10.1.12.0/30
+    - endpoints: ["r1:eth2", "r3:eth1"]   # 10.1.13.0/30
+    - endpoints: ["r2:eth2", "r3:eth2"]   # 10.1.23.0/30
+    - endpoints: ["r3:eth3", "r4:eth1"]   # 172.16.34.0/30 (eBGP FRR <-> cEOS)
+      mtu: 1500
+    - endpoints: ["r4:eth2", "r5:eth1"]   # 10.2.45.0/30 (OSPF cEOS <-> FRR)
+      mtu: 1500
+    - endpoints: ["r1:eth3", "pc1:eth1"]  # 192.168.1.0/24
+    - endpoints: ["r5:eth2", "pc2:eth1"]  # 192.168.2.0/24

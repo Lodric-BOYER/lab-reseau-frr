@@ -3,6 +3,16 @@ __pycache__/
 *.pyc
 .venv/
 
+# Images de routeurs téléchargées (compte constructeur, licence : jamais redistribuées ni commitées)
+# -- par ex. cEOS-lab-4.34.8M.tar.xz (Phase F) ; l'image importée vit dans Docker, pas ici.
+# Motifs volontairement limités aux extensions d'archive : un motif sur le NOM (cEOS*) ignorerait
+# aussi, par ex., un futur cEOS-notes.md.
+*.tar
+*.tar.xz
+*.tar.gz
+*.tgz
+*.txz
+
 # Fichiers générés par containerlab au déploiement
 clab-*/
 .lab.clab.yml.bak
