@@ -29,7 +29,11 @@ Jamais en bloc. L'écart est présenté sous forme de liste (cas, réponse v0.3.
 justification), validé, puis `python tests/tools/golden.py replace <règles> --reason ... <cas>@<clé>...`
 met à jour **ces seules mutations** (la commande refuse une cible qui n'est pas réellement en écart, et
 refuse de tourner si `netcheck/` n'est pas commité). Chaque révision est tracée dans `meta.revisions`.
-`add` ajoute un cas nouveau sans toucher aux autres.
+`add` ajoute un cas nouveau sans toucher aux autres, sans jamais écraser un cas gelé. Trois modes :
+sans option (le moteur doit encore répondre comme la v0.3.0), `--reference-code <commit>` (scénarios évalués
+par l'ancien code) et `--current-code` (capacité nouvelle, sans réponse de la v0.3.0 à préserver : évalué
+par le code courant, qui doit être commité ; `meta.additions` garde le commit). Dans ce dernier cas, la
+réponse gelée doit avoir été validée avant, et un test la compare aux attentes écrites à la main.
 
 ## Écarts voulus déjà validés
 

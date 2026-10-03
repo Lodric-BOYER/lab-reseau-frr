@@ -344,17 +344,36 @@ def evaluate_with_reference(commit: str, rules_name: str, cases: dict[str, dict[
         shutil.rmtree(tree, ignore_errors=True)
 
 
-def add_cases(case_ids: list[str], reason: str, reference_commit: str | None = None) -> None:
+def _netcheck_dirty() -> str:
+    """Ce que git voit de modifié ou de non suivi sous netcheck/ (vide = le code est dans l'historique)."""
+    return subprocess.run(["git", "-C", str(REPO), "status", "--porcelain", "--", "netcheck/"],
+                          capture_output=True, text=True, check=False).stdout.strip()
+
+
+def add_cases(case_ids: list[str], reason: str, reference_commit: str | None = None,
+              current_code: bool = False) -> None:
     """Ajoute des cas NOUVEAUX au gel, sans toucher aux autres. Refuse d'écraser un cas existant.
 
-    Sans `reference_commit`, refuse de tourner si netcheck/ diffère du code de référence du gel : un
-    ajout n'est légitime que tant que le moteur répond encore comme la v0.3.0. Avec, les cas (des
-    scénarios seulement) sont évalués par le code de ce commit, extrait de git : la réponse gelée est
-    celle de la v0.3.0 même si le moteur courant a changé. Les autres cas restent identiques à l'octet."""
+    Trois façons de produire la réponse gelée :
+    - sans option : refuse de tourner si netcheck/ diffère du code de référence du gel : un ajout n'est
+      légitime que tant que le moteur répond encore comme la v0.3.0 ;
+    - `reference_commit` : les cas (des scénarios seulement) sont évalués par le code de ce commit, extrait
+      de git : la réponse gelée est celle de la v0.3.0 même si le moteur courant a changé ;
+    - `current_code` : pour une capacité NOUVELLE (aucune réponse de la v0.3.0 à préserver) : les cas sont
+      évalués par le code courant, qui doit être commité (refus sinon : la réponse gelée vient d'un code qui
+      existe dans l'historique, `meta.additions` en garde le commit). Réservé à des cas dont la réponse a été
+      validée avant l'ajout.
+    Les autres cas restent identiques à l'octet. Rien n'est écrit si un des fichiers refuse l'ajout."""
+    if reference_commit is not None and current_code:
+        raise SystemExit("--reference-code et --current-code s'excluent")
+    if current_code and _netcheck_dirty():
+        raise SystemExit("netcheck/ a des modifications non commitées : commitez le code d'abord, "
+                         "le gel enregistre la réponse d'un code qui existe dans l'historique")
+    updates: dict[str, dict] = {}
     for rules_name in RULE_FILES:
         data = json.loads(golden_path(rules_name).read_text(encoding="utf-8"))
         reference = data["meta"]["code_commit"]
-        if reference_commit is None:
+        if reference_commit is None and not current_code:
             diff_cmd = ["git", "-C", str(REPO), "diff", "--quiet", reference, "--", "netcheck/"]
             changed = subprocess.run(diff_cmd, check=False).returncode
             if changed:
@@ -371,8 +390,13 @@ def add_cases(case_ids: list[str], reason: str, reference_commit: str | None = N
                 raise SystemExit("--reference-code ne s'applique qu'aux cas « scenario: »")
             records = evaluate_with_reference(reference_commit, rules_name, wanted)
             data["cases"].update({cid: {"base": records[cid]} for cid in case_ids})
-        data["meta"].setdefault("additions", []).append(
-            {"cases": case_ids, "code_commit": reference_commit or reference, "reason": reason})
+        code = reference_commit or (_code_commit() if current_code else reference)
+        addition = {"cases": case_ids, "code_commit": code, "reason": reason}
+        if current_code:
+            addition["current_code"] = True
+        data["meta"].setdefault("additions", []).append(addition)
+        updates[rules_name] = data
+    for rules_name, data in updates.items():
         _write(golden_path(rules_name), data)
         for case_id in case_ids:
             case = data["cases"][case_id]
@@ -389,9 +413,7 @@ def replace_mutants(rules_name: str, targets: list[str], reason: str) -> None:
     justifier), et n'est mise à jour qu'à cette seule entrée. Les autres entrées, les bases et les
     sondes restent identiques à l'octet. Refuse de tourner si netcheck/ a des modifications non
     commitées : la réponse enregistrée doit venir d'un code qui existe dans l'historique."""
-    dirty = subprocess.run(["git", "-C", str(REPO), "status", "--porcelain", "--", "netcheck/"],
-                           capture_output=True, text=True, check=False).stdout.strip()
-    if dirty:
+    if _netcheck_dirty():
         raise SystemExit("netcheck/ a des modifications non commitées : commitez le code d'abord, "
                          "le gel enregistre la réponse d'un code qui existe dans l'historique")
     path = golden_path(rules_name)
@@ -487,6 +509,8 @@ def main(argv: list[str] | None = None) -> int:
     add.add_argument("cases", nargs="+")
     add.add_argument("--reason", required=True)
     add.add_argument("--reference-code", help="commit dont le code évalue les scénarios (ex. b56a775)")
+    add.add_argument("--current-code", action="store_true",
+                     help="capacité nouvelle : évaluer par le code courant, qui doit être commité")
     sub.add_parser("_eval-reference", help=argparse.SUPPRESS).add_argument("rules")
     rep = sub.add_parser("replace", help="met à jour des mutations NOMMÉES après un écart voulu et validé")
     rep.add_argument("rules", choices=sorted(RULE_FILES))
@@ -510,7 +534,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "add":
-        add_cases(args.cases, args.reason, args.reference_code)
+        add_cases(args.cases, args.reason, args.reference_code, args.current_code)
         return 0
 
     if args.command == "_eval-reference":     # exécuté dans le sous-processus, avec l'ancien code
