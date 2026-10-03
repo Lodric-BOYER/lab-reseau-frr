@@ -234,7 +234,7 @@ def test_terminal_shows_unread_lines_notes_and_the_gap_apart():
     assert "NON IMPLÉMENTÉ" in text and "hors sujet (driver)" in text
     assert "non implémenté par le driver srlinux" in text
     assert "1 ligne(s) de configuration non lue(s)" in text and "1 information(s) d'analyse" in text
-    assert "2 non applicable(s) dont 1 non implémentée(s) par leur driver" in text
+    assert "2 non applicable(s) dont 1 non implémentée(s) par leur driver" in " ".join(text.split())
     # Aucune violation prouvée : « ANALYSE INCOMPLÈTE », jamais « NON CONFORME ».
     assert "ANALYSE INCOMPLÈTE" in text and "NON CONFORME" not in text and "lab-bgp-r3r4" not in text
 
@@ -444,3 +444,38 @@ def test_real_frr_configurations_give_no_warning_with_the_frr_driver(path):
     """Les sorties relevées en direct sont toujours indentées (vérifié aussi sur les 13 équipements FRR
     des trois labs lors de la Phase A3) : aucune ligne n'est signalée."""
     assert registry.DRIVER_REGISTRY["frr"]().parse_config(path.read_text(encoding="utf-8")).warnings == []
+
+
+# ------------------------------------------------------------------------------------------
+# « Structure incertaine » : ligne lue (ses violations sont rapportées) mais verdict jamais « conforme »
+# ------------------------------------------------------------------------------------------
+
+UNCLOSED = "a {\n  b 1\n"        # il manque le « } » : la place de tout ce qui suit est incertaine
+
+
+def test_an_unclosed_block_keeps_its_lines_but_blocks_a_conforme_verdict(fake_drivers):
+    result = compliance.evaluate_config([rule("fake_kind")], {"x": device("x", "fake-brace", UNCLOSED)})
+    (w,) = result.config_warnings
+    assert w.kept and w.blocks_verdict and "jamais fermé" in w.warning.reason
+    assert result.unread_lines == [w] and result.notes == []
+    assert compliance.status_label(result.violations, result.config_warnings) == "ANALYSE INCOMPLÈTE"
+    assert compliance.verdict(result.violations, result.config_warnings) == (False, 1)
+
+
+def test_structure_uncertain_lines_have_their_own_label_in_the_three_outputs():
+    w = [ConfigWarning("r1", ParseWarning(4, "a {", "bloc ouvert jamais fermé", True, blocking=True))]
+    d = report.compliance_to_dict([], False, None, w)
+    assert d["status"] == "ANALYSE INCOMPLÈTE" and d["summary"]["config_lines_unread"] == 1
+    assert d["config_analysis"][0]["kept"] is True and d["config_analysis"][0]["blocks_verdict"] is True
+    console = Console(record=True, width=240)
+    report.print_compliance_terminal([], False, None, console=console, config_warnings=w)
+    assert "STRUCTURE INCERTAINE" in console.export_text() and "NON LUE" not in console.export_text()
+    html = report.render_compliance_html([], False, "r.yml", None, w)
+    assert "STRUCTURE INCERTAINE" in html and "ANALYSE INCOMPLÈTE" in html and "NON CONFORME" not in html
+
+
+def test_monitor_counts_structure_uncertain_lines_like_unread_ones():
+    w = [ConfigWarning("r1", ParseWarning(4, "a {", "bloc ouvert jamais fermé", True, blocking=True))]
+    status, contributions = monitor.check_outcome([], w)
+    assert status == monitor.ATTENTION
+    assert "1 ligne(s) de configuration non lue(s) ou incertaine(s)" in contributions[0].message

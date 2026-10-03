@@ -44,12 +44,27 @@ from __future__ import annotations
 import json
 import re
 
+from netcheck.confparse import ParsedConfig, combine, make_warning, parse_braces, parse_set
+from netcheck.drivers import srlinux_rules
 from netcheck.drivers.base import Driver
 from netcheck.model import DeviceState, Interface, NextHop, OspfNeighbor, Route
 
 # Nom d'interface loopback SR Linux : motif exact tiré du schéma YANG de l'équipement (affiché
 # par sr_cli lui-même dans un message d'erreur de validation), pas une supposition de notre part.
 _LOOPBACK_RE = re.compile(r"^lo(0|1[0-9][0-9]|2([0-4][0-9]|5[0-5])|[1-9][0-9]|[1-9])$")
+
+# Les sections de running_config : (nom du marqueur, commande logique dont la sortie la remplit, chemin sous
+# lequel « info from running » affiche son contenu -- relativement à ce chemin). Un seul tableau pour
+# construire le texte (parse) ET le relire (parse_config), pour qu'ils ne divergent jamais.
+_SECTIONS = (
+    ("interface", "show running-config", ()),
+    ("network-instance default protocols ospf", "show ospf running-config",
+     ("network-instance", "default", "protocols", "ospf")),
+    ("system authentication", "show system authentication", ("system", "authentication")),
+    ("system banner", "show system banner", ("system", "banner")),
+)
+_SECTION_PREFIX = {name: prefix for name, _, prefix in _SECTIONS}
+_MARKER = re.compile(r"# --- (.+) ---")
 
 
 class SrlinuxDriver(Driver):
@@ -73,16 +88,50 @@ class SrlinuxDriver(Driver):
         "show system banner": "info from running system banner",
     }
 
+    # Phase A (v4) : les règles qui lisent la syntaxe de SR Linux vivent dans drivers/srlinux_rules.py.
+    CONFIG_CHECKS = srlinux_rules.CHECKS
+
     def translate(self, command: str) -> str:
         return self._TRANSLATION[command]
 
+    def parse_config(self, running_config: str) -> ParsedConfig:
+        """Lit la configuration sous ses trois formes : la sortie du driver (sections séparées par des
+        marqueurs, chacune relative à son chemin), une sortie « info from running » seule, ou un fichier
+        de démarrage `set / ...`. Les trois donnent la même vue plate de chemins."""
+        lines = running_config.splitlines()
+        markers = [i for i, line in enumerate(lines) if _MARKER.fullmatch(line.strip())]
+        if not markers:
+            first = next((s for s in (line.strip() for line in lines) if s and not s.startswith("#")), "")
+            return parse_set(running_config) if first.split()[:1] == ["set"] else parse_braces(running_config)
+
+        parts, warnings = [], []
+        counts = {"comment": 0, "skipped": 0, "blank": 0}
+
+        def body_text(body: list[str]) -> str:
+            # Les lignes vides qui terminent une section seraient perdues par join() puis splitlines() :
+            # on les compte ici, pour que chaque ligne du texte reste dans exactement une classe.
+            while body and not body[-1].strip():
+                body.pop()
+                counts["blank"] += 1
+            return "\n".join(body)
+
+        if markers[0] > 0:        # des lignes avant le premier marqueur : lues en accolades, sans préfixe
+            parts.append((parse_braces(body_text(lines[:markers[0]])), 0))
+        for n, start in enumerate(markers):
+            end = markers[n + 1] if n + 1 < len(markers) else len(lines)
+            name = _MARKER.fullmatch(lines[start].strip()).group(1)
+            prefix = _SECTION_PREFIX.get(name)
+            if prefix is None:    # une section d'un driver plus récent : lue, mais jamais ignorée en silence
+                prefix = ("?", name)
+                counts["skipped"] += 1
+                warnings.append(make_warning(start + 1, lines[start], "section inconnue de ce driver", False))
+            else:
+                counts["comment"] += 1
+            parts.append((parse_braces(body_text(lines[start + 1:end]), prefix=prefix), start + 1))
+        return combine(parts, lines_total=len(lines), counts=counts, warnings=warnings)
+
     def parse(self, raw: dict[str, str], name: str, host: str) -> DeviceState:
-        running_config = (
-            "# --- interface ---\n" + raw["show running-config"] + "\n"
-            "# --- network-instance default protocols ospf ---\n" + raw["show ospf running-config"] + "\n"
-            "# --- system authentication ---\n" + raw["show system authentication"] + "\n"
-            "# --- system banner ---\n" + raw["show system banner"]
-        )
+        running_config = "\n".join(f"# --- {name} ---\n" + raw[command] for name, command, _ in _SECTIONS)
         return DeviceState(
             name=name,
             host=host,

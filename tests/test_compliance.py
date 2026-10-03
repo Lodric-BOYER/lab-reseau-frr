@@ -552,13 +552,13 @@ def test_srlinux_mtu_margin_conforme_sur_le_vrai_lab():
     # ethernet-1/1 : mtu 1514, ip-mtu 1500 -> marge de 14, exactement la marge minimale (Phase
     # C). C'est la config réelle actuellement déployée : doit être conforme.
     r = rule("srlinux_interface_mtu_margin")
-    assert compliance._check_srlinux_interface_mtu_margin(r, srlinux_device()) == []
+    assert compliance.check_one(r, srlinux_device()) == []
 
 
 def test_srlinux_mtu_margin_violation_quand_la_marge_est_insuffisante():
     broken = R5_INTERFACE_CONFIG.replace("ip-mtu 1500", "ip-mtu 1505")  # marge de 9 < 14
     r = rule("srlinux_interface_mtu_margin")
-    violations = compliance._check_srlinux_interface_mtu_margin(
+    violations = compliance.check_one(
         r, srlinux_device(interface_config=broken))
     assert len(violations) == 1
     assert "ethernet-1/1" in violations[0].detail and "1505" in violations[0].detail
@@ -568,7 +568,7 @@ def test_srlinux_mtu_margin_ignores_interfaces_without_explicit_mtu():
     # ethernet-1/2 n'a pas de "mtu" L2 explicite dans la fixture : rien à vérifier, pas une
     # violation (on ne devine pas la valeur par défaut de la plateforme).
     r = rule("srlinux_interface_mtu_margin")
-    violations = compliance._check_srlinux_interface_mtu_margin(r, srlinux_device())
+    violations = compliance.check_one(r, srlinux_device())
     assert not any("ethernet-1/2" in v.detail for v in violations)
 
 
@@ -576,7 +576,7 @@ def test_srlinux_ospf_point_to_point_conforme_sur_le_vrai_lab():
     # ethernet-1/1.0 (seule interface OSPF active, non passive) porte bien interface-type
     # point-to-point dans la config réelle actuellement déployée.
     r = rule("srlinux_ospf_interface_type_point_to_point")
-    assert compliance._check_srlinux_ospf_interface_type_point_to_point(r, srlinux_device()) == []
+    assert compliance.check_one(r, srlinux_device()) == []
 
 
 def test_srlinux_ospf_point_to_point_violation_quand_absent():
@@ -586,7 +586,7 @@ def test_srlinux_ospf_point_to_point_violation_quand_absent():
     )
     assert broken != R5_OSPF_CONFIG  # la substitution a bien eu lieu
     r = rule("srlinux_ospf_interface_type_point_to_point")
-    violations = compliance._check_srlinux_ospf_interface_type_point_to_point(
+    violations = compliance.check_one(
         r, srlinux_device(ospf_config=broken))
     assert len(violations) == 1 and "ethernet-1/1.0" in violations[0].detail
 
@@ -594,7 +594,7 @@ def test_srlinux_ospf_point_to_point_violation_quand_absent():
 def test_srlinux_ospf_authentication_violation_on_unhardened_lab():
     # Configuration réelle actuelle (avant Phase B) : aucune keychain n'existe encore.
     r = rule("srlinux_ospf_authentication_required")
-    violations = compliance._check_srlinux_ospf_authentication_required(r, srlinux_device())
+    violations = compliance.check_one(r, srlinux_device())
     assert len(violations) == 1
     assert "ethernet-1/1.0" in violations[0].detail and "aucune keychain" in violations[0].detail
 
@@ -603,7 +603,7 @@ def test_srlinux_ospf_authentication_conforme_once_configured():
     # Textes réellement capturés en direct (voir R5_OSPF_CONFIG_WITH_AUTH / R5_AUTH_CONFIG_*),
     # pendant le test d'interopérabilité MD5 avec FRR (adjacence confirmée Full des deux côtés).
     r = rule("srlinux_ospf_authentication_required")
-    violations = compliance._check_srlinux_ospf_authentication_required(
+    violations = compliance.check_one(
         r, srlinux_device(ospf_config=R5_OSPF_CONFIG_WITH_AUTH, auth_config=R5_AUTH_CONFIG_OSPF_KEYCHAIN))
     assert violations == []
 
@@ -611,7 +611,7 @@ def test_srlinux_ospf_authentication_conforme_once_configured():
 def test_srlinux_ospf_authentication_violation_when_keychain_missing():
     # L'interface référence une keychain, mais /system authentication est vide (dangling ref).
     r = rule("srlinux_ospf_authentication_required")
-    violations = compliance._check_srlinux_ospf_authentication_required(
+    violations = compliance.check_one(
         r, srlinux_device(ospf_config=R5_OSPF_CONFIG_WITH_AUTH))  # auth_config par défaut : vide
     assert len(violations) == 1 and "introuvable" in violations[0].detail
 
@@ -619,7 +619,7 @@ def test_srlinux_ospf_authentication_violation_when_keychain_missing():
 def test_srlinux_ospf_authentication_violation_when_keychain_wrong_type():
     wrong_type = R5_AUTH_CONFIG_OSPF_KEYCHAIN.replace("type ospf", "type isis")
     r = rule("srlinux_ospf_authentication_required")
-    violations = compliance._check_srlinux_ospf_authentication_required(
+    violations = compliance.check_one(
         r, srlinux_device(ospf_config=R5_OSPF_CONFIG_WITH_AUTH, auth_config=wrong_type))
     assert len(violations) == 1 and "n'est pas de type ospf" in violations[0].detail
 
@@ -628,7 +628,7 @@ def test_srlinux_ospf_authentication_ignores_passive_interfaces():
     # ethernet-1/2.0 et lo0.0 sont passives : aucune violation attendue à leur sujet, même sans
     # aucune keychain configurée nulle part.
     r = rule("srlinux_ospf_authentication_required")
-    violations = compliance._check_srlinux_ospf_authentication_required(r, srlinux_device())
+    violations = compliance.check_one(r, srlinux_device())
     assert not any("ethernet-1/2.0" in v.detail or "lo0.0" in v.detail for v in violations)
 
 
@@ -636,7 +636,7 @@ def test_srlinux_ospf_point_to_point_ignores_passive_interfaces():
     # ethernet-1/2.0 et lo0.0 sont passives, sans interface-type point-to-point : normal, pas
     # une violation (aucune adjacence ne s'y forme, DR/BDR ne s'applique pas).
     r = rule("srlinux_ospf_interface_type_point_to_point")
-    violations = compliance._check_srlinux_ospf_interface_type_point_to_point(r, srlinux_device())
+    violations = compliance.check_one(r, srlinux_device())
     assert not any("ethernet-1/2.0" in v.detail or "lo0.0" in v.detail for v in violations)
 
 

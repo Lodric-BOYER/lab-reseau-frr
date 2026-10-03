@@ -42,7 +42,7 @@
   <span class="badge badge-{{ sev }}">{{ counts[sev] }} {{ sev }}</span>
   {% endfor %}
   {% if summary.config_lines_unread %}
-  <span class="badge badge-unread">{{ summary.config_lines_unread }} ligne(s) de configuration non lue(s)</span>
+  <span class="badge badge-unread">{{ summary.config_lines_unread }} ligne(s) de configuration non lue(s) ou incertaine(s)</span>
   {% endif %}
   {% if summary.config_notes %}
   <span class="badge badge-info">{{ summary.config_notes }} information(s) d'analyse</span>
@@ -112,8 +112,10 @@
 <h2>Analyse de la configuration</h2>
 <p class="meta">Lignes que l'analyse n'a pas pu classer proprement. Une ligne <strong>non lue</strong>
 empêche de conclure « conforme » (code retour 1 au minimum) : l'audit n'a pas lu toute la
-configuration. Une ligne lue mais <strong>ambiguë</strong> n'est qu'une information, sans effet sur le
-code retour. Les secrets sont masqués.</p>
+configuration. Une ligne à <strong>structure incertaine</strong> (ex. une accolade fermante manque) est
+lue, et ses violations sont rapportées, mais la place de ce qui suit est incertaine : même effet sur le
+verdict. Une ligne lue mais <strong>ambiguë</strong> n'est qu'une information, sans effet sur le code
+retour. Les secrets sont masqués.</p>
 <table id="config-analysis">
   <thead>
     <tr><th>Équipement</th><th>Ligne</th><th>Statut</th><th>Raison</th><th>Texte</th></tr>
@@ -123,7 +125,7 @@ code retour. Les secrets sont masqués.</p>
     <tr>
       <td>{{ w.device }}</td>
       <td>{{ w.warning.line }}</td>
-      <td>{% if w.kept %}<span class="badge badge-info">information (lue, ambiguë)</span>{% else %}<span class="badge badge-unread">NON LUE</span>{% endif %}</td>
+      <td><span class="badge {{ 'badge-unread' if w.blocks_verdict else 'badge-info' }}">{{ warning_status(w) }}</span></td>
       <td>{{ w.warning.reason }}</td>
       <td><code>{{ w.warning.text }}</code></td>
     </tr>

@@ -72,7 +72,7 @@ def _summary_counts(
     par un driver est un trou de couverture, pas une règle hors sujet ; une ligne non lue pèse sur le
     verdict, une ligne ambiguë non."""
     not_implemented = sum(1 for n in not_applicable if n.cause == CAUSE_NOT_IMPLEMENTED)
-    unread = sum(1 for w in warnings if not w.kept)
+    unread = sum(1 for w in warnings if w.blocks_verdict)
     return {
         "violations": len(violations),
         "config_lines_unread": unread,
@@ -88,9 +88,20 @@ def _status(violations: list[Violation], compliant: bool, warnings: list[ConfigW
     violation réelle ; une ligne non lue sans violation donne ANALYSE INCOMPLÈTE."""
     if violations:
         return "NON CONFORME"
-    if any(not w.kept for w in warnings):
+    if any(w.blocks_verdict for w in warnings):
         return "ANALYSE INCOMPLÈTE"
     return "CONFORME" if compliant else "NON CONFORME"
+
+
+def _warning_status(w: ConfigWarning, markup: bool = False) -> str:
+    """Statut affiché d'un avertissement d'analyse : NON LUE, STRUCTURE INCERTAINE ou information."""
+    if not w.kept:
+        label, style = "NON LUE", "bold yellow"
+    elif w.blocks_verdict:
+        label, style = "STRUCTURE INCERTAINE", "bold yellow"
+    else:
+        label, style = "information (lue, ambiguë)", "cyan"
+    return f"[{style}]{label}[/]" if markup else label
 
 
 def _na_label(n: NotApplicable) -> str:
@@ -265,8 +276,8 @@ def print_compliance_terminal(
         analysis.add_column("Statut")
         analysis.add_column("Raison", overflow="fold")
         analysis.add_column("Texte", overflow="fold")
-        for w in sorted(warnings, key=lambda w: (w.kept, w.device, w.warning.line)):
-            status = "[cyan]information (lue, ambiguë)[/]" if w.kept else "[bold yellow]NON LUE[/]"
+        for w in sorted(warnings, key=lambda w: (not w.blocks_verdict, w.device, w.warning.line)):
+            status = _warning_status(w, markup=True)
             analysis.add_row(w.device, str(w.warning.line), status,
                              escape(w.warning.reason), escape(w.warning.text))
         console.print(analysis)
@@ -296,7 +307,7 @@ def print_compliance_terminal(
     label = _status(violations, compliant, warnings)
     parts = [f"{counts['violations']} non-conformité(s)"]
     if counts["config_lines_unread"]:
-        parts.append(f"{counts['config_lines_unread']} ligne(s) de configuration non lue(s)")
+        parts.append(f"{counts['config_lines_unread']} ligne(s) de configuration non lue(s) ou incertaine(s)")
     if counts["config_notes"]:
         parts.append(f"{counts['config_notes']} information(s) d'analyse")
     if counts["not_applicable"]:
@@ -335,7 +346,7 @@ def compliance_to_dict(
         # Phase A3 : lignes de configuration que l'analyse n'a pas classées proprement. `kept` faux =
         # ligne NON lue (le verdict ne peut plus être « conforme ») ; vrai = lue mais ambiguë.
         "config_analysis": [
-            {"device": w.device, "line": w.warning.line, "kept": w.kept,
+            {"device": w.device, "line": w.warning.line, "kept": w.kept, "blocks_verdict": w.blocks_verdict,
              "reason": w.warning.reason, "text": w.warning.text}
             for w in warnings
         ],
@@ -377,7 +388,8 @@ def render_compliance_html(
         violations=sorted(violations, key=lambda v: -_COMPLIANCE_ORDER[v.rule.severity]),
         not_applicable=sorted(not_applicable, key=lambda n: (n.device, n.rule.id)),
         not_implemented=CAUSE_NOT_IMPLEMENTED,
-        config_warnings=sorted(warnings, key=lambda w: (w.kept, w.device, w.warning.line)),
+        config_warnings=sorted(warnings, key=lambda w: (not w.blocks_verdict, w.device, w.warning.line)),
+        warning_status=_warning_status,
         summary=_summary_counts(violations, not_applicable, warnings),
         counts=counts,
         devices=devices,

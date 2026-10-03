@@ -66,14 +66,20 @@ class NotApplicable:
 @dataclass(frozen=True)
 class ConfigWarning:
     """Une ligne de configuration que l'analyse n'a pas pu classer proprement (SPEC_v4, A3) :
-    `kept=False` = ligne NON lue (l'audit ne peut plus dire « conforme ») ; `kept=True` = ligne lue
-    mais ambiguë (information). Le texte est déjà masqué (confparse)."""
+    `kept=False` = ligne NON lue (l'audit ne peut plus dire « conforme ») ; `kept=True` = ligne lue mais
+    ambiguë (information), sauf si `blocks_verdict` (structure incertaine : lue, mais l'audit ne peut pas
+    pour autant conclure « conforme »). Le texte est déjà masqué (confparse)."""
     device: str
     warning: ParseWarning
 
     @property
     def kept(self) -> bool:
         return self.warning.kept
+
+    @property
+    def blocks_verdict(self) -> bool:
+        """Vrai si l'audit ne peut pas conclure « conforme » : ligne non lue, ou structure incertaine."""
+        return self.warning.blocks_verdict
 
 
 # Évaluateur de configuration fourni par un driver : (règle, équipement, configuration analysée).

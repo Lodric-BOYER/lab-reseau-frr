@@ -17,7 +17,10 @@ Exigence de la Phase A : une ligne que l'analyse ne sait pas classer n'est JAMAI
 silence. Chaque ligne de la source tombe dans exactement une classe (`counts` : blank, comment,
 node, close, raw, skipped) et tout ce qui est douteux produit un `ParseWarning` :
   - `kept=False` : la ligne n'a pas pu être convertie et n'est PAS dans le résultat (classe skipped) ;
-  - `kept=True`  : la ligne est dans le résultat mais ambiguë (dédentation partielle...).
+  - `kept=True`  : la ligne est dans le résultat mais ambiguë (dédentation partielle...) ;
+  - `blocking=True` : l'avertissement empêche l'audit de conclure « conforme », même si la ligne est
+    conservée (ex. une accolade fermante manque : la place de ce qui suit est incertaine). Par défaut,
+    une ligne non conservée bloque et une ligne conservée ne bloque pas.
 Le texte d'un avertissement passe par `mask_secrets` à sa création : une ligne qui porte un secret
 ne fuit pas dans un rapport.
 """
@@ -53,9 +56,17 @@ class ParseWarning:
     text: str         # la ligne, tronquée et secrets masqués
     reason: str
     kept: bool        # True : ligne conservée mais ambiguë ; False : ligne NON convertie
+    blocking: bool | None = None   # None : bloque si et seulement si la ligne n'est pas conservée
+
+    @property
+    def blocks_verdict(self) -> bool:
+        """Vrai si l'audit ne peut pas conclure « conforme » à cause de cette ligne."""
+        return (not self.kept) if self.blocking is None else self.blocking
 
     def __str__(self) -> str:
         state = "conservée" if self.kept else "non convertie"
+        if self.kept and self.blocks_verdict:
+            state = "conservée, structure incertaine"
         return f"ligne {self.line} ({state}) : {self.reason} : {self.text}"
 
 
@@ -194,11 +205,17 @@ def _tokenize(text: str) -> tuple[list[tuple[str, bool]], bool]:
     return tokens, False
 
 
-def _warn(warnings: list[ParseWarning], line: int, raw: str, reason: str, kept: bool) -> None:
+def make_warning(line: int, raw: str, reason: str, kept: bool, blocking: bool | None = None) -> ParseWarning:
+    """Un avertissement dont le texte est tronqué et dont les secrets sont masqués."""
     shown = raw.strip()
     if len(shown) > _MAX_TEXT:
         shown = shown[:_MAX_TEXT] + "..."
-    warnings.append(ParseWarning(line, mask_secrets(shown), reason, kept))
+    return ParseWarning(line, mask_secrets(shown), reason, kept, blocking)
+
+
+def _warn(warnings: list[ParseWarning], line: int, raw: str, reason: str, kept: bool,
+          blocking: bool | None = None) -> None:
+    warnings.append(make_warning(line, raw, reason, kept, blocking))
 
 
 def _new_counts() -> dict[str, int]:
@@ -292,7 +309,8 @@ def parse_braces(
     commande « info » affiche le contenu RELATIVEMENT à son chemin) ; il préfixe la vue plate.
     Formes acceptées : entête se terminant par « { », « } » seul, ligne feuille. Toute autre forme
     (accolade au milieu d'une ligne, `{ }` sur une ligne, `}` sans bloc ouvert) est signalée et
-    non convertie : seules les formes réellement observées sont reconnues, aucune n'est devinée."""
+    non convertie : seules les formes réellement observées sont reconnues, aucune n'est devinée. Un bloc
+    jamais refermé est conservé mais bloque le verdict (voir la fin de la fonction)."""
     lines = text.splitlines()
     counts, warnings = _new_counts(), []
     root = ConfigNode((), "", 0)
@@ -337,8 +355,14 @@ def parse_braces(
         if header:
             stack.append(node)
 
+    # Une accolade fermante manque : la place de TOUT ce qui suit l'entête est incertaine (une ligne peut
+    # être lue sous le mauvais bloc, et cacher une violation). Les lignes restent dans le résultat, pour
+    # que les règles continuent de trouver ce qu'elles trouvent, mais l'audit ne peut plus conclure
+    # « conforme » (blocking). Les sorties d'un équipement sont toujours équilibrées.
     for node in stack[1:]:
-        _warn(warnings, node.line, node.text, "bloc ouvert jamais fermé", True)
+        _warn(warnings, node.line, node.text,
+              "bloc ouvert jamais fermé : l'accolade fermante manque, la place de ce qui suit est incertaine",
+              True, blocking=True)
     return ParsedConfig("braces", len(lines), counts, warnings, root=root, prefix=prefix)
 
 
@@ -383,6 +407,30 @@ def parse_set(text: str, *, comment_prefixes: tuple[str, ...] = ("#",)) -> Parse
             flat.append(FlatLine(tuple(t for t, _ in tokens), number))
             counts["node"] += 1
     return ParsedConfig("set", len(lines), counts, warnings, root=None, _flat=flat)
+
+
+def combine(
+    parts: list[tuple[ParsedConfig, int]], *, lines_total: int, syntax: str = "braces",
+    counts: dict[str, int] | None = None, warnings: list[ParseWarning] | None = None,
+) -> ParsedConfig:
+    """Assemble les analyses de plusieurs SECTIONS d'un même texte (ex. une sortie faite de plusieurs
+    commandes, séparées par des lignes de marqueur) en une seule vue plate. Chaque partie est donnée
+    avec son décalage : le nombre de lignes qui la précèdent dans le texte entier, pour que les numéros
+    de ligne des chemins et des avertissements restent ceux du texte que lit l'utilisateur. `counts`
+    et `warnings` apportent ce que les parties ne comptent pas (les lignes de marqueur elles-mêmes).
+    Il n'y a pas d'arbre : `top()` rend [] et `reject()` n'est pas disponible."""
+    total = _new_counts()
+    for key, n in (counts or {}).items():
+        total[key] += n
+    flat: list[FlatLine] = []
+    merged: list[ParseWarning] = list(warnings or [])
+    for part, offset in parts:
+        for key, n in part.counts.items():
+            total[key] += n
+        flat += [FlatLine(f.path, f.line + offset) for f in part.flat]
+        merged += [ParseWarning(w.line + offset, w.text, w.reason, w.kept, w.blocking) for w in part.warnings]
+    merged.sort(key=lambda w: w.line)
+    return ParsedConfig(syntax, lines_total, total, merged, root=None, _flat=flat)
 
 
 SYNTAXES = {"indent": parse_indented, "braces": parse_braces, "set": parse_set}

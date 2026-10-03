@@ -88,13 +88,13 @@ class ComplianceResult:
 
     @property
     def unread_lines(self) -> list[ConfigWarning]:
-        """Lignes NON lues : l'audit ne peut pas dire « conforme » sans les avoir lues."""
-        return [w for w in self.config_warnings if not w.kept]
+        """Lignes qui empêchent de conclure « conforme » : NON lues, ou à structure incertaine."""
+        return [w for w in self.config_warnings if w.blocks_verdict]
 
     @property
     def notes(self) -> list[ConfigWarning]:
         """Lignes lues mais ambiguës : information, sans effet sur le verdict."""
-        return [w for w in self.config_warnings if w.kept]
+        return [w for w in self.config_warnings if not w.blocks_verdict]
 
 
 # ------------------------------------------------------------------------------------------
@@ -286,7 +286,7 @@ def status_label(violations: list[Violation], config_warnings: list[ConfigWarnin
     (ANALYSE INCOMPLÈTE). Avec les deux, c'est la violation prouvée qui s'affiche."""
     if violations:
         return STATUS_NON_COMPLIANT
-    if any(not w.kept for w in config_warnings):
+    if any(w.blocks_verdict for w in config_warnings):
         return STATUS_INCOMPLETE
     return STATUS_COMPLIANT
 
@@ -296,64 +296,19 @@ def verdict(
 ) -> tuple[bool, int]:
     """Codes retour (§5.4) : 0 conforme, 1 moyenne/basse seulement, 2 critique/haute.
 
-    Une ligne de configuration NON lue (`kept=False`) donne au minimum le code 1, même si toutes les
-    règles sont satisfaites : un audit ne dit jamais « conforme » sur une configuration qu'il n'a pas
-    entièrement lue (le libellé est alors ANALYSE INCOMPLÈTE, voir `status_label`, pas NON CONFORME).
+    Une ligne de configuration NON lue (ou à structure incertaine) donne au minimum le code 1, même
+    si toutes les règles sont satisfaites : un audit ne dit jamais « conforme » sur une configuration
+    qu'il n'a pas entièrement lue (le libellé est alors ANALYSE INCOMPLÈTE, voir `status_label`, pas
+    NON CONFORME).
     Le code est celui de la plus grave des deux situations. Une ligne lue mais ambiguë
     (`kept=True`) n'a aucun effet sur le code."""
-    unread = any(not w.kept for w in config_warnings)
+    unread = any(w.blocks_verdict for w in config_warnings)
     if not violations:
         return (not unread), (1 if unread else 0)
     if any(v.rule.severity in ("critique", "haute") for v in violations):
         return False, 2
     return False, 1
 
-
-# ------------------------------------------------------------------------------------------
-# Aides de parsing de la running-config SR Linux (accolades imbriquées, Phase D2)
-# ------------------------------------------------------------------------------------------
-
-def _srlinux_section(running_config: str, marker: str) -> str:
-    """Isole la section qui suit '# --- <marker> ---' jusqu'au marqueur suivant (ou la fin).
-
-    drivers/srlinux.py concatène deux commandes distinctes (config des interfaces, config
-    OSPF) séparées par ces marqueurs plutôt que bout à bout : les deux réutilisent la même
-    syntaxe de bloc "interface <nom> { ... }" avec un sens différent (interface physique d'un
-    côté, sous-interface dans une zone OSPF de l'autre) -- sans cette séparation explicite, un
-    évaluateur pourrait confondre les deux. Renvoie "" si le marqueur est absent (ex. un
-    running_config FRR, qui n'a jamais ce format) : rien à trouver, pas une erreur.
-    """
-    start = running_config.find(f"# --- {marker} ---")
-    if start == -1:
-        return ""
-    start = running_config.find("\n", start) + 1
-    next_marker = running_config.find("# --- ", start)
-    return running_config[start:] if next_marker == -1 else running_config[start:next_marker]
-
-
-def _srlinux_brace_blocks(text: str, header_prefix: str) -> dict[str, str]:
-    """{nom: texte_du_bloc} pour des blocs '<header_prefix><nom> { ... }' à accolades
-    imbriquées (syntaxe SR Linux "info from running"). Suit la profondeur d'accolades pour
-    capturer le bloc complet, contrairement à une simple recherche ligne à ligne (nécessaire
-    ici : une zone OSPF contient elle-même des sous-blocs "interface <nom> { ... }")."""
-    blocks: dict[str, str] = {}
-    lines = text.splitlines()
-    i = 0
-    while i < len(lines):
-        stripped = lines[i].strip()
-        if stripped.startswith(header_prefix) and stripped.endswith("{"):
-            name = stripped[len(header_prefix):-1].strip()
-            depth = 1
-            block_lines = [lines[i]]
-            i += 1
-            while i < len(lines) and depth > 0:
-                block_lines.append(lines[i])
-                depth += lines[i].count("{") - lines[i].count("}")
-                i += 1
-            blocks[name] = "\n".join(block_lines)
-        else:
-            i += 1
-    return blocks
 
 # ------------------------------------------------------------------------------------------
 # Kinds neutres : lisent une expression régulière de la règle, ou le modèle
@@ -413,93 +368,6 @@ def _check_interface_description_required(rule: Rule, device: DeviceState) -> li
         if not iface.description:
             violations.append(Violation(rule, device.name,
                 f"interface {iface.name} ({', '.join(iface.addresses)}) sans description"))
-    return violations
-
-
-# -- Règles propres à SR Linux (Phase D2) --------------------------------------------------
-
-def _check_srlinux_interface_mtu_margin(rule: Rule, device: DeviceState) -> list[Violation]:
-    """SR Linux exige que l'ip-mtu d'une sous-interface reste strictement inférieur au mtu L2
-    de l'interface porteuse -- constaté et corrigé en direct sur ce lab (Phase C) : sans une
-    marge d'au moins 14 octets (la taille d'un en-tête Ethernet), la sous-interface reste
-    "down, reason ip-mtu-too-large" et une adjacence OSPF ne peut jamais s'y établir. Bonne
-    pratique de conformité pour éviter de reproduire cette panne après une future
-    reconfiguration de MTU. `rule.params["margin"]` (défaut 14) est la marge minimale exigée.
-
-    Ne vérifie que les interfaces où mtu ET ip-mtu sont *explicitement* positionnés dans la
-    config : une valeur absente prend le défaut de la plateforme, qu'on ne devine pas ici.
-    """
-    margin = rule.params.get("margin", 14)
-    section = _srlinux_section(device.running_config, "interface")
-    violations = []
-    for name, block in _srlinux_brace_blocks(section, "interface ").items():
-        mtu_match = re.search(r"^\s*mtu (\d+)\s*$", block, re.MULTILINE)
-        if not mtu_match:
-            continue
-        mtu = int(mtu_match.group(1))
-        for ip_mtu_match in re.finditer(r"^\s*ip-mtu (\d+)\s*$", block, re.MULTILINE):
-            ip_mtu = int(ip_mtu_match.group(1))
-            if mtu - ip_mtu < margin:
-                violations.append(Violation(rule, device.name,
-                    f"interface {name} : mtu {mtu} - ip-mtu {ip_mtu} = {mtu - ip_mtu} "
-                    f"< marge minimale {margin} (cf. Phase C : ip-mtu-too-large)"))
-    return violations
-
-
-def _check_srlinux_ospf_interface_type_point_to_point(rule: Rule, device: DeviceState) -> list[Violation]:
-    """Toute interface OSPF active (non passive) doit être en interface-type point-to-point.
-
-    Bonne pratique réseau standard sur un lien qui n'a jamais qu'un seul voisin possible :
-    évite une élection DR/BDR inutile (temps de convergence et trafic de contrôle superflus),
-    et le comportement par défaut de SR Linux sur Ethernet est justement l'inverse
-    ("broadcast"), d'où l'intérêt de le vérifier explicitement plutôt que de compter sur la
-    valeur par défaut. Les interfaces passives (LAN, loopback) sont hors de propos : sans
-    adjacence, DR/BDR ne s'y applique jamais.
-    """
-    section = _srlinux_section(device.running_config, "network-instance default protocols ospf")
-    violations = []
-    for name, block in _srlinux_brace_blocks(section, "interface ").items():
-        if re.search(r"^\s*passive true\s*$", block, re.MULTILINE):
-            continue
-        if not re.search(r"^\s*interface-type point-to-point\s*$", block, re.MULTILINE):
-            violations.append(Violation(rule, device.name,
-                f"interface OSPF {name} active (non passive) sans interface-type "
-                f"point-to-point : risque d'élection DR/BDR inutile"))
-    return violations
-
-
-def _check_srlinux_ospf_authentication_required(rule: Rule, device: DeviceState) -> list[Violation]:
-    """Toute interface OSPF active (non passive) doit référencer une keychain d'authentification
-    existante et de type ospf (Phase A, O1). SR Linux n'a pas de mot de passe inline sur
-    l'interface (contrairement à FRR) : l'authentification est une keychain nommée, définie à
-    part sous /system authentication (schéma YANG vérifié en direct par sondage : seuls
-    'cleartext' et 'md5' sont des algorithmes valides pour un type 'ospf' -- 'hmac-md5' est
-    réservé à isis, refusé au commit pour ospf/tcp-md5). Vérifié en interopérabilité réelle
-    avec FRR (message-digest-key md5) sur le lien r4<->r5 : MD5 classique s'établit en Full des
-    deux côtés ; c'est le seul algorithme commun aux deux constructeurs pour OSPF (FRR
-    n'implémente que le MD5 classique RFC 2328 Appendix D, aucune variante HMAC-SHA)."""
-    ospf_section = _srlinux_section(device.running_config, "network-instance default protocols ospf")
-    auth_section = _srlinux_section(device.running_config, "system authentication")
-    keychains = _srlinux_brace_blocks(auth_section, "keychain ")
-    violations = []
-    for name, block in _srlinux_brace_blocks(ospf_section, "interface ").items():
-        if re.search(r"^\s*passive true\s*$", block, re.MULTILINE):
-            continue  # pas d'adjacence sur une interface passive : rien à authentifier
-        match = re.search(r"^\s*keychain (\S+)\s*$", block, re.MULTILINE)
-        if not match:
-            violations.append(Violation(rule, device.name,
-                f"interface OSPF {name} active (non passive) sans authentification "
-                f"(aucune keychain référencée)"))
-            continue
-        keychain_block = keychains.get(match.group(1))
-        if keychain_block is None:
-            violations.append(Violation(rule, device.name,
-                f"interface OSPF {name} référence la keychain '{match.group(1)}', "
-                f"introuvable sous /system authentication"))
-        elif not re.search(r"^\s*type ospf\s*$", keychain_block, re.MULTILINE):
-            violations.append(Violation(rule, device.name,
-                f"interface OSPF {name} référence la keychain '{match.group(1)}', "
-                f"qui n'est pas de type ospf"))
     return violations
 
 
@@ -654,15 +522,9 @@ _UNIVERSAL: dict[str, Check] = {
     "interface_description_required": _two_args(_check_interface_description_required, ("interfaces",)),
 }
 
-# TRANSITOIRE (Phase A3) : évaluateurs SR Linux et EOS pas encore déplacés dans leur driver. Chaque
+# TRANSITOIRE (Phase A3) : évaluateurs EOS pas encore déplacés dans leur driver. Chaque
 # sous-étape en retire un jeu ; la table disparaît avec la dernière.
 _TRANSITIONAL: dict[str, dict[str, Check]] = {
-    "srlinux": {
-        "srlinux_interface_mtu_margin": _two_args(_check_srlinux_interface_mtu_margin),
-        "srlinux_ospf_interface_type_point_to_point":
-            _two_args(_check_srlinux_ospf_interface_type_point_to_point),
-        "srlinux_ospf_authentication_required": _two_args(_check_srlinux_ospf_authentication_required),
-    },
     "eos": {
         "eos_ospf_authentication_required": _two_args(_check_eos_ospf_authentication_required),
         "eos_bgp_neighbor_password_required": _two_args(_check_eos_bgp_neighbor_password_required),

@@ -135,11 +135,11 @@ def check_outcome(
     # configuration ni secret) ; le détail est dans le rapport local, masqué.
     unread: dict[str, int] = {}
     for w in config_warnings:
-        if not w.kept:
+        if w.blocks_verdict:
             unread[w.device] = unread.get(w.device, 0) + 1
     contributions += [
         Contribution(ATTENTION, "ANALYSE", "check", device, "config-lignes-non-lues",
-                     f"analyse incomplète : {n} ligne(s) de configuration non lue(s) "
+                     f"analyse incomplète : {n} ligne(s) de configuration non lue(s) ou incertaine(s) "
                      f"(détail dans le rapport local)")
         for device, n in sorted(unread.items())
     ]

@@ -209,6 +209,9 @@ def test_braces_unrecognised_forms_are_skipped_and_reported():
     ]
     assert parsed.counts["skipped"] == 4 and len(parsed.unclassified()) == 4
     assert [f.path for f in parsed.flat] == [("a", "b", "1"), ("g", "a { b }"), ("h",)]
+    # Le bloc jamais fermé est conservé (ses règles continuent de s'appliquer) mais bloque le verdict.
+    unclosed = parsed.warnings[-1]
+    assert unclosed.kept and unclosed.blocks_verdict
     assert_every_line_counted(parsed)
 
 
@@ -251,6 +254,16 @@ def test_a_warning_never_carries_a_secret():
     assert "lab-bgp-r3r4" not in str(warning) and "****" in warning.text
     long = cp.parse_set("commit " + "x" * 300)
     assert len(long.warnings[0].text) <= 103
+
+
+def test_blocking_defaults_to_not_kept_and_can_be_forced_on_a_kept_line():
+    plain_unread = cp.ParseWarning(1, "t", "r", False)
+    plain_kept = cp.ParseWarning(2, "t", "r", True)
+    forced = cp.ParseWarning(3, "t", "r", True, blocking=True)
+    blocks = (plain_unread.blocks_verdict, plain_kept.blocks_verdict, forced.blocks_verdict)
+    assert blocks == (True, False, True)
+    assert "conservée, structure incertaine" in str(forced) and "non convertie" in str(plain_unread)
+    assert "structure incertaine" not in str(plain_kept)
 
 
 def test_reject_removes_a_node_and_reports_it_as_not_kept_keeping_the_counts_consistent():
