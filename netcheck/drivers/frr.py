@@ -26,6 +26,13 @@ class FrrDriver(Driver):
     # Phase A (v4) : les règles qui lisent la syntaxe de FRR vivent dans drivers/frr_rules.py.
     CONFIG_CHECKS = frr_rules.CHECKS
     CONFIG_FILENAMES = ("frr.conf",)
+    # Observés : exit, interface, ip, frr, router, route-map, end, hostname, log, domainname, no, service, et
+    # l'en-tête de `show running-config` (Building, Current). Ajoutés : les commandes racines courantes.
+    ROOT_KEYWORDS = frozenset({
+        "frr", "hostname", "domainname", "service", "log", "line", "password", "enable", "banner", "no", "ip",
+        "ipv6", "interface", "router", "route-map", "access-list", "bgp", "vrf", "debug", "end", "exit",
+        "exit-vrf", "mpls", "segment-routing", "bfd", "key", "agentx", "nexthop-group", "pbr-map", "rpki",
+        "table", "affinity-map", "fpm", "zebra", "Building", "Current"})
 
     def parse_config(self, running_config: str) -> ParsedConfig:
         # Blocs par indentation ; « ! » est un séparateur, « exit » une ligne comme une autre. FRR,

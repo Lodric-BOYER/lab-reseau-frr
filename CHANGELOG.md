@@ -120,6 +120,15 @@ Défauts communs à FRR et EOS, sur les peer groups (relevés sur r3 et r4, mesu
   (`neighbor 192.0.2.5 peer-group PG`), donc il n'était jamais vu. C'était le groupe, et non ses membres,
   qui était jugé : un groupe complet donnait « conforme » par hasard, et une surcharge dangereuse sur un
   membre (par exemple `maximum-routes 0`, illimité) passait inaperçue.
+- **Un fichier de notes lu avec `--driver` était « conforme »** (`check --config-dir`, défaut de la
+  construction de la 0.4.0, mesuré avant publication) : `--driver eos` (code 0) et `--driver srlinux` sous
+  `default.yml` ; seul `--driver frr` échappait à « conforme », par hasard. Un fichier n'est maintenant audité
+  que si au moins la moitié de ses lignes de premier niveau commencent par un mot-clé racine du driver
+  (`Driver.ROOT_KEYWORDS`, vérifié contre les 52 configurations réelles du dépôt : aucune rejetée, aucun
+  signalement), sinon il est NON AUDITÉ ; dans un fichier audité, une ligne de premier niveau inconnue du
+  driver est listée en information (lue, ambiguë). Aucun fichier audité : code 3. Un fichier remplacé par un
+  dossier ultérieur n'est plus lu avec le driver de l'inventaire (le r5 FRR de `configs` l'était avec le
+  driver SR Linux du lab mixte).
 - **`maximum-routes 0` posé sur un membre (EOS)** : sur EOS, 0 veut dire « pas de limite ». Sur un membre
   de peer group, cette surcharge masque la limite de son groupe et passait inaperçue (aucune violation,
   code 0) ; elle est maintenant signalée. Le changement est apparu avec le code des peer groups

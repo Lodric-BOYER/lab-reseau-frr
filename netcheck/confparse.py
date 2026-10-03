@@ -129,6 +129,18 @@ class ParsedConfig:
             return []
         return self.root.children_matching(*pattern)
 
+    def root_statements(self) -> list[tuple[int, str, str]]:
+        """Les lignes de PREMIER niveau : (numéro de ligne, texte, premier mot). Avec un arbre, ce sont les
+        enfants de la racine ; sans arbre (lignes `set /`, sections assemblées), une ligne feuille est une
+        instruction complète et son premier mot est celui de son chemin. Sert à reconnaître ce qu'un fichier
+        contient (`check --config-dir`) : confparse, neutre, ne sait pas quels mots sont attendus."""
+        if self.root is not None:
+            return [(n.line, n.text, n.words[0]) for n in self.root.children]
+        found = [(f.line, " ".join(f.path), f.path[0]) for f in self.flat]
+        if self.syntax == "set":      # les lignes non converties sont des instructions elles aussi
+            found += [(w.line, w.text, w.text.split()[0]) for w in self.warnings if not w.kept and w.text]
+        return sorted(found)
+
     def unclassified(self) -> list[ParseWarning]:
         """Lignes de la source qui ne sont PAS dans le résultat."""
         return [w for w in self.warnings if not w.kept]

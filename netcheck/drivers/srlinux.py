@@ -91,6 +91,11 @@ class SrlinuxDriver(Driver):
     # Phase A (v4) : les règles qui lisent la syntaxe de SR Linux vivent dans drivers/srlinux_rules.py.
     CONFIG_CHECKS = srlinux_rules.CHECKS
     CONFIG_FILENAMES = ("config.cli",)
+    # Les conteneurs racine du modèle de configuration de SR Linux (observés : interface, network-instance,
+    # system ; `set / <racine> ...` ou bloc `<racine> { ... }`).
+    ROOT_KEYWORDS = frozenset({
+        "acl", "bfd", "interface", "network-instance", "platform", "routing-policy", "system",
+        "tunnel-interface", "qos", "lacp", "maintenance", "mirroring", "sflow", "eth-cfm", "tunnel"})
 
     def translate(self, command: str) -> str:
         return self._TRANSLATION[command]

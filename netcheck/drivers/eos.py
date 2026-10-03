@@ -68,6 +68,15 @@ class EosDriver(Driver):
     # Phase A (v4) : les règles qui lisent la syntaxe d'EOS vivent dans drivers/eos_rules.py.
     CONFIG_CHECKS = eos_rules.CHECKS
     CONFIG_FILENAMES = ("startup-config",)
+    # Observés : ip, interface, router, no, route-map, end, hostname, service, spanning-tree, system,
+    # transceiver, username, management. Ajoutés : les commandes racines courantes d'EOS.
+    ROOT_KEYWORDS = frozenset({
+        "hostname", "interface", "router", "ip", "ipv6", "no", "service", "spanning-tree", "system",
+        "transceiver", "username", "management", "aaa", "banner", "end", "vlan", "vrf", "logging", "ntp",
+        "clock", "snmp-server", "lldp", "mpls", "daemon", "queue-monitor", "route-map", "class-map",
+        "policy-map", "tacacs-server", "radius-server", "dns", "monitor", "event-handler", "errdisable",
+        "hardware", "platform", "mac", "arp", "redundancy", "terminal", "boot", "alias", "ptp", "dot1x",
+        "mlag", "agent", "switchport", "load-interval", "tap", "ntp", "link", "port-channel"})
 
     def parse_config(self, running_config: str) -> ParsedConfig:
         # Blocs par indentation ; « ! » est un commentaire qui ne ferme aucun bloc (vérifié sur cEOS) ;

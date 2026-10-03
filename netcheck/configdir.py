@@ -103,6 +103,10 @@ def load(directories: list[str | Path], inventory_drivers: dict[str, str] | None
     loaded = Loaded()
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
+    # Première passe : ce que contient chaque dossier. Les remplacements se règlent AVANT toute lecture : un
+    # fichier remplacé par un dossier ultérieur n'est jamais lu (il pourrait être d'un autre constructeur que
+    # le driver de l'inventaire : le lab mixte a un r5 FRR dans `configs` et un r5 SR Linux plus loin).
+    candidates: dict[str, list[Path]] = {}
     for directory in map(Path, directories):
         if not directory.is_dir():
             raise ConfigDirError(f"{directory} n'est pas un dossier")
@@ -123,31 +127,63 @@ def load(directories: list[str | Path], inventory_drivers: dict[str, str] | None
                 raise ConfigDirError(f"équipement {name!r} défini deux fois dans {directory} : "
                                      f"{found[name].name} et {entry.name}")
             found[name] = entry
-
         for name, entry in found.items():
-            driver_name = forced_driver or inventory_drivers.get(name)
-            if driver_name is None:
-                _note(loaded, name, entry, "équipement non audité : inconnu de l'inventaire, driver non "
-                      "déduit (ajoutez-le à l'inventaire ou donnez --driver)", blocking=True)
-                continue
-            if driver_name not in DRIVER_REGISTRY:
-                _note(loaded, name, entry, f"équipement non audité : driver {driver_name!r} inconnu "
-                      f"(disponibles : {sorted(DRIVER_REGISTRY)})", blocking=True)
-                continue
-            path, why = entry, ""
-            if entry.is_dir():
-                path, why = _pick_in_folder(entry, driver_name)
-            text = None
-            if path is not None:
-                text, why = _read(path)
-            if text is None:
-                _note(loaded, name, entry if path is None else path, f"équipement non audité : {why}",
-                      blocking=True)
-                continue
-            if name in loaded.sources:
-                _note(loaded, name, path, f"équipement déjà lu dans {loaded.sources[name].path} : remplacé "
-                      "par ce dossier ultérieur", blocking=False)
+            candidates.setdefault(name, []).append(entry)
+
+    # Seconde passe : ne lire que le dernier fichier de chaque équipement.
+    for name, entries in candidates.items():
+        *replaced, entry = entries
+        for old in replaced:
+            _note(loaded, name, old, f"équipement aussi défini dans {entry} : ce fichier est remplacé par "
+                  "ce dossier ultérieur, il n'est pas lu", blocking=False)
+        read = _audit(loaded, name, entry, inventory_drivers, forced_driver)
+        if read is not None:
+            driver_name, path, text = read
             loaded.devices[name] = DeviceState(name=name, host="-", timestamp=now, reachable=True,
                                                running_config=text, driver=driver_name)
             loaded.sources[name] = Source(name, driver_name, str(path))
     return loaded
+
+
+def _audit(loaded: Loaded, name: str, entry: Path, inventory_drivers: dict[str, str],
+           forced_driver: str | None) -> tuple[str, Path, str] | None:
+    """Lit et reconnaît le fichier d'un équipement : (driver, fichier, texte), ou None après avoir dit
+    pourquoi il n'est pas audité (note bloquante). Ajoute en information les lignes de premier niveau que
+    le driver ne connaît pas."""
+    driver_name = forced_driver or inventory_drivers.get(name)
+    if driver_name is None:
+        _note(loaded, name, entry, "équipement non audité : inconnu de l'inventaire, driver non "
+              "déduit (ajoutez-le à l'inventaire ou donnez --driver)", blocking=True)
+        return None
+    if driver_name not in DRIVER_REGISTRY:
+        _note(loaded, name, entry, f"équipement non audité : driver {driver_name!r} inconnu "
+              f"(disponibles : {sorted(DRIVER_REGISTRY)})", blocking=True)
+        return None
+    path, why = entry, ""
+    if entry.is_dir():
+        path, why = _pick_in_folder(entry, driver_name)
+    text = None
+    if path is not None:
+        text, why = _read(path)
+    if text is None:
+        _note(loaded, name, entry if path is None else path, f"équipement non audité : {why}", blocking=True)
+        return None
+    driver = DRIVER_REGISTRY[driver_name]()
+    keywords = driver.ROOT_KEYWORDS
+    if keywords is not None:
+        config = driver.parse_config(text)
+        statements = config.root_statements()
+        known = sum(word in keywords for _, _, word in statements)
+        if not statements or 2 * known < len(statements):
+            _note(loaded, name, path, f"équipement non audité : {known} ligne(s) de premier niveau sur "
+                  f"{len(statements)} commencent par un mot-clé connu du driver {driver_name} : ce fichier "
+                  "n'est pas une configuration reconnue (des notes ? un autre équipement ?)", blocking=True)
+            return None
+        already = {w.line for w in config.warnings}    # déjà signalée par l'analyse (ligne `set` non lue)
+        for number, line_text, word in statements:
+            if word not in keywords and number not in already:
+                reason = (f"ligne de premier niveau dont le premier mot « {word} » n'est pas un mot-clé "
+                          f"connu du driver {driver_name} : lue, jamais prise pour une commande connue")
+                warning = make_warning(number, line_text, reason, kept=True)
+                loaded.warnings.append(ConfigWarning(name, warning))
+    return driver_name, path, text

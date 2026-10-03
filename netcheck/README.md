@@ -99,7 +99,17 @@ les fichiers de démarrage du dépôt donnent le même verdict que l'audit en di
   `.md`, `.yml`, `.json`) est listée comme *information* ; une entrée qui ressemble à une configuration mais
   n'a pas pu être lue (équipement inconnu de l'inventaire sans `--driver`, plusieurs fichiers sans nom
   attendu, fichier vide, trop gros, illisible en UTF-8) est **NON AUDITÉE** : comme une ligne non lue, elle
-  empêche le verdict « conforme » (ANALYSE INCOMPLÈTE, code 1 au minimum). Aucun fichier lu : code 3.
+  empêche le verdict « conforme » (ANALYSE INCOMPLÈTE, code 1 au minimum). **Aucun fichier audité** (tous
+  rejetés, ou aucun candidat) : code 3, jamais 1 : un pipeline ne peut pas passer avec un audit qui n'a rien lu.
+- **Un fichier de notes n'est jamais « conforme ».** Un fichier n'est audité que si au moins la moitié de ses
+  lignes de premier niveau commencent par un mot-clé racine connu du driver (`Driver.ROOT_KEYWORDS` :
+  `hostname`, `interface`, `router`… ; `network-instance`, `system`… pour SR Linux) : sinon il est NON AUDITÉ.
+  Sans cette signature, des notes lues avec `--driver eos` donnaient « conforme, code 0 » (aucune ligne
+  douteuse pour l'analyse, rien à reprocher aux évaluateurs). Dans un fichier audité, une ligne de premier
+  niveau dont le premier mot n'est pas connu du driver est lue mais listée en **information (lue, ambiguë)**,
+  dans les trois sorties ; sans effet sur le verdict, et sans effet en direct (la configuration vient de
+  l'équipement). Limite : quelques lignes de prose noyées dans une vraie configuration restent auditées, et
+  signalées. Un fichier remplacé par un dossier ultérieur n'est jamais lu.
 - **Les règles qui lisent l'état collecté sont non évaluables hors ligne** (`Check.needs` contient
   `interfaces` : `lan-en-ospf-passif`, `interface-avec-description`). Elles sont « non applicables » avec
   leur propre cause, **ÉTAT REQUIS (hors ligne)**, comptée à part dans la synthèse des trois sorties : ce n'est
@@ -367,8 +377,10 @@ seulement un fichier dans `drivers/`. Liste complète, sans rien cacher :
     FRR et EOS, signaler une sous-commande trouvée au premier niveau, voir `flag_misplaced_subcommands` ;
     un texte libre comme une bannière se déclare en `raw_blocks`), `CONFIG_CHECKS` (`{kind: Check(fn,
     needs)}` dans `drivers/<constructeur>_rules.py`, `needs` contenant `"interfaces"` si `fn` lit le
-    modèle collecté, ce qui rend la règle « ÉTAT REQUIS » hors ligne) et `CONFIG_FILENAMES` (pour
-    `check --config-dir`). Les évaluateurs lisent l'arbre, jamais le texte ; les messages sont un contrat
+    modèle collecté, ce qui rend la règle « ÉTAT REQUIS » hors ligne), `CONFIG_FILENAMES` et
+    `ROOT_KEYWORDS` (pour `check --config-dir` : le nom du fichier, et les premiers mots des lignes de
+    premier niveau d'une vraie configuration, vérifiés contre toutes les configurations réelles du driver : un
+    fichier de notes ne doit pas être audité). Les évaluateurs lisent l'arbre, jamais le texte ; les messages sont un contrat
     (le gel les compare). Si l'équipement a des peer groups, réutiliser `bgp_neighbors.BgpView` avec la
     syntaxe du constructeur (`Syntax`).
 13. **Tests de la phase A pour un nouveau driver** : (a) des configurations **réelles** du driver dans le

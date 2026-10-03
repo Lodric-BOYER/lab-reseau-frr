@@ -63,6 +63,13 @@ class Driver(ABC):
     #: (`check --config-dir dossier/<équipement>/<fichier>`), quand le dossier en contient plusieurs.
     CONFIG_FILENAMES: ClassVar[tuple[str, ...]] = ()
 
+    #: Phase A5 : premiers mots des lignes de PREMIER niveau d'une vraie configuration de cet équipement
+    #: (`hostname`, `interface`, `router`...). `check --config-dir` ne l'audite que si au moins la moitié de
+    #: ses lignes de premier niveau en commencent par l'un d'eux (sinon : un fichier de notes lu avec
+    #: `--driver` serait « conforme ») et signale en information les autres. None = pas de contrôle (à
+    #: éviter : un driver sans liste accepte n'importe quel texte).
+    ROOT_KEYWORDS: ClassVar[frozenset[str] | None] = None
+
     def parse_config(self, running_config: str) -> ParsedConfig | None:
         """Analyse structurée de la running-config (voir `netcheck/confparse.py`), ou None si ce
         driver n'analyse pas la configuration. Ne lève jamais : une ligne douteuse devient un

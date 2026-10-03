@@ -318,3 +318,141 @@ def test_the_srlinux_banner_rule_no_longer_reads_text():
     # Un mot « login-banner » dans une description n'est pas une bannière.
     fake = 'set / system description "login-banner"\n'
     assert len(compliance.check_one(rule, srlinux(fake))) == 1
+
+
+# ------------------------------------------------------------------------------------------
+# Un fichier qui n'est pas une configuration n'est JAMAIS « conforme » (signature par driver)
+# ------------------------------------------------------------------------------------------
+
+PROSE = ("Reunion du lundi\nA faire : changer les mots de passe du routeur\n"
+         "Penser a sauvegarder la configuration avant la maintenance.\n")
+# Quelques lignes de vraie configuration noyées dans de la prose (la prose est MAJORITAIRE).
+MAJORITY = {
+    "frr": "Notes de maintenance\nhostname r1\nA verifier : le routeur est-il en conformite ?\n"
+           "Rappeler le prestataire\nPenser aux sauvegardes\n",
+    "eos": "Notes de maintenance\nhostname r4\nA verifier : le routeur est-il en conformite ?\n"
+           "Rappeler le prestataire\nPenser aux sauvegardes\n",
+    "srlinux": "Notes de maintenance\nsystem {\n    name r5\n}\nA verifier\nRappeler le prestataire\n"
+               "Penser aux sauvegardes\n",
+}
+DRIVERS = sorted(DRIVER_REGISTRY)
+
+
+def test_every_driver_names_the_first_words_of_a_real_configuration():
+    for name, cls in DRIVER_REGISTRY.items():
+        assert cls.ROOT_KEYWORDS, f"le driver {name} doit déclarer ROOT_KEYWORDS (signature d'un fichier)"
+
+
+@pytest.mark.parametrize("rules", ["default", "security"])
+@pytest.mark.parametrize("driver", DRIVERS)
+@pytest.mark.parametrize("kind", ["pure", "majority"])
+def test_notes_read_with_driver_are_never_compliant_and_a_lone_notes_file_gives_code_3(
+        kind, driver, rules, tmp_path, capsys):
+    """Le défaut mesuré : des notes lues avec `--driver eos` donnaient CONFORME, code 0."""
+    write(tmp_path / "cfg" / "notes.txt", PROSE if kind == "pure" else MAJORITY[driver])
+    out_json = tmp_path / "out.json"
+    code = cli.main(["check", "--rules", str(RULES[rules]), "--json", str(out_json), "--config-dir",
+                     str(tmp_path / "cfg"), "--driver", driver])
+    captured = capsys.readouterr()
+    assert code == 3 and not out_json.exists()                  # rien n'a été audité : jamais 0, jamais 1
+    assert "notes" in captured.err and "non audité" in captured.err and "rien n'a été audité" in captured.err
+    assert "CONFORME" not in captured.out
+
+
+def test_srlinux_set_file_that_is_mostly_prose_is_not_audited_either(tmp_path, capsys):
+    text = "set / interface ethernet-1/1 admin-state enable\n" + PROSE + "Rappeler le prestataire\n"
+    write(tmp_path / "cfg" / "r5.txt", text)
+    assert cli.main(["check", "--rules", str(RULES["security"]), "--config-dir", str(tmp_path / "cfg"),
+                     "--driver", "srlinux"]) == 3
+    assert "1 ligne(s) de premier niveau sur 5" in capsys.readouterr().err
+
+
+def test_with_one_audited_file_and_one_not_audited_the_verdict_is_incomplete_code_1(tmp_path, capsys):
+    cfg = tmp_path / "cfg"
+    write(cfg / "r3.conf", FRR)
+    write(cfg / "r4.txt", PROSE)
+    code, data, _, out = run(["--config-dir", str(cfg), "--driver", "frr"], tmp_path, capsys, "security")
+    assert code == 1 and data["status"] == "ANALYSE INCOMPLÈTE"
+    assert sorted(data["source"]["devices"]) == ["r3"]
+    assert data["summary"]["config_files_not_audited"] == 1 and "NON AUDITÉ" in out.out
+
+
+MINORITY = {  # (configuration réelle, fichier) + deux lignes de prose AVANT, au premier niveau
+    "frr": (FRR, "r3.conf"),
+    "eos": (EOS, "r4.cfg"),
+    "srlinux": ("interface ethernet-1/1 {\n    admin-state enable\n}\nsystem {\n    name r5\n}\n", "r5.cfg"),
+}
+
+
+@pytest.mark.parametrize("driver", ["frr", "eos", "srlinux"])
+def test_a_little_prose_in_a_real_configuration_is_read_but_listed_as_ambiguous(driver, tmp_path, capsys):
+    real, filename = MINORITY[driver]
+    cfg_clean, cfg_noisy = tmp_path / "clean", tmp_path / "noisy"
+    write(cfg_clean / filename, real)
+    write(cfg_noisy / filename, "Rappel : relire avant la mise en production\nNote de Lodric\n" + real)
+    for sub in ("a", "b"):
+        (tmp_path / sub).mkdir()
+    _, clean, _, _ = run(["--config-dir", str(cfg_clean), "--driver", driver], tmp_path / "a", capsys,
+                         "security")
+    code, noisy, html, out = run(["--config-dir", str(cfg_noisy), "--driver", driver], tmp_path / "b", capsys,
+                                 "security")
+    assert sorted(noisy["source"]["devices"]) == sorted(clean["source"]["devices"])      # auditée
+    assert noisy["violations"] == clean["violations"]                                     # même réponse
+    ambiguous = [w for w in noisy["config_analysis"] if "premier mot" in w["reason"]]
+    assert [w["line"] for w in ambiguous] == [1, 2]                           # les deux lignes de prose
+    assert all(w["kept"] and not w["blocks_verdict"] for w in ambiguous)                  # lue, ambiguë
+    assert noisy["status"] == clean["status"] and code == (0 if clean["status"] == "CONFORME" else code)
+    assert "(lue, ambiguë)" in out.out and "Rappel" in out.out and "Rappel" in html
+
+
+def test_a_srlinux_set_file_with_a_little_prose_reports_each_prose_line_once_as_unread(tmp_path, capsys):
+    """En syntaxe `set`, l'analyse signale déjà la ligne non convertie (NON LUE) : pas de doublon."""
+    real = (REPO / "configs-multivendor" / "r5" / "config.cli").read_text(encoding="utf-8")
+    write(tmp_path / "cfg" / "r5.cli", "# commentaire\nset / system name r5\n" + real + "Penser a relire\n")
+    code, data, _, _ = run(["--config-dir", str(tmp_path / "cfg"), "--driver", "srlinux"], tmp_path, capsys,
+                           "security")
+    prose = [w for w in data["config_analysis"] if "Penser" in w["text"]]
+    assert len(prose) == 1 and not prose[0]["kept"] and prose[0]["blocks_verdict"]
+    assert code == 1 and data["status"] == "ANALYSE INCOMPLÈTE"
+
+
+# Toutes les configurations réelles du dépôt : aucune n'est rejetée, aucune ne produit de signalement.
+def real_configs():
+    t = REPO / "tests"
+    frr = [*sorted((t / "fixtures" / "live_hardened").glob("frr_*.txt")),
+           *[t / "fixtures" / r / "running_config.txt" for r in ("r1", "r3", "r4")],
+           *sorted((t / "golden" / "inputs").glob("frr_*.conf")),
+           *sorted((t / "fixtures" / "peergroups").glob("frr_*.txt"))]
+    eos = [t / "fixtures" / "live_hardened" / "eos_r4.txt", t / "golden" / "inputs" / "eos_r4.startup-config",
+           *sorted((t / "fixtures" / "ceos").glob("*/running_config.txt")),
+           *sorted((t / "fixtures" / "peergroups").glob("eos_*.txt"))]
+    srlinux = [t / "fixtures" / "r5" / "running_config.txt",
+               t / "fixtures" / "r5_hardened" / "running_config.txt",
+               REPO / "configs-multivendor" / "r5" / "config.cli"]
+    return [("frr", p) for p in frr] + [("eos", p) for p in eos] + [("srlinux", p) for p in srlinux]
+
+
+@pytest.mark.parametrize("driver, path", real_configs(),
+                         ids=lambda v: v if isinstance(v, str) else f"{v.parent.name}/{v.name}")
+def test_no_real_configuration_of_the_repository_is_rejected_or_flagged(driver, path, tmp_path):
+    write(tmp_path / "device.txt", path.read_text(encoding="utf-8"))
+    loaded = configdir.load([tmp_path], forced_driver=driver)
+    assert list(loaded.devices) == ["device"] and loaded.warnings == []
+
+
+def test_the_live_srlinux_state_is_recognized_too(tmp_path):
+    path = REPO / "tests" / "fixtures" / "r5_hardened" / "state.json"
+    state = json.loads(path.read_text(encoding="utf-8"))
+    write(tmp_path / "r5.txt", state["running_config"])
+    loaded = configdir.load([tmp_path], forced_driver="srlinux")
+    assert list(loaded.devices) == ["r5"] and loaded.warnings == []
+
+
+def test_a_file_replaced_by_a_later_folder_is_never_read(tmp_path):
+    """Le r5 FRR de `configs` n'est pas lu avec le driver SR Linux de l'inventaire : il est remplacé."""
+    write(tmp_path / "a" / "r5" / "frr.conf", FRR)
+    write(tmp_path / "b" / "r5" / "config.cli", "set / system name r5\n")
+    loaded = configdir.load([tmp_path / "a", tmp_path / "b"], {"r5": "srlinux"})
+    assert loaded.devices["r5"].driver == "srlinux" and loaded.sources["r5"].path.endswith("config.cli")
+    assert [(w.warning.kept, w.blocks_verdict) for w in loaded.warnings] == [(True, False)]
+    assert "remplacé" in loaded.warnings[0].warning.reason and "pas lu" in loaded.warnings[0].warning.reason
