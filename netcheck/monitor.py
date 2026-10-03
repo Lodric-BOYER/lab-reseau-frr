@@ -96,6 +96,7 @@ class Evaluation:
     violations: list[compliance.Violation] | None = None
     compliant: bool | None = None
     not_applicable: list[compliance.NotApplicable] | None = None
+    config_warnings: list[compliance.ConfigWarning] | None = None
 
 
 def diff_outcome(findings: list[diff.Finding]) -> tuple[str, list[Contribution]]:
@@ -120,11 +121,27 @@ def assert_outcome(results: list[assertions.AssertionResult]) -> tuple[str, list
     return worst(OK, *(c.status for c in contributions)), contributions
 
 
-def check_outcome(violations: list[compliance.Violation]) -> tuple[str, list[Contribution]]:
+def check_outcome(
+    violations: list[compliance.Violation],
+    config_warnings: list[compliance.ConfigWarning] | tuple = (),
+) -> tuple[str, list[Contribution]]:
     contributions = [
         Contribution(ECHEC if v.rule.severity in ("critique", "haute") else ATTENTION, v.rule.severity,
                      "check", v.device, v.rule.id, v.rule.description)  # description, jamais `detail`
         for v in violations
+    ]
+    # Lignes de configuration NON lues (Phase A3) : ATTENTION, une contribution par équipement. Le
+    # message ne porte que le nombre de lignes : jamais leur texte (une alerte ne contient ni
+    # configuration ni secret) ; le détail est dans le rapport local, masqué.
+    unread: dict[str, int] = {}
+    for w in config_warnings:
+        if not w.kept:
+            unread[w.device] = unread.get(w.device, 0) + 1
+    contributions += [
+        Contribution(ATTENTION, "ANALYSE", "check", device, "config-lignes-non-lues",
+                     f"analyse incomplète : {n} ligne(s) de configuration non lue(s) "
+                     f"(détail dans le rapport local)")
+        for device, n in sorted(unread.items())
     ]
     return worst(OK, *(c.status for c in contributions)), contributions
 
@@ -174,9 +191,11 @@ def evaluate(
         components["assert"], extra = assert_outcome(ev.assert_results)
         contributions += extra
     if rules is not None:
-        ev.violations, ev.not_applicable = compliance.evaluate(rules, reachable, management_interfaces=mgmt)
-        ev.compliant = compliance.verdict(ev.violations)[0]
-        components["check"], extra = check_outcome(ev.violations)
+        audit = compliance.evaluate_config(rules, reachable, management_interfaces=mgmt)
+        ev.violations, ev.not_applicable = audit.violations, audit.not_applicable
+        ev.config_warnings = audit.config_warnings
+        ev.compliant = compliance.verdict(ev.violations, ev.config_warnings)[0]
+        components["check"], extra = check_outcome(ev.violations, ev.config_warnings)
         contributions += extra
 
     ev.status = worst(OK, *(s for s in components.values() if s is not None))
@@ -586,9 +605,11 @@ def write_reports(directory: Path, evaluation: Evaluation, baseline_name: str,
                                  str(directory / "assert.html"))
     if evaluation.violations is not None:
         report.write_compliance_json(evaluation.violations, evaluation.compliant,
-                                     str(directory / "check.json"), evaluation.not_applicable)
+                                     str(directory / "check.json"), evaluation.not_applicable,
+                                     evaluation.config_warnings)
         report.write_compliance_html(evaluation.violations, evaluation.compliant, rules_path or "",
-                                     str(directory / "check.html"), evaluation.not_applicable)
+                                     str(directory / "check.html"), evaluation.not_applicable,
+                                     evaluation.config_warnings)
     summary = {
         "timestamp": now, "status": evaluation.status, "baseline": baseline_name,
         "components": evaluation.components,

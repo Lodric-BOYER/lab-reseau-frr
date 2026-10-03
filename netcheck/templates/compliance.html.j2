@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>Rapport de conformité netcheck — {{ "CONFORME" if compliant else "NON CONFORME" }}</title>
+<title>Rapport de conformité netcheck — {{ status }}</title>
 <style>
   :root { color-scheme: light dark; }
   body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 2rem; max-width: 960px; }
@@ -10,12 +10,17 @@
   .meta { color: #57606a; font-size: 0.9em; }
   .verdict-conforme { color: #1a7f37; }
   .verdict-non-conforme { color: #cf222e; }
+  .verdict-analyse-incomplete { color: #9a6700; }
   .counters { margin: 1em 0; }
   .badge { display: inline-block; padding: 0.15em 0.6em; border-radius: 1em; font-size: 0.85em; margin-right: 0.4em; white-space: nowrap; }
   .badge-critique { background: #ffebe9; color: #cf222e; border: 1px solid #cf222e55; }
   .badge-haute { background: #fff1e5; color: #bc4c00; border: 1px solid #bc4c0055; }
   .badge-moyenne { background: #fff8c5; color: #9a6700; border: 1px solid #9a670055; }
   .badge-basse { background: #ddf4ff; color: #0969da; border: 1px solid #0969da55; }
+  .badge-unread { background: #fff8c5; color: #9a6700; border: 1px solid #9a670055; font-weight: bold; }
+  .badge-info { background: #ddf4ff; color: #0969da; border: 1px solid #0969da55; }
+  .badge-gap { background: #fff1e5; color: #bc4c00; border: 1px solid #bc4c0055; font-weight: bold; }
+  .cause-gap { color: #bc4c00; font-weight: bold; }
   table { border-collapse: collapse; width: 100%; margin-top: 1em; }
   th, td { text-align: left; padding: 0.5em 0.7em; border-bottom: 1px solid #d0d7de; vertical-align: top; }
   th { background: #f6f8fa; }
@@ -28,14 +33,23 @@
 
 <h1>Rapport de conformité netcheck</h1>
 <p class="meta">Généré le {{ generated_at }} — règles : <code>{{ rules_path }}</code></p>
-<p class="verdict-{{ 'conforme' if compliant else 'non-conforme' }}">
-  <strong>{{ "CONFORME" if compliant else "NON CONFORME" }}</strong>
+<p class="verdict-{{ {'CONFORME': 'conforme', 'NON CONFORME': 'non-conforme'}.get(status, 'analyse-incomplete') }}">
+  <strong>{{ status }}</strong>
 </p>
 
 <div class="counters">
   {% for sev in ["critique", "haute", "moyenne", "basse"] %}
   <span class="badge badge-{{ sev }}">{{ counts[sev] }} {{ sev }}</span>
   {% endfor %}
+  {% if summary.config_lines_unread %}
+  <span class="badge badge-unread">{{ summary.config_lines_unread }} ligne(s) de configuration non lue(s)</span>
+  {% endif %}
+  {% if summary.config_notes %}
+  <span class="badge badge-info">{{ summary.config_notes }} information(s) d'analyse</span>
+  {% endif %}
+  {% if summary.not_applicable_not_implemented %}
+  <span class="badge badge-gap">{{ summary.not_applicable_not_implemented }} règle(s) non implémentée(s) par leur driver</span>
+  {% endif %}
 </div>
 
 <div class="filters">
@@ -94,19 +108,46 @@
 <p>Aucune non-conformité.</p>
 {% endif %}
 
+{% if config_warnings %}
+<h2>Analyse de la configuration</h2>
+<p class="meta">Lignes que l'analyse n'a pas pu classer proprement. Une ligne <strong>non lue</strong>
+empêche de conclure « conforme » (code retour 1 au minimum) : l'audit n'a pas lu toute la
+configuration. Une ligne lue mais <strong>ambiguë</strong> n'est qu'une information, sans effet sur le
+code retour. Les secrets sont masqués.</p>
+<table id="config-analysis">
+  <thead>
+    <tr><th>Équipement</th><th>Ligne</th><th>Statut</th><th>Raison</th><th>Texte</th></tr>
+  </thead>
+  <tbody>
+    {% for w in config_warnings %}
+    <tr>
+      <td>{{ w.device }}</td>
+      <td>{{ w.warning.line }}</td>
+      <td>{% if w.kept %}<span class="badge badge-info">information (lue, ambiguë)</span>{% else %}<span class="badge badge-unread">NON LUE</span>{% endif %}</td>
+      <td>{{ w.warning.reason }}</td>
+      <td><code>{{ w.warning.text }}</code></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
 {% if not_applicable %}
 <h2>Non applicable</h2>
-<p class="meta">Règle(s) qui ne concernent pas le driver de l'équipement (Phase D2) — ni
-conforme, ni non-conformité, sans effet sur le verdict ni le code retour.</p>
+<p class="meta">Règle(s) non évaluée(s) sur un équipement — ni conforme, ni non-conformité, sans effet
+sur le verdict ni le code retour. Deux causes distinctes : <strong>hors sujet</strong> (la règle ne
+liste pas le driver de l'équipement, Phase D2) et <strong class="cause-gap">non implémenté</strong>
+(la règle concerne ce driver, mais il ne sait pas l'évaluer : un trou de couverture, pas un choix).</p>
 <table id="not-applicable">
   <thead>
-    <tr><th>Équipement</th><th>Règle</th><th>Raison</th></tr>
+    <tr><th>Équipement</th><th>Règle</th><th>Cause</th><th>Raison</th></tr>
   </thead>
   <tbody>
     {% for na in not_applicable %}
     <tr>
       <td>{{ na.device }}</td>
       <td>{{ na.rule.id }}<br><small>{{ na.rule.description }}</small></td>
+      <td>{% if na.cause == not_implemented %}<span class="cause-gap">NON IMPLÉMENTÉ</span>{% else %}hors sujet (driver){% endif %}</td>
       <td>{{ na.reason }}</td>
     </tr>
     {% endfor %}

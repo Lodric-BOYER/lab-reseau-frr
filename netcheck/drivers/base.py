@@ -14,17 +14,26 @@ Pour ajouter un nouveau driver (ex. Cisco IOS, FortiGate) :
    les clés `nbrState`/`state`).
 5. Optionnel : surcharger `clean_output()` pour retirer un bruit propre au constructeur avant
    analyse (avertissements non bloquants, bannières, etc.).
+6. Phase A de la v4 : fournir ses règles de configuration. `parse_config()` analyse le texte de la
+   running-config avec `netcheck/confparse.py` (la syntaxe du constructeur : indentation,
+   accolades, lignes `set`), et `CONFIG_CHECKS` associe chaque `kind` de règle YAML que ce driver
+   sait évaluer à son évaluateur (voir `drivers/frr_rules.py`). Un `kind` absent de
+   `CONFIG_CHECKS` rend la règle « non implémentée par ce driver » dans les rapports, jamais
+   « conforme ».
 
 Rien en dehors de `drivers/` ne doit connaître la syntaxe d'un constructeur particulier :
 `collector.py`, `diff.py`, `compliance.py` et `report.py` ne travaillent que sur le modèle
-normalisé (`netcheck/model.py`).
+normalisé (`netcheck/model.py`) et sur les évaluateurs que les drivers fournissent.
 """
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
+from typing import ClassVar
 
+from netcheck.confparse import ParsedConfig
 from netcheck.model import DeviceState
+from netcheck.ruletypes import Check
 
 
 class Driver(ABC):
@@ -44,6 +53,17 @@ class Driver(ABC):
     #: blanche des commandes LOGIQUES du collecteur ne voit pas ce que `translate()` fabrique ;
     #: ce second contrôle, lui, porte sur ce qui part réellement vers l'équipement.
     ALLOWED_CLI: frozenset[str] | None = None
+
+    #: Phase A (v4) : évaluateurs de configuration de ce driver, {kind de règle: Check}. Vide par
+    #: défaut : le driver n'implémente alors aucun kind propre à un constructeur (les kinds neutres,
+    #: `line_present`, `line_absent` et `interface_description_required`, sont dans le moteur).
+    CONFIG_CHECKS: ClassVar[dict[str, Check]] = {}
+
+    def parse_config(self, running_config: str) -> ParsedConfig | None:
+        """Analyse structurée de la running-config (voir `netcheck/confparse.py`), ou None si ce
+        driver n'analyse pas la configuration. Ne lève jamais : une ligne douteuse devient un
+        avertissement, repris dans le rapport de conformité."""
+        return None
 
     def translate(self, command: str) -> str:
         """Traduit une commande logique (ex. 'show ip route json') en commande CLI réelle."""

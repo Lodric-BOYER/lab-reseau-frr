@@ -280,25 +280,25 @@ def test_line_absent_violation():
 
 def test_bgp_inbound_policy_conforme():
     r = rule("bgp_neighbor_inbound_policy")
-    assert compliance._check_bgp_neighbor_inbound_policy(r, device()) == []
+    assert compliance.check_one(r, device()) == []
 
 
 def test_bgp_outbound_policy_conforme():
     r = rule("bgp_neighbor_outbound_policy")
-    assert compliance._check_bgp_neighbor_outbound_policy(r, device()) == []
+    assert compliance.check_one(r, device()) == []
 
 
 def test_bgp_inbound_policy_violation_when_route_map_removed():
     broken = R3_CONFIG.replace("  neighbor 172.16.34.2 route-map RM-EBGP-IN in\n", "")
     r = rule("bgp_neighbor_inbound_policy")
-    violations = compliance._check_bgp_neighbor_inbound_policy(r, device(running_config=broken))
+    violations = compliance.check_one(r, device(running_config=broken))
     assert len(violations) == 1 and "172.16.34.2" in violations[0].detail
 
 
 def test_bgp_outbound_policy_violation_when_route_map_removed():
     broken = R3_CONFIG.replace("  neighbor 172.16.34.2 route-map RM-EBGP-OUT out\n", "")
     r = rule("bgp_neighbor_outbound_policy")
-    violations = compliance._check_bgp_neighbor_outbound_policy(r, device(running_config=broken))
+    violations = compliance.check_one(r, device(running_config=broken))
     assert len(violations) == 1 and "172.16.34.2" in violations[0].detail
 
 
@@ -306,7 +306,7 @@ def test_bgp_policy_router_without_bgp_is_not_a_violation():
     # r1 n'a pas de "router bgp" : la règle ne s'applique tout simplement pas.
     r1_config = (FIXTURES / "r1" / "running_config.txt").read_text(encoding="utf-8")
     r = rule("bgp_neighbor_inbound_policy")
-    assert compliance._check_bgp_neighbor_inbound_policy(r, device(running_config=r1_config, name="r1")) == []
+    assert compliance.check_one(r, device(running_config=r1_config, name="r1")) == []
 
 
 # ------------------------------------------------------------------------------------------
@@ -320,7 +320,7 @@ def test_ospf_passive_conforme():
         Interface("eth1", "vers-r2", True, True, ["10.1.12.1/30"]),
     ]
     r = rule("ospf_passive_on_interfaces", pattern="LAN")
-    assert compliance._check_ospf_passive_on_interfaces(
+    assert compliance.check_one(
         r, device(running_config=r1_config, interfaces=r1_interfaces, name="r1")) == []
 
 
@@ -335,7 +335,7 @@ def test_ospf_passive_violation_when_removed():
     assert broken != r1_config  # la substitution a bien eu lieu, sinon le test ne teste rien
     r1_interfaces = [Interface("eth3", "LAN-pc1", True, True, ["192.168.1.1/24"])]
     r = rule("ospf_passive_on_interfaces", pattern="LAN")
-    violations = compliance._check_ospf_passive_on_interfaces(
+    violations = compliance.check_one(
         r, device(running_config=broken, interfaces=r1_interfaces, name="r1"))
     assert len(violations) == 1 and "eth3" in violations[0].detail
 
@@ -343,7 +343,7 @@ def test_ospf_passive_violation_when_removed():
 def test_ospf_passive_ignores_interfaces_not_matching_pattern():
     r = rule("ospf_passive_on_interfaces", pattern="LAN")
     interfaces = [Interface("eth1", "vers-r2", True, True, ["10.1.12.1/30"])]  # pas passive, mais pas "LAN"
-    assert compliance._check_ospf_passive_on_interfaces(r, device(interfaces=interfaces)) == []
+    assert compliance.check_one(r, device(interfaces=interfaces)) == []
 
 
 # ------------------------------------------------------------------------------------------
@@ -358,7 +358,7 @@ def test_ospf_authentication_violation_on_unhardened_lab():
     # Configuration réelle actuelle (avant Phase B) : aucune interface OSPF n'est authentifiée.
     r = rule("ospf_authentication_required")
     dev = device(running_config=R1_CONFIG, name="r1")
-    violations = compliance._check_ospf_authentication_required(r, dev)
+    violations = compliance.check_one(r, dev)
     assert {v.detail.split()[1] for v in violations} == {"eth1", "eth2"}  # actives, non passives
 
 
@@ -370,14 +370,14 @@ def test_ospf_authentication_conforme_once_configured():
         " ip ospf network point-to-point\nexit",
     )
     r = rule("ospf_authentication_required")
-    assert compliance._check_ospf_authentication_required(r, device(running_config=hardened, name="r1")) == []
+    assert compliance.check_one(r, device(running_config=hardened, name="r1")) == []
 
 
 def test_ospf_authentication_ignores_passive_interfaces():
     # eth3 (LAN) et lo sont passives : pas d'adjacence, rien à authentifier.
     r = rule("ospf_authentication_required")
     dev = device(running_config=R1_CONFIG, name="r1")
-    violations = compliance._check_ospf_authentication_required(r, dev)
+    violations = compliance.check_one(r, dev)
     assert not any("eth3" in v.detail or " lo " in v.detail for v in violations)
 
 
@@ -388,7 +388,7 @@ def test_ospf_authentication_ignores_passive_interfaces():
 
 def test_bgp_password_violation_on_unhardened_lab():
     r = rule("bgp_neighbor_password_required")
-    violations = compliance._check_bgp_neighbor_password_required(r, device())  # R3_CONFIG
+    violations = compliance.check_one(r, device())  # R3_CONFIG
     assert len(violations) == 1 and "172.16.34.2" in violations[0].detail
 
 
@@ -399,18 +399,18 @@ def test_bgp_password_conforme_once_configured():
         " neighbor 172.16.34.2 password CleDeLabUniquement\n",
     )
     r = rule("bgp_neighbor_password_required")
-    assert compliance._check_bgp_neighbor_password_required(r, device(running_config=hardened)) == []
+    assert compliance.check_one(r, device(running_config=hardened)) == []
 
 
 def test_bgp_password_no_bgp_is_not_a_violation():
     r = rule("bgp_neighbor_password_required")
     dev = device(running_config=R1_CONFIG, name="r1")
-    assert compliance._check_bgp_neighbor_password_required(r, dev) == []
+    assert compliance.check_one(r, dev) == []
 
 
 def test_bgp_maximum_prefix_violation_on_unhardened_lab():
     r = rule("bgp_neighbor_maximum_prefix_required")
-    violations = compliance._check_bgp_neighbor_maximum_prefix_required(r, device())
+    violations = compliance.check_one(r, device())
     assert len(violations) == 1 and "172.16.34.2" in violations[0].detail
 
 
@@ -422,12 +422,12 @@ def test_bgp_maximum_prefix_conforme_once_configured():
         "  network 192.168.1.0/24\n  neighbor 172.16.34.2 maximum-prefix 100\n",
     )
     r = rule("bgp_neighbor_maximum_prefix_required")
-    assert compliance._check_bgp_neighbor_maximum_prefix_required(r, device(running_config=hardened)) == []
+    assert compliance.check_one(r, device(running_config=hardened)) == []
 
 
 def test_bgp_ttl_security_violation_on_unhardened_lab():
     r = rule("bgp_neighbor_ttl_security_required")
-    violations = compliance._check_bgp_neighbor_ttl_security_required(r, device())
+    violations = compliance.check_one(r, device())
     assert len(violations) == 1 and "172.16.34.2" in violations[0].detail
 
 
@@ -438,7 +438,7 @@ def test_bgp_ttl_security_conforme_once_configured():
         " neighbor 172.16.34.2 ttl-security hops 1\n",
     )
     r = rule("bgp_neighbor_ttl_security_required")
-    assert compliance._check_bgp_neighbor_ttl_security_required(r, device(running_config=hardened)) == []
+    assert compliance.check_one(r, device(running_config=hardened)) == []
 
 
 # ------------------------------------------------------------------------------------------
@@ -449,7 +449,7 @@ def test_bgp_ttl_security_conforme_once_configured():
 
 def test_no_default_route_conforme_on_real_config():
     r = rule("bgp_neighbor_no_default_route_policy")
-    assert compliance._check_bgp_neighbor_no_default_route_policy(r, device()) == []  # R3_CONFIG
+    assert compliance.check_one(r, device()) == []  # R3_CONFIG
 
 
 def test_no_default_route_violation_when_prefix_list_permits_it():
@@ -459,7 +459,7 @@ def test_no_default_route_violation_when_prefix_list_permits_it():
         "ip prefix-list PL-EBGP-IN seq 30 permit 0.0.0.0/0\n",
     )
     r = rule("bgp_neighbor_no_default_route_policy")
-    violations = compliance._check_bgp_neighbor_no_default_route_policy(r, device(running_config=broken))
+    violations = compliance.check_one(r, device(running_config=broken))
     assert len(violations) == 1 and "0.0.0.0/0" in violations[0].detail
 
 
@@ -471,13 +471,13 @@ def test_no_default_route_violation_even_with_le_clause():
         "ip prefix-list PL-EBGP-IN seq 30 permit 0.0.0.0/0 le 32\n",
     )
     r = rule("bgp_neighbor_no_default_route_policy")
-    violations = compliance._check_bgp_neighbor_no_default_route_policy(r, device(running_config=broken))
+    violations = compliance.check_one(r, device(running_config=broken))
     assert len(violations) == 1
 
 
 def test_no_own_prefixes_conforme_on_real_config():
     r = rule("bgp_neighbor_no_own_prefixes_policy")
-    assert compliance._check_bgp_neighbor_no_own_prefixes_policy(r, device()) == []  # R3_CONFIG
+    assert compliance.check_one(r, device()) == []  # R3_CONFIG
 
 
 def test_no_own_prefixes_violation_when_reinjected():
@@ -489,14 +489,14 @@ def test_no_own_prefixes_violation_when_reinjected():
         "ip prefix-list PL-EBGP-IN seq 30 permit 10.1.0.0/16\n",
     )
     r = rule("bgp_neighbor_no_own_prefixes_policy")
-    violations = compliance._check_bgp_neighbor_no_own_prefixes_policy(r, device(running_config=broken))
+    violations = compliance.check_one(r, device(running_config=broken))
     assert len(violations) == 1 and "10.1.0.0/16" in violations[0].detail
 
 
 def test_no_own_prefixes_no_bgp_is_not_a_violation():
     r = rule("bgp_neighbor_no_own_prefixes_policy")
     dev = device(running_config=R1_CONFIG, name="r1")
-    assert compliance._check_bgp_neighbor_no_own_prefixes_policy(r, dev) == []
+    assert compliance.check_one(r, dev) == []
 
 
 # ------------------------------------------------------------------------------------------

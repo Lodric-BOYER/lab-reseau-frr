@@ -106,16 +106,21 @@ def cmd_check(args: argparse.Namespace) -> int:
             else:
                 print(f"  {name:<8} INJOIGNABLE : {value}", file=sys.stderr)
 
-    violations, not_applicable = compliance.evaluate(
+    result = compliance.evaluate_config(
         rules, devices, management_interfaces=set(inv.management_interfaces))
-    compliant, code = compliance.verdict(violations)
+    # Une ligne de configuration non lue donne au minimum le code 1 : jamais « conforme » sur une
+    # configuration que l'audit n'a pas entièrement lue.
+    compliant, code = compliance.verdict(result.violations, result.config_warnings)
 
-    report.print_compliance_terminal(violations, compliant, not_applicable)
+    report.print_compliance_terminal(result.violations, compliant, result.not_applicable,
+                                     config_warnings=result.config_warnings)
     if args.json:
-        report.write_compliance_json(violations, compliant, args.json, not_applicable)
+        report.write_compliance_json(result.violations, compliant, args.json, result.not_applicable,
+                                     result.config_warnings)
         print(f"Constats écrits (JSON) : {args.json}")
     if args.html:
-        report.write_compliance_html(violations, compliant, rules_path, args.html, not_applicable)
+        report.write_compliance_html(result.violations, compliant, rules_path, args.html,
+                                     result.not_applicable, result.config_warnings)
         print(f"Rapport HTML écrit : {args.html}")
     return code
 

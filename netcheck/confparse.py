@@ -122,6 +122,23 @@ class ParsedConfig:
         """Lignes de la source qui ne sont PAS dans le résultat."""
         return [w for w in self.warnings if not w.kept]
 
+    def reject(self, node: ConfigNode, reason: str) -> None:
+        """Retire ce noeud et ses descendants du résultat et les signale comme lignes NON conservées.
+
+        C'est le moyen, pour un driver qui connaît la syntaxe de son équipement, de dire « cette ligne
+        est à une place où je ne peux pas la lire correctement » (ex. une sous-commande que l'équipement
+        appliquerait au bloc ouvert mais que l'indentation ne rattache à rien) : elle ne reste pas dans
+        l'arbre, où une règle la prendrait pour une commande de premier niveau, et l'audit en est averti."""
+        if node.parent is None:
+            raise ValueError("le noeud racine ne peut pas être rejeté")
+        node.parent.children.remove(node)
+        for removed in node.walk():
+            self.counts["node"] -= 1
+            self.counts["skipped"] += 1
+            _warn(self.warnings, removed.line, removed.text, reason, False)
+        self.warnings.sort(key=lambda w: w.line)
+        self._flat = None
+
 
 def _flatten(root: ConfigNode, prefix: tuple[str, ...]) -> Iterator[FlatLine]:
     """Un chemin par noeud sans enfant (une ligne feuille, ou un bloc vide comme `address X {}`) ;

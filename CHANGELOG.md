@@ -3,6 +3,57 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : numérotation
 sémantique (le numéro de version vit dans `netcheck/__init__.py`, lu par `pyproject.toml`).
 
+## [0.4.0] — non publiée (en préparation, `SPEC_v4.md`)
+
+Quatrième version de netcheck. Cette entrée suit la construction phase par phase et sera complétée.
+
+### Ajouté
+
+- **Licence Apache-2.0** (`LICENSE`, champ `license` du paquet).
+- **Phase A, socle.** `netcheck/confparse.py` : analyse structurelle des configurations (indentation,
+  accolades, lignes `set /`), en bibliothèque standard, neutre vis-à-vis des constructeurs. Aucune
+  ligne n'est ignorée en silence : chaque ligne de la source tombe dans exactement une classe, et tout
+  ce qui est douteux produit un avertissement (texte masqué).
+- **Les règles de configuration vivent dans les drivers** : `Driver.CONFIG_CHECKS` et
+  `Driver.parse_config()` ; les règles FRR sont dans `drivers/frr_rules.py`. `compliance.py` ne garde
+  que le moteur.
+- **Verdict « ANALYSE INCOMPLÈTE »** : une ligne de configuration que l'analyse n'a pas pu lire donne
+  au minimum le code retour 1, dans les trois sorties (terminal, JSON `status`, HTML) et dans
+  `monitor` (ATTENTION). « NON CONFORME » reste réservé aux violations réelles. Une ligne lue mais
+  ambiguë n'est qu'une information, sans effet sur le code retour.
+- **FRR : sous-commande au premier niveau.** FRR lit selon le contexte et ignore l'indentation ; une
+  sous-commande non indentée (`ip ospf …`, `neighbor …`) d'un fichier écrit à la main est signalée
+  (liste vérifiée avec `vtysh -C`), au lieu de faire croire à une interface sans authentification.
+- **« Non applicable » en deux causes**, comptées à part : « hors sujet » (la règle ne liste pas le
+  driver) et « non implémenté par le driver X » (un trou de couverture).
+- Gel de référence de la conformité (`tests/golden/`, `tests/tools/golden.py`) : les réponses de la
+  v0.3.0 sur des configurations réelles, leurs mutations et des sondes ; les écarts voulus sont tracés
+  dans `meta.revisions`.
+
+### Modifié
+
+- **Refus au chargement** d'une règle dont `drivers:` cite un driver qui n'implémente pas son `kind`
+  (elle ne vérifierait rien sur cet équipement). Les règles de la v0.3.0 se chargent sans modification.
+- API : `compliance.evaluate_config()` (violations, non applicables, avertissements d'analyse) ;
+  `compliance.evaluate()` garde sa forme historique. `verdict()` accepte les avertissements.
+- Rapports : JSON enrichi de `status`, `summary`, `config_analysis` et de `cause` par règle non
+  applicable (champs ajoutés, aucun retiré). Le registre des drivers vit dans `drivers/registry.py`
+  (`collector.DRIVER_REGISTRY` reste le même objet).
+
+### Corrigé
+
+Défauts des règles FRR de la v0.3.0, qui lisaient le texte de la configuration par expressions
+régulières et sous-chaînes (validés sur 10 cas du gel et 4 entrées fabriquées) :
+
+- **Blocs sans `exit`** : l'ancien code ne retrouvait un bloc d'interface que s'il se terminait par
+  `exit`, et une route-map sans `exit` absorbait la suivante. Résultat : des interfaces qui
+  disparaissaient du rapport (faux négatifs) et des violations de réinjection de préfixes inventées
+  (faux positifs, jusqu'au code 2 sur une configuration durcie).
+- **`no ip ospf passive`** était lu comme `ip ospf passive` (test de sous-chaîne) : interface active
+  ignorée par l'audit d'authentification OSPF.
+- **Une description contenant le texte `ip ospf passive`** était lue comme la commande.
+- **Espaces multiples** dans `neighbor X password Y` : l'ancien code concluait « sans mot de passe ».
+
 ## [0.3.0] — 2026-10-03
 
 Troisième version de netcheck, construite en sept phases (A à G, `SPEC_v3.md`) : sécurité,

@@ -7,6 +7,8 @@ from __future__ import annotations
 import json
 import shlex
 
+from netcheck.confparse import ParsedConfig, parse_indented
+from netcheck.drivers import frr_rules
 from netcheck.drivers.base import Driver
 from netcheck.model import BgpPeer, BgpPrefix, DeviceState, Interface, NextHop, OspfNeighbor, Route
 
@@ -20,6 +22,17 @@ class FrrDriver(Driver):
         "show bgp ipv4 unicast json",
         "show running-config",
     ]
+
+    # Phase A (v4) : les règles qui lisent la syntaxe de FRR vivent dans drivers/frr_rules.py.
+    CONFIG_CHECKS = frr_rules.CHECKS
+
+    def parse_config(self, running_config: str) -> ParsedConfig:
+        # Blocs par indentation ; « ! » est un séparateur, « exit » une ligne comme une autre. FRR,
+        # lui, ignore l'indentation : une sous-commande au premier niveau est signalée (voir
+        # frr_rules.flag_misplaced_subcommands).
+        cfg = parse_indented(running_config)
+        frr_rules.flag_misplaced_subcommands(cfg)
+        return cfg
 
     def translate(self, command: str) -> str:
         return f"vtysh -c {shlex.quote(command)}"

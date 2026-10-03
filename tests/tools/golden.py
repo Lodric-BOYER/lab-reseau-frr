@@ -322,6 +322,51 @@ def add_cases(case_ids: list[str], reason: str) -> None:
                   f"conforme={case['base'].get('compliant')}")
 
 
+def replace_mutants(rules_name: str, targets: list[str], reason: str) -> None:
+    """Met à jour des MUTATIONS précises du gel après un écart voulu et validé. Jamais en bloc :
+    chaque cible est nommée `<cas>@<clé de mutation>` (la clé = numéro de ligne:empreinte, telle que
+    `compare` l'affiche), doit être réellement en écart avec le moteur courant (sinon refus : rien à
+    justifier), et n'est mise à jour qu'à cette seule entrée. Les autres entrées, les bases et les
+    sondes restent identiques à l'octet. Refuse de tourner si netcheck/ a des modifications non
+    commitées : la réponse enregistrée doit venir d'un code qui existe dans l'historique."""
+    dirty = subprocess.run(["git", "-C", str(REPO), "status", "--porcelain", "--", "netcheck/"],
+                           capture_output=True, text=True, check=False).stdout.strip()
+    if dirty:
+        raise SystemExit("netcheck/ a des modifications non commitées : commitez le code d'abord, "
+                         "le gel enregistre la réponse d'un code qui existe dans l'historique")
+    path = golden_path(rules_name)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    rules = compliance.load_rules(RULE_FILES[rules_name])
+    states = devices()
+    revisions = []
+    for target in targets:
+        case_id, _, key = target.partition("@")
+        case = data["cases"].get(case_id)
+        if case is None or case_id not in states or "mutants_changed" not in case:
+            raise SystemExit(f"{target} : cas inconnu ou sans mutations")
+        mutated = dict(mutants(states[case_id])).get(key)
+        if mutated is None:
+            raise SystemExit(f"{target} : mutation introuvable (clé {key})")
+        record_now = record(rules, {mutated.name: mutated})
+        before = case["mutants_changed"].get(key)
+        after = None if record_now == case["base"] else _delta(case["base"], record_now)
+        if json.loads(json.dumps(after)) == before:
+            raise SystemExit(f"{target} : déjà identique au moteur courant, rien à mettre à jour")
+        if after is None:
+            case["mutants_changed"].pop(key)
+        else:
+            case["mutants_changed"][key] = after
+
+        def ids(delta, base=case["base"]):
+            return [v[1] for v in {**base, **(delta or {})}.get("violations", [])]
+        revisions.append({"case": case_id, "mutation": key,
+                          "rules_before": ids(before), "rules_after": ids(after)})
+    data["meta"].setdefault("revisions", []).append(
+        {"rules": rules_name, "reason": reason, "code_commit": _code_commit(), "targets": revisions})
+    _write(path, data)
+    print(f"{rules_name} : {len(revisions)} mutation(s) mise(s) à jour")
+
+
 def _normalized(data) -> object:
     return json.loads(json.dumps(data, ensure_ascii=False))
 
@@ -381,6 +426,10 @@ def main(argv: list[str] | None = None) -> int:
     add = sub.add_parser("add", help="ajoute des cas nouveaux au gel (jamais d'écrasement)")
     add.add_argument("cases", nargs="+")
     add.add_argument("--reason", required=True)
+    rep = sub.add_parser("replace", help="met à jour des mutations NOMMÉES après un écart voulu et validé")
+    rep.add_argument("rules", choices=sorted(RULE_FILES))
+    rep.add_argument("targets", nargs="+", help="<cas>@<clé de mutation>, une par écart validé")
+    rep.add_argument("--reason", required=True)
     ref = sub.add_parser("reference")
     ref.add_argument("action", choices=["record", "compare"])
     args = parser.parse_args(argv)
@@ -400,6 +449,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "add":
         add_cases(args.cases, args.reason)
+        return 0
+
+    if args.command == "replace":
+        replace_mutants(args.rules, args.targets, args.reason)
         return 0
 
     if args.command == "compare":

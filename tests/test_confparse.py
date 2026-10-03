@@ -253,6 +253,20 @@ def test_a_warning_never_carries_a_secret():
     assert len(long.warnings[0].text) <= 103
 
 
+def test_reject_removes_a_node_and_reports_it_as_not_kept_keeping_the_counts_consistent():
+    parsed = cp.parse_indented("a\n b\nc\n d\n  e\n")
+    (c,) = parsed.top("c")
+    parsed.reject(c, "raison de test")
+    assert [f.path for f in parsed.flat] == [("a", "b")]
+    assert [(w.line, w.kept, w.reason, w.text) for w in parsed.warnings] == [
+        (3, False, "raison de test", "c"), (4, False, "raison de test", "d"),
+        (5, False, "raison de test", "e")]
+    assert parsed.counts["skipped"] == 3 and parsed.counts["node"] == 2
+    assert_every_line_counted(parsed)
+    with pytest.raises(ValueError):
+        parsed.reject(parsed.root, "x")
+
+
 def test_dispatcher_and_unknown_syntax():
     assert cp.parse("a\n b\n", "indent").syntax == "indent"
     assert cp.parse("a {\n}\n", "braces", prefix=("p",)).flat[0].path == ("p", "a")

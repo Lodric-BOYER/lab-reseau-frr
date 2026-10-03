@@ -145,7 +145,7 @@ def test_not_applicable_appears_in_json():
     d = report.compliance_to_dict([], compliant=True, not_applicable=na)
     assert d["not_applicable"] == [
         {"rule_id": "frr-only", "device": "r5", "reason": "driver 'srlinux' non couvert",
-         "category": None, "references": None}
+         "cause": "driver", "category": None, "references": None}
     ]
     assert d["violations"] == []  # jamais mélangé aux violations
 

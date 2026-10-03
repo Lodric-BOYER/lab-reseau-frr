@@ -13,9 +13,7 @@ from pathlib import Path
 from netmiko import ConnectHandler
 
 from netcheck.drivers.base import Driver
-from netcheck.drivers.eos import EosDriver
-from netcheck.drivers.frr import FrrDriver
-from netcheck.drivers.srlinux import SrlinuxDriver
+from netcheck.drivers.registry import DRIVER_REGISTRY
 from netcheck.model import DeviceState
 
 # automation/ n'est pas un paquet Python (pas de __init__.py) : on réutilise run_parallel tel
@@ -50,13 +48,10 @@ ALLOWED_COMMANDS = {
     "show system banner",
 }
 
-# Registre des drivers disponibles, indexé par le champ "driver" de l'inventaire (Phase D1).
-# Absent de l'inventaire = "frr" (comportement historique, lab mono-constructeur inchangé).
-DRIVER_REGISTRY: dict[str, type[Driver]] = {
-    "frr": FrrDriver,
-    "srlinux": SrlinuxDriver,
-    "eos": EosDriver,
-}
+# Le registre des drivers (champ "driver" de l'inventaire, Phase D1) vit dans drivers/registry.py
+# depuis la Phase A3 de la v4 : le moteur de conformité le lit sans importer Netmiko. Le nom
+# `collector.DRIVER_REGISTRY` reste valide (même objet).
+__all__ = ["DRIVER_REGISTRY", "collect", "collect_all", "wait_for_convergence"]
 
 
 def _resolve_driver(router: dict) -> Driver:
