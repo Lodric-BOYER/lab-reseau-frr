@@ -33,6 +33,8 @@ from __future__ import annotations
 
 import json
 
+from netcheck.confparse import ParsedConfig, parse_indented
+from netcheck.drivers import eos_rules
 from netcheck.drivers.base import Driver
 from netcheck.model import BgpPeer, BgpPrefix, DeviceState, Interface, NextHop, OspfNeighbor, Route
 
@@ -62,6 +64,17 @@ class EosDriver(Driver):
     REQUIRED_COMMANDS = list(_COMMANDS)
     NEEDS_ENABLE = True
     ALLOWED_CLI = frozenset(_COMMANDS.values())
+
+    # Phase A (v4) : les règles qui lisent la syntaxe d'EOS vivent dans drivers/eos_rules.py.
+    CONFIG_CHECKS = eos_rules.CHECKS
+
+    def parse_config(self, running_config: str) -> ParsedConfig:
+        # Blocs par indentation ; « ! » est un commentaire qui ne ferme aucun bloc (vérifié sur cEOS) ;
+        # une bannière est du texte libre jusqu'à `EOF`. EOS ignore l'indentation : une sous-commande au
+        # premier niveau est signalée (voir eos_rules.flag_misplaced_subcommands).
+        cfg = parse_indented(running_config, raw_blocks=eos_rules.RAW_BLOCKS)
+        eos_rules.flag_misplaced_subcommands(cfg)
+        return cfg
 
     def translate(self, command: str) -> str:
         try:

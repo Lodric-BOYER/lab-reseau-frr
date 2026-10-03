@@ -240,18 +240,5 @@ def test_the_hardened_lab_config_exposes_no_api():
     assert not [line for line in code_lines if "management api" in line]
 
 
-# ------------------------------------------------------------------------------------------
-# Aides de parsing
-# ------------------------------------------------------------------------------------------
-
-def test_eos_blocks_splits_on_indentation():
-    text = ("hostname r4\n!\ninterface Ethernet1\n   description a\n   no switchport\n!\n"
-            "interface Ethernet2\n   mtu 1500\n")
-    blocks = compliance._eos_blocks(text, "interface ")
-    assert list(blocks) == ["Ethernet1", "Ethernet2"]
-    assert "no switchport" in blocks["Ethernet1"] and "mtu 1500" not in blocks["Ethernet1"]
-    assert "mtu 1500" in blocks["Ethernet2"]
-
-
 def test_a_device_dataclass_copy_keeps_the_eos_driver():
     assert replace(device("x")).driver == "eos"
