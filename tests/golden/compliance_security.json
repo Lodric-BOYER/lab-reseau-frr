@@ -215,6 +215,118 @@
       ]
      }
     ]
+   },
+   {
+    "rules": "security",
+    "reason": "A6 : message de la règle bannière SR Linux, sans l'expression régulière disparue (7 entrées : 2 bases, 5 mutations). Seuls les messages changent, ni verdict ni code.",
+    "code_commit": null,
+    "code_tree": "1576e3fad2860a7968bf6cc62bebf32c0764de80",
+    "targets": [
+     {
+      "case": "fixture:srlinux-r5",
+      "mutation": "base",
+      "rules_before": [
+       "srlinux-ospf-authentification-keychain",
+       "srlinux-banniere-de-connexion"
+      ],
+      "rules_after": [
+       "srlinux-ospf-authentification-keychain",
+       "srlinux-banniere-de-connexion"
+      ]
+     },
+     {
+      "case": "lab:multivendor",
+      "mutation": "base",
+      "rules_before": [
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "srlinux-ospf-authentification-keychain",
+       "ebgp-authentification-tcp-md5",
+       "ebgp-authentification-tcp-md5",
+       "ebgp-maximum-prefix",
+       "ebgp-maximum-prefix",
+       "ebgp-gtsm-ttl-security",
+       "ebgp-gtsm-ttl-security",
+       "srlinux-banniere-de-connexion"
+      ],
+      "rules_after": [
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "srlinux-ospf-authentification-keychain",
+       "ebgp-authentification-tcp-md5",
+       "ebgp-authentification-tcp-md5",
+       "ebgp-maximum-prefix",
+       "ebgp-maximum-prefix",
+       "ebgp-gtsm-ttl-security",
+       "ebgp-gtsm-ttl-security",
+       "srlinux-banniere-de-connexion"
+      ]
+     },
+     {
+      "case": "fixture:srlinux-r5",
+      "mutation": "56:36affac2",
+      "rules_before": [
+       "srlinux-banniere-de-connexion"
+      ],
+      "rules_after": [
+       "srlinux-banniere-de-connexion"
+      ]
+     },
+     {
+      "case": "fixture:srlinux-r5",
+      "mutation": "62:81aaac1c",
+      "rules_before": [
+       "srlinux-banniere-de-connexion"
+      ],
+      "rules_after": [
+       "srlinux-banniere-de-connexion"
+      ]
+     },
+     {
+      "case": "fixture:srlinux-r5",
+      "mutation": "66:19b9e7e0",
+      "rules_before": [
+       "srlinux-ospf-authentification-keychain",
+       "srlinux-ospf-authentification-keychain",
+       "srlinux-banniere-de-connexion"
+      ],
+      "rules_after": [
+       "srlinux-ospf-authentification-keychain",
+       "srlinux-ospf-authentification-keychain",
+       "srlinux-banniere-de-connexion"
+      ]
+     },
+     {
+      "case": "fixture:srlinux-r5",
+      "mutation": "69:19b9e7e0",
+      "rules_before": [
+       "srlinux-ospf-authentification-keychain",
+       "srlinux-ospf-authentification-keychain",
+       "srlinux-banniere-de-connexion"
+      ],
+      "rules_after": [
+       "srlinux-ospf-authentification-keychain",
+       "srlinux-ospf-authentification-keychain",
+       "srlinux-banniere-de-connexion"
+      ]
+     },
+     {
+      "case": "fixture:srlinux-r5-hardened",
+      "mutation": "88:68573960",
+      "rules_before": [
+       "srlinux-banniere-de-connexion"
+      ],
+      "rules_after": [
+       "srlinux-banniere-de-connexion"
+      ]
+     }
+    ]
    }
   ]
  },
@@ -1739,7 +1851,7 @@
       "basse",
       "srlinux-banniere-de-connexion",
       "r5",
-      "aucune ligne ne correspond à /^\\s*login-banner\\s/",
+      "aucune bannière de connexion (login-banner) configurée",
       "acces"
      ]
     ],
@@ -1795,7 +1907,7 @@
        "basse",
        "srlinux-banniere-de-connexion",
        "r5",
-       "aucune ligne ne correspond à /^\\s*login-banner\\s/",
+       "aucune bannière de connexion (login-banner) configurée",
        "acces"
       ]
      ]
@@ -1807,7 +1919,7 @@
        "basse",
        "srlinux-banniere-de-connexion",
        "r5",
-       "aucune ligne ne correspond à /^\\s*login-banner\\s/",
+       "aucune bannière de connexion (login-banner) configurée",
        "acces"
       ]
      ]
@@ -1832,7 +1944,7 @@
        "basse",
        "srlinux-banniere-de-connexion",
        "r5",
-       "aucune ligne ne correspond à /^\\s*login-banner\\s/",
+       "aucune bannière de connexion (login-banner) configurée",
        "acces"
       ]
      ]
@@ -1857,7 +1969,7 @@
        "basse",
        "srlinux-banniere-de-connexion",
        "r5",
-       "aucune ligne ne correspond à /^\\s*login-banner\\s/",
+       "aucune bannière de connexion (login-banner) configurée",
        "acces"
       ]
      ]
@@ -4688,7 +4800,7 @@
       "basse",
       "srlinux-banniere-de-connexion",
       "r5",
-      "aucune ligne ne correspond à /^\\s*login-banner\\s/",
+      "aucune bannière de connexion (login-banner) configurée",
       "acces"
      ]
     ],
@@ -5539,7 +5651,7 @@
        "basse",
        "srlinux-banniere-de-connexion",
        "r5",
-       "aucune ligne ne correspond à /^\\s*login-banner\\s/",
+       "aucune bannière de connexion (login-banner) configurée",
        "acces"
       ]
      ]

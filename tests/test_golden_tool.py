@@ -136,3 +136,40 @@ def test_replace_base_refuses_uncommitted_code_and_writes_nothing(sandbox, monke
     with pytest.raises(SystemExit, match="non commitées"):
         golden.replace_mutants("security", [f"{CASE}@base"], "x")
     assert snapshot_bytes() == frozen
+
+
+def stage(monkeypatch, staged="M  netcheck/x.py", unstaged="", tree="abc123"):
+    monkeypatch.setattr(golden, "_netcheck_dirty", lambda: staged)
+    monkeypatch.setattr(golden, "_netcheck_unstaged", lambda: unstaged)
+    monkeypatch.setattr(golden, "_netcheck_tree", lambda: tree)
+
+
+def test_staged_code_allows_an_atomic_commit_and_records_the_tree_not_a_commit(sandbox, monkeypatch):
+    original = tamper_base()
+    stage(monkeypatch)
+    golden.replace_mutants("security", [f"{CASE}@base"], "atomique", staged_code=True)
+    new = read("security")
+    assert new["cases"] == original["cases"]
+    revision = new["meta"]["revisions"][-1]
+    assert revision["code_commit"] is None and revision["code_tree"] == "abc123"
+
+
+def test_staged_code_refuses_unstaged_changes_and_an_empty_index(sandbox, monkeypatch):
+    tamper_base()
+    frozen = snapshot_bytes()
+    stage(monkeypatch, unstaged=" M netcheck/y.py")
+    with pytest.raises(SystemExit, match="non indexées"):
+        golden.replace_mutants("security", [f"{CASE}@base"], "x", staged_code=True)
+    stage(monkeypatch, staged="")
+    with pytest.raises(SystemExit, match="rien d'indexé"):
+        golden.replace_mutants("security", [f"{CASE}@base"], "x", staged_code=True)
+    assert snapshot_bytes() == frozen
+
+
+def test_the_real_tree_hash_is_a_git_object():
+    """`_netcheck_tree` rend bien l'empreinte d'un arbre git (celle que le commit contiendra)."""
+    import subprocess
+    tree = golden._netcheck_tree()
+    kind = subprocess.run(["git", "-C", str(golden.REPO), "cat-file", "-t", tree], capture_output=True,
+                          text=True, check=False).stdout.strip()
+    assert kind == "tree"

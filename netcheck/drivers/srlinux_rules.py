@@ -149,11 +149,11 @@ def _check_srlinux_login_banner_present(rule: Rule, device: DeviceState, cfg) ->
     texte, donc aucune forme à reconstruire pour que `check --config-dir` donne le verdict du direct (A5).
     Le préfixe `system banner` n'est volontairement pas exigé : la v0.3.0 voyait la bannière même quand le
     marqueur de section de la collecte manquait, et le gel le compare (une configuration ainsi abîmée est de
-    toute façon signalée par l'analyse). Le message est celui de la v0.3.0, qui citait l'expression
-    régulière de la règle."""
+    toute façon signalée par l'analyse). Le message de la v0.3.0 citait l'expression régulière de la règle ;
+    il dit maintenant ce qui manque (le verdict et le code ne changent pas)."""
     if any("login-banner" in line.path[:-1] for line in _config(cfg).flat):
         return []
-    return [Violation(rule, device.name, "aucune ligne ne correspond à /^\\s*login-banner\\s/")]
+    return [Violation(rule, device.name, "aucune bannière de connexion (login-banner) configurée")]
 
 
 CHECKS: dict[str, Check] = {

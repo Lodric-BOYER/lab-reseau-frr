@@ -361,6 +361,19 @@ def _netcheck_dirty() -> str:
                           capture_output=True, text=True, check=False).stdout.strip()
 
 
+def _netcheck_unstaged() -> str:
+    """Ce qui, sous netcheck/, n'est pas (entièrement) indexé : modifié après l'indexation, ou non suivi."""
+    out = subprocess.run(["git", "-C", str(REPO), "status", "--porcelain", "--", "netcheck/"],
+                         capture_output=True, text=True, check=False).stdout.splitlines()
+    return "\n".join(line for line in out if line[1] != " " or line.startswith("??"))
+
+
+def _netcheck_tree() -> str:
+    """L'empreinte de l'arbre netcheck/ tel qu'il est INDEXÉ : git la retrouvera dans le commit."""
+    return subprocess.run(["git", "-C", str(REPO), "write-tree", "--prefix=netcheck/"], capture_output=True,
+                          text=True, check=True).stdout.strip()
+
+
 def add_cases(case_ids: list[str], reason: str, reference_commit: str | None = None,
               current_code: bool = False) -> None:
     """Ajoute des cas NOUVEAUX au gel, sans toucher aux autres. Refuse d'écraser un cas existant.
@@ -428,7 +441,7 @@ def _base_now(rules, case_id: str) -> dict | None:
     return None
 
 
-def replace_mutants(rules_name: str, targets: list[str], reason: str) -> None:
+def replace_mutants(rules_name: str, targets: list[str], reason: str, staged_code: bool = False) -> None:
     """Met à jour des entrées précises du gel après un écart voulu et validé. Jamais en bloc : chaque
     cible est nommée `<cas>@<clé de mutation>` (la clé = numéro de ligne:empreinte, telle que `compare`
     l'affiche) ou `<cas>@base` (la réponse de base du cas : équipement, lab ou scénario), doit être
@@ -436,8 +449,19 @@ def replace_mutants(rules_name: str, targets: list[str], reason: str) -> None:
     qu'à cette seule entrée. Les autres entrées, bases et sondes restent identiques à l'octet. Quand une
     base et des mutations du même cas changent, la base se nomme EN PREMIER : les mutations sont des
     écarts par rapport à elle. Refuse de tourner si netcheck/ a des modifications non commitées : la
-    réponse enregistrée doit venir d'un code qui existe dans l'historique."""
-    if _netcheck_dirty():
+    réponse enregistrée doit venir d'un code qui existe dans l'historique.
+
+    `staged_code` permet le commit ATOMIQUE (le code et le gel dans le même commit, donc jamais de gel
+    rouge dans l'historique) : tout netcheck/ doit alors être indexé (`git add`), rien de plus, et la
+    révision enregistre l'empreinte de l'arbre indexé (`code_tree`) au lieu d'un commit qui n'existe pas
+    encore : `git rev-parse <commit>:netcheck` la retrouvera dans le commit qui suit."""
+    if staged_code:
+        if _netcheck_unstaged():
+            raise SystemExit("--staged-code : netcheck/ a des modifications non indexées ou des fichiers non "
+                             "suivis : indexez tout (git add), le gel garde l'empreinte de l'arbre indexé")
+        if not _netcheck_dirty():
+            raise SystemExit("--staged-code : rien d'indexé sous netcheck/ : utilisez replace sans l'option")
+    elif _netcheck_dirty():
         raise SystemExit("netcheck/ a des modifications non commitées : commitez le code d'abord, "
                          "le gel enregistre la réponse d'un code qui existe dans l'historique")
     path = golden_path(rules_name)
@@ -477,8 +501,10 @@ def replace_mutants(rules_name: str, targets: list[str], reason: str) -> None:
             return [v[1] for v in {**base, **(delta or {})}.get("violations", [])]
         revisions.append({"case": case_id, "mutation": key,
                           "rules_before": ids(before), "rules_after": ids(after)})
+    code = ({"code_commit": None, "code_tree": _netcheck_tree()} if staged_code
+            else {"code_commit": _code_commit()})
     data["meta"].setdefault("revisions", []).append(
-        {"rules": rules_name, "reason": reason, "code_commit": _code_commit(), "targets": revisions})
+        {"rules": rules_name, "reason": reason, **code, "targets": revisions})
     _write(path, data)
     print(f"{rules_name} : {len(revisions)} mutation(s) mise(s) à jour")
 
@@ -550,6 +576,9 @@ def main(argv: list[str] | None = None) -> int:
     rep.add_argument("rules", choices=sorted(RULE_FILES))
     rep.add_argument("targets", nargs="+", help="<cas>@<clé de mutation>, une par écart validé")
     rep.add_argument("--reason", required=True)
+    rep.add_argument("--staged-code", action="store_true",
+                     help="commit atomique : netcheck/ entièrement indexé, la révision garde l'empreinte de "
+                          "l'arbre indexé (retrouvée dans le commit qui suit)")
     ref = sub.add_parser("reference")
     ref.add_argument("action", choices=["record", "compare"])
     args = parser.parse_args(argv)
@@ -581,7 +610,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "replace":
-        replace_mutants(args.rules, args.targets, args.reason)
+        replace_mutants(args.rules, args.targets, args.reason, args.staged_code)
         return 0
 
     if args.command == "compare":

@@ -80,7 +80,9 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   plus un `line_present` sur le texte (`^\s*login-banner\s`, qui ne voyait pas la ligne
   `set / system banner login-banner …` du fichier de démarrage) mais le kind `srlinux_login_banner_present`,
   qui lit le chemin `login-banner <texte>` dans les deux syntaxes. Réponses identiques sur tout le gel et
-  sur les snapshots réels ; message inchangé.
+  sur les snapshots réels. Le message ne cite plus l'expression régulière disparue : « aucune bannière
+  de connexion (login-banner) configurée » (7 entrées du gel, tracées dans `meta.revisions` ; ni verdict ni
+  code ne changent).
 - API : `compliance.evaluate_config()` (violations, non applicables, avertissements d'analyse) ;
   `compliance.evaluate()` garde sa forme historique. `verdict()` accepte les avertissements.
 - Rapports : JSON enrichi de `status`, `summary`, `config_analysis` et de `cause` par règle non

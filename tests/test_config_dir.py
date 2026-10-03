@@ -308,7 +308,7 @@ def test_the_srlinux_banner_is_read_on_the_path_in_both_syntaxes():
         assert compliance.check_one(BANNER_RULE, srlinux(text)) == []
         without = "\n".join(line for line in text.splitlines() if "login-banner" not in line) + "\n"
         detail = [v.detail for v in compliance.check_one(BANNER_RULE, srlinux(without))]
-        assert detail == ["aucune ligne ne correspond à /^\\s*login-banner\\s/"]
+        assert detail == ["aucune bannière de connexion (login-banner) configurée"]
 
 
 def test_the_srlinux_banner_rule_no_longer_reads_text():
