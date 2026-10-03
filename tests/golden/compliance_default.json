@@ -32,6 +32,27 @@
     ],
     "code_commit": "b56a775",
     "reason": "A3a : chemin « violation réelle » de ebgp-pas-de-reinjection-de-prefixes-locaux. Le gel ne l'exerçait que par les faux positifs de la v0.3.0 (suppression d'un exit), corrigés ensuite. Réponse évaluée par le code de b56a775 (git archive), pas par le moteur courant."
+   },
+   {
+    "cases": [
+     "peergroup:eos_s1_group",
+     "peergroup:eos_s2_override",
+     "peergroup:eos_s3_open_group",
+     "peergroup:eos_s5_orphan_group",
+     "peergroup:eos_s6_listen_group",
+     "peergroup:eos_s7_listen_open_group",
+     "peergroup:frr_s1_group",
+     "peergroup:frr_s2_override",
+     "peergroup:frr_s3_open_group",
+     "peergroup:frr_s4_external",
+     "peergroup:frr_s5_orphan_group",
+     "peergroup:frr_s6_listen_group",
+     "peergroup:frr_s7_listen_open_group",
+     "scenario:eos-peergroup-member-maximum-routes-0"
+    ],
+    "code_commit": "914a4b3",
+    "reason": "A4 : peer groups BGP et plages dynamiques (13 relevés en direct de r3 FRR et r4 cEOS) et limite 0 sur un membre. Capacité nouvelle : réponses validées en tableau (cas, v0.3.0, nouvelle réponse, justification), code fe6b04e/914a4b3",
+    "current_code": true
    }
   ],
   "revisions": [
@@ -2334,6 +2355,2328 @@
       "srlinux-ospf-point-to-point",
       "r3",
       "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   }
+  },
+  "peergroup:eos_s1_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "syslog-actif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-entrante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-sortante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lan-en-ospf-passif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-pas-de-route-defaut-statique",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-ospf-router-id-explicite",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 87,
+   "mutants_changed": {}
+  },
+  "peergroup:eos_s2_override": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "syslog-actif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-entrante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-sortante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lan-en-ospf-passif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-pas-de-route-defaut-statique",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-ospf-router-id-explicite",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 89,
+   "mutants_changed": {}
+  },
+  "peergroup:eos_s3_open_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "syslog-actif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-entrante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-sortante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lan-en-ospf-passif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-pas-de-route-defaut-statique",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-ospf-router-id-explicite",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {}
+  },
+  "peergroup:eos_s5_orphan_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "syslog-actif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-entrante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-sortante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lan-en-ospf-passif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-pas-de-route-defaut-statique",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-ospf-router-id-explicite",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {}
+  },
+  "peergroup:eos_s6_listen_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "syslog-actif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-entrante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-sortante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lan-en-ospf-passif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-pas-de-route-defaut-statique",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-ospf-router-id-explicite",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 86,
+   "mutants_changed": {}
+  },
+  "peergroup:eos_s7_listen_open_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "syslog-actif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-entrante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-sortante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lan-en-ospf-passif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-pas-de-route-defaut-statique",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-ospf-router-id-explicite",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {}
+  },
+  "peergroup:frr_s1_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 89,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "syslog-actif",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       null
+      ],
+      [
+       "moyenne",
+       "lodric-journalisation-active",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog/",
+       null
+      ]
+     ]
+    },
+    "67:f54aca0a": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.1 (peer group PG-TEST) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.2 (peer group PG-TEST) sans route-map/prefix-list en entrée",
+       null
+      ]
+     ]
+    },
+    "68:2fd0750e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.1 (peer group PG-TEST) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.2 (peer group PG-TEST) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "70:e41c0385": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans route-map/prefix-list en entrée",
+       null
+      ]
+     ]
+    },
+    "71:9d44bc02": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "76:2ffec6c2": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "lodric-ospf-router-id-explicite",
+       "r3",
+       "aucune ligne ne correspond à /^\\s*ospf router-id \\d+\\.\\d+\\.\\d+\\.\\d+/",
+       null
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'password ****'",
+       null
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'enable password ****'",
+       null
+      ]
+     ]
+    },
+    "probe:static-default-route": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "lodric-pas-de-route-defaut-statique",
+       "r3",
+       "ligne interdite trouvée : 'ip route 0.0.0.0/0 10.0.0.1'",
+       null
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@50": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:frr_s2_override": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ebgp-politique-entrante",
+      "r3",
+      "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+      null
+     ],
+     [
+      "haute",
+      "ebgp-politique-entrante",
+      "r3",
+      "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+      null
+     ],
+     [
+      "haute",
+      "ebgp-politique-sortante",
+      "r3",
+      "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+      null
+     ],
+     [
+      "haute",
+      "ebgp-politique-sortante",
+      "r3",
+      "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+      null
+     ]
+    ],
+    "not_applicable": [
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 91,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "violations": [
+      [
+       "basse",
+       "syslog-actif",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "moyenne",
+       "lodric-journalisation-active",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog/",
+       null
+      ]
+     ]
+    },
+    "50:187410a0": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "53:4eee154a": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "56:04902fe0": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "58:a4301744": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "71:e41c0385": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "72:9d44bc02": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "77:2ffec6c2": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "basse",
+       "lodric-ospf-router-id-explicite",
+       "r3",
+       "aucune ligne ne correspond à /^\\s*ospf router-id \\d+\\.\\d+\\.\\d+\\.\\d+/",
+       null
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'password ****'",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'enable password ****'",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "probe:static-default-route": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "lodric-pas-de-route-defaut-statique",
+       "r3",
+       "ligne interdite trouvée : 'ip route 0.0.0.0/0 10.0.0.1'",
+       null
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@50": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:frr_s3_open_group": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ebgp-politique-entrante",
+      "r3",
+      "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en entrée",
+      null
+     ],
+     [
+      "haute",
+      "ebgp-politique-sortante",
+      "r3",
+      "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en sortie",
+      null
+     ]
+    ],
+    "not_applicable": [
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 82,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "violations": [
+      [
+       "basse",
+       "syslog-actif",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "moyenne",
+       "lodric-journalisation-active",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog/",
+       null
+      ]
+     ]
+    },
+    "50:187410a0": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "53:cd9299bf": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "54:4693a9a3": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "64:e41c0385": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "65:9d44bc02": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "70:2ffec6c2": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "basse",
+       "lodric-ospf-router-id-explicite",
+       "r3",
+       "aucune ligne ne correspond à /^\\s*ospf router-id \\d+\\.\\d+\\.\\d+\\.\\d+/",
+       null
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'password ****'",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'enable password ****'",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "probe:static-default-route": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "lodric-pas-de-route-defaut-statique",
+       "r3",
+       "ligne interdite trouvée : 'ip route 0.0.0.0/0 10.0.0.1'",
+       null
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@50": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:frr_s4_external": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ebgp-politique-entrante",
+      "r3",
+      "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en entrée",
+      null
+     ],
+     [
+      "haute",
+      "ebgp-politique-entrante",
+      "r3",
+      "voisin eBGP 192.0.2.6 sans route-map/prefix-list en entrée",
+      null
+     ],
+     [
+      "haute",
+      "ebgp-politique-sortante",
+      "r3",
+      "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en sortie",
+      null
+     ],
+     [
+      "haute",
+      "ebgp-politique-sortante",
+      "r3",
+      "voisin eBGP 192.0.2.6 sans route-map/prefix-list en sortie",
+      null
+     ]
+    ],
+    "not_applicable": [
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 84,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "violations": [
+      [
+       "basse",
+       "syslog-actif",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "moyenne",
+       "lodric-journalisation-active",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog/",
+       null
+      ]
+     ]
+    },
+    "50:187410a0": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "53:246efbe6": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "54:2fdb4dbd": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "59:42fada51": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "66:e41c0385": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "67:9d44bc02": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "72:2ffec6c2": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "basse",
+       "lodric-ospf-router-id-explicite",
+       "r3",
+       "aucune ligne ne correspond à /^\\s*ospf router-id \\d+\\.\\d+\\.\\d+\\.\\d+/",
+       null
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'password ****'",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'enable password ****'",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "probe:static-default-route": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "lodric-pas-de-route-defaut-statique",
+       "r3",
+       "ligne interdite trouvée : 'ip route 0.0.0.0/0 10.0.0.1'",
+       null
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@50": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:frr_s5_orphan_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 82,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "syslog-actif",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       null
+      ],
+      [
+       "moyenne",
+       "lodric-journalisation-active",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog/",
+       null
+      ]
+     ]
+    },
+    "52:1a29963e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP PG-ORPHAN sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP PG-ORPHAN sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "64:e41c0385": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans route-map/prefix-list en entrée",
+       null
+      ]
+     ]
+    },
+    "65:9d44bc02": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "70:2ffec6c2": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "lodric-ospf-router-id-explicite",
+       "r3",
+       "aucune ligne ne correspond à /^\\s*ospf router-id \\d+\\.\\d+\\.\\d+\\.\\d+/",
+       null
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'password ****'",
+       null
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'enable password ****'",
+       null
+      ]
+     ]
+    },
+    "probe:static-default-route": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "lodric-pas-de-route-defaut-statique",
+       "r3",
+       "ligne interdite trouvée : 'ip route 0.0.0.0/0 10.0.0.1'",
+       null
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@50": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:frr_s6_listen_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 88,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "syslog-actif",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       null
+      ],
+      [
+       "moyenne",
+       "lodric-journalisation-active",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog/",
+       null
+      ]
+     ]
+    },
+    "66:8dd7558d": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN) sans route-map/prefix-list en entrée",
+       null
+      ]
+     ]
+    },
+    "67:fa3c4e3f": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "69:e41c0385": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans route-map/prefix-list en entrée",
+       null
+      ]
+     ]
+    },
+    "70:9d44bc02": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "75:2ffec6c2": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "lodric-ospf-router-id-explicite",
+       "r3",
+       "aucune ligne ne correspond à /^\\s*ospf router-id \\d+\\.\\d+\\.\\d+\\.\\d+/",
+       null
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'password ****'",
+       null
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'enable password ****'",
+       null
+      ]
+     ]
+    },
+    "probe:static-default-route": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "lodric-pas-de-route-defaut-statique",
+       "r3",
+       "ligne interdite trouvée : 'ip route 0.0.0.0/0 10.0.0.1'",
+       null
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@50": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:frr_s7_listen_open_group": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ebgp-politique-entrante",
+      "r3",
+      "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en entrée",
+      null
+     ],
+     [
+      "haute",
+      "ebgp-politique-sortante",
+      "r3",
+      "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en sortie",
+      null
+     ]
+    ],
+    "not_applicable": [
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 82,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "violations": [
+      [
+       "basse",
+       "syslog-actif",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "moyenne",
+       "lodric-journalisation-active",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog/",
+       null
+      ]
+     ]
+    },
+    "50:187410a0": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "53:9febd095": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "58:7110b20f": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "64:e41c0385": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "65:9d44bc02": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "70:2ffec6c2": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "basse",
+       "lodric-ospf-router-id-explicite",
+       "r3",
+       "aucune ligne ne correspond à /^\\s*ospf router-id \\d+\\.\\d+\\.\\d+\\.\\d+/",
+       null
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'password ****'",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'enable password ****'",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "probe:static-default-route": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "lodric-pas-de-route-defaut-statique",
+       "r3",
+       "ligne interdite trouvée : 'ip route 0.0.0.0/0 10.0.0.1'",
+       null
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@50": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en sortie",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    }
+   }
+  },
+  "scenario:eos-peergroup-member-maximum-routes-0": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "syslog-actif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-entrante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-sortante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lan-en-ospf-passif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-pas-de-route-defaut-statique",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-ospf-router-id-explicite",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
      ]
     ]
    }

@@ -32,6 +32,27 @@
     ],
     "code_commit": "b56a775",
     "reason": "A3a : chemin « violation réelle » de ebgp-pas-de-reinjection-de-prefixes-locaux. Le gel ne l'exerçait que par les faux positifs de la v0.3.0 (suppression d'un exit), corrigés ensuite. Réponse évaluée par le code de b56a775 (git archive), pas par le moteur courant."
+   },
+   {
+    "cases": [
+     "peergroup:eos_s1_group",
+     "peergroup:eos_s2_override",
+     "peergroup:eos_s3_open_group",
+     "peergroup:eos_s5_orphan_group",
+     "peergroup:eos_s6_listen_group",
+     "peergroup:eos_s7_listen_open_group",
+     "peergroup:frr_s1_group",
+     "peergroup:frr_s2_override",
+     "peergroup:frr_s3_open_group",
+     "peergroup:frr_s4_external",
+     "peergroup:frr_s5_orphan_group",
+     "peergroup:frr_s6_listen_group",
+     "peergroup:frr_s7_listen_open_group",
+     "scenario:eos-peergroup-member-maximum-routes-0"
+    ],
+    "code_commit": "914a4b3",
+    "reason": "A4 : peer groups BGP et plages dynamiques (13 relevés en direct de r3 FRR et r4 cEOS) et limite 0 sur un membre. Capacité nouvelle : réponses validées en tableau (cas, v0.3.0, nouvelle réponse, justification), code fe6b04e/914a4b3",
+    "current_code": true
    }
   ],
   "revisions": [
@@ -5586,6 +5607,5260 @@
       "eos-api-gestion-exposee",
       "r3",
       "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   }
+  },
+  "peergroup:eos_s1_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ]
+    ]
+   },
+   "mutants_total": 87,
+   "mutants_changed": {
+    "33:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "35:183e7882": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : message-digest activé mais aucune clé md5 configurée",
+       "ospf"
+      ]
+     ]
+    },
+    "63:a9dddadf": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.1 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.2 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "66:cab8c420": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.1 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.2 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "67:3c4c1314": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.1 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.2 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "70:309a8686": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "73:c847a6c5": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "74:52acb5e4": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "89:55f23123": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "90:5aa8af9d": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Loopback0 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@59": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@67": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.1 (peer group PG-TEST) : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.2 (peer group PG-TEST) : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@74": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:eos_s2_override": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ]
+    ]
+   },
+   "mutants_total": 89,
+   "mutants_changed": {
+    "33:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "35:183e7882": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : message-digest activé mais aucune clé md5 configurée",
+       "ospf"
+      ]
+     ]
+    },
+    "63:e780d9ce": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "64:a94530b1": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "65:f386d052": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "68:309a8686": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "71:c847a6c5": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "72:52acb5e4": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "90:55f23123": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "91:5aa8af9d": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Loopback0 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@59": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@65": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@72": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@77": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:eos_s3_open_group": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "eos-ebgp-authentification-tcp-md5",
+      "r4",
+      "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r4",
+      "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl maximum-hops)",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "eos-ebgp-maximum-routes",
+      "r4",
+      "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-routes",
+      "bgp"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {
+    "33:4e2f7b4e": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "35:183e7882": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : message-digest activé mais aucune clé md5 configurée",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "59:91caf8c9": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "62:cd9299bf": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "65:309a8686": {
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "68:c847a6c5": {
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "69:52acb5e4": {
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-routes",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "70:b762e7a3": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "83:55f23123": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "84:5aa8af9d": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Loopback0 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@59": {
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans limite maximum-routes",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@69": {
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:eos_s5_orphan_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {
+    "33:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "35:183e7882": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : message-digest activé mais aucune clé md5 configurée",
+       "ospf"
+      ]
+     ]
+    },
+    "61:cdbec1a5": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP PG-ORPHAN sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP PG-ORPHAN sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "66:309a8686": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "69:c847a6c5": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "70:52acb5e4": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "83:55f23123": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "84:5aa8af9d": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Loopback0 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@59": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@70": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:eos_s6_listen_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ]
+    ]
+   },
+   "mutants_total": 86,
+   "mutants_changed": {
+    "33:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "35:183e7882": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : message-digest activé mais aucune clé md5 configurée",
+       "ospf"
+      ]
+     ]
+    },
+    "64:3cd9ae4d": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "67:3ee32139": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "68:e84af267": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "71:309a8686": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "74:c847a6c5": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "75:52acb5e4": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "88:55f23123": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "89:5aa8af9d": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Loopback0 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@59": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@68": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN) : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@75": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:eos_s7_listen_open_group": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "eos-ebgp-authentification-tcp-md5",
+      "r4",
+      "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r4",
+      "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl maximum-hops)",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "eos-ebgp-maximum-routes",
+      "r4",
+      "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-routes",
+      "bgp"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {
+    "33:4e2f7b4e": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "35:183e7882": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : message-digest activé mais aucune clé md5 configurée",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "59:91caf8c9": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "61:86fe1892": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "66:309a8686": {
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "69:c847a6c5": {
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "70:52acb5e4": {
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-routes",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "83:55f23123": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "84:5aa8af9d": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Loopback0 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@59": {
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans limite maximum-routes",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@70": {
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-routes",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:frr_s1_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 89,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "securite-journalisation-active",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       "journalisation"
+      ]
+     ]
+    },
+    "23:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "32:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "41:077c3838": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth3 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "47:077c3838": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface lo : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "54:1e798c57": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.1 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.2 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "55:08f5d022": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.1 (peer group PG-TEST) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.2 (peer group PG-TEST) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "60:95313dd9": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "61:48bfb93d": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "66:c9bf7485": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.1 (peer group PG-TEST) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.2 (peer group PG-TEST) sans limite maximum-prefix",
+       "bgp"
+      ]
+     ]
+    },
+    "69:9175810f": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'enable password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@14": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.1 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.2 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@14": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.1 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.2 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@15": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.1 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.2 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@15": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.1 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.2 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@50": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:frr_s2_override": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 91,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "securite-journalisation-active",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       "journalisation"
+      ]
+     ]
+    },
+    "23:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "32:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "41:077c3838": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth3 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "47:077c3838": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface lo : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "54:8d84f61b": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.4 (peer group PG-OVR) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "55:3170e7f3": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "62:95313dd9": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "63:48bfb93d": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "68:b1230266": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.3 (peer group PG-OVR) sans limite maximum-prefix",
+       "bgp"
+      ]
+     ]
+    },
+    "70:9175810f": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'enable password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@14": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@14": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@15": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@15": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@50": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:frr_s3_open_group": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ebgp-authentification-tcp-md5",
+      "r3",
+      "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-maximum-prefix",
+      "r3",
+      "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-prefix",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-gtsm-ttl-security",
+      "r3",
+      "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl-security hops)",
+      "bgp"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 82,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "basse",
+       "securite-journalisation-active",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       "journalisation"
+      ]
+     ]
+    },
+    "23:4e2f7b4e": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "32:4e2f7b4e": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "41:077c3838": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth3 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "47:077c3838": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface lo : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "50:187410a0": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "53:cd9299bf": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "54:4693a9a3": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "57:95313dd9": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "58:48bfb93d": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "63:9175810f": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'enable password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@14": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@14": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@15": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@15": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@50": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:frr_s4_external": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ebgp-authentification-tcp-md5",
+      "r3",
+      "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans authentification TCP-MD5 (mot de passe)",
+      "bgp"
+     ],
+     [
+      "haute",
+      "ebgp-authentification-tcp-md5",
+      "r3",
+      "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-maximum-prefix",
+      "r3",
+      "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans limite maximum-prefix",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-maximum-prefix",
+      "r3",
+      "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-gtsm-ttl-security",
+      "r3",
+      "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans GTSM (ttl-security hops)",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-gtsm-ttl-security",
+      "r3",
+      "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+      "bgp"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 84,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "basse",
+       "securite-journalisation-active",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       "journalisation"
+      ]
+     ]
+    },
+    "23:4e2f7b4e": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "32:4e2f7b4e": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "41:077c3838": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth3 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "47:077c3838": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface lo : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "50:187410a0": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "53:246efbe6": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "54:2fdb4dbd": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "57:95313dd9": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "58:48bfb93d": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "59:42fada51": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "65:9175810f": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'enable password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@14": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@14": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@15": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@15": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@50": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.8 (peer group PG-EXTERN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.6 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:frr_s5_orphan_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 82,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "securite-journalisation-active",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       "journalisation"
+      ]
+     ]
+    },
+    "23:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "32:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "41:077c3838": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth3 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "47:077c3838": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface lo : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "52:1a29963e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP PG-ORPHAN sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP PG-ORPHAN sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "57:95313dd9": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "58:48bfb93d": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "63:9175810f": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'enable password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@14": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@14": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@15": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@15": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@50": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:frr_s6_listen_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 88,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "securite-journalisation-active",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       "journalisation"
+      ]
+     ]
+    },
+    "23:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "32:4e2f7b4e": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "41:077c3838": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth3 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "47:077c3838": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface lo : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "54:6038656c": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "55:a20d69c5": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "58:95313dd9": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "59:48bfb93d": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "65:55bbcc4c": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN) sans limite maximum-prefix",
+       "bgp"
+      ]
+     ]
+    },
+    "68:9175810f": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'enable password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@14": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@14": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@15": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@15": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@50": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "peergroup:frr_s7_listen_open_group": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ebgp-authentification-tcp-md5",
+      "r3",
+      "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-maximum-prefix",
+      "r3",
+      "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-prefix",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "ebgp-gtsm-ttl-security",
+      "r3",
+      "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl-security hops)",
+      "bgp"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "eos-ospf-authentification-message-digest",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-authentification-tcp-md5",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ebgp-maximum-routes",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-api-gestion-exposee",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 82,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "basse",
+       "securite-journalisation-active",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       "journalisation"
+      ]
+     ]
+    },
+    "23:4e2f7b4e": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "32:4e2f7b4e": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "41:077c3838": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface eth3 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "47:077c3838": {
+     "violations": [
+      [
+       "haute",
+       "ospf-authentification-message-digest",
+       "r3",
+       "interface lo : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "50:187410a0": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "53:9febd095": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "56:95313dd9": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "57:48bfb93d": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "58:7110b20f": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "63:9175810f": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "critique",
+       "securite-pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'enable password ****'",
+       "acces"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@14": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@14": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@15": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@15": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r3",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.2) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@50": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-authentification-tcp-md5",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-maximum-prefix",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-prefix",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl-security hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "ebgp-gtsm-ttl-security",
+       "r3",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl-security hops)",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "scenario:eos-peergroup-member-maximum-routes-0": {
+   "base": {
+    "compliant": false,
+    "code": 1,
+    "violations": [
+     [
+      "moyenne",
+      "eos-ebgp-maximum-routes",
+      "r4",
+      "voisin eBGP 192.0.2.4 (peer group PG-OVR) : maximum-routes 0 (illimité) n'est pas une limite",
+      "bgp"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ]
     ]
    }

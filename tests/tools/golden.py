@@ -132,6 +132,12 @@ def devices() -> dict[str, DeviceState]:
     for r in ("r1", "r2", "r3", "r4", "r5"):
         out[f"config:frr-{r}"] = _config_only(r, "frr", INPUTS / f"frr_{r}.conf")
     out["config:eos-r4"] = _config_only("r4", "eos", INPUTS / "eos_r4.startup-config")
+    # Ajoutés en A4 (peer groups) : `running-config` relevées en direct sur r3 (FRR) et r4 (cEOS), sans
+    # modèle (configuration seule). Capacité nouvelle : leur réponse est celle du code A4
+    # (`add --current-code`).
+    for path in sorted((FIXTURES / "peergroups").glob("*.txt")):
+        vendor = path.stem.split("_")[0]
+        out[f"peergroup:{path.stem}"] = _config_only("r3" if vendor == "frr" else "r4", vendor, path)
     return out
 
 
@@ -144,7 +150,12 @@ def scenarios() -> dict[str, dict[str, DeviceState]]:
     assert r3.count(anchor) == 1
     # La politique d'entrée autorise 10.1.0.0/16, un préfixe que r3 annonce lui-même : réinjection.
     reinjection = r3.replace(anchor, anchor + "ip prefix-list PL-EBGP-IN seq 30 permit 10.1.0.0/16\n")
-    return {"scenario:frr-r3-reinjection": {"r3": _config_text("r3", "frr", reinjection)}}
+    # A4 : la limite d'un membre de peer group est posée à 0 (illimité sur EOS) alors que son groupe en a une.
+    eos = (FIXTURES / "peergroups" / "eos_s2_override.txt").read_text(encoding="utf-8")
+    assert eos.count("neighbor 192.0.2.4 maximum-routes 20") == 1
+    unlimited = eos.replace("neighbor 192.0.2.4 maximum-routes 20", "neighbor 192.0.2.4 maximum-routes 0")
+    return {"scenario:frr-r3-reinjection": {"r3": _config_text("r3", "frr", reinjection)},
+            "scenario:eos-peergroup-member-maximum-routes-0": {"r4": _config_text("r4", "eos", unlimited)}}
 
 
 def labs() -> dict[str, dict[str, DeviceState]]:
