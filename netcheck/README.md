@@ -28,19 +28,32 @@ netcheck/
 │                           # partagé par diff.py et compliance.py
 ├── model.py                # dataclasses normalisées : Interface, Route, OspfNeighbor,
 │                           # BgpPeer, BgpPrefix, DeviceState
+├── confparse.py            # analyse structurelle d'une configuration (indentation, accolades, `set`) ;
+│                           # aucune ligne ignorée en silence (Phase A v4, étape A2)
+├── configdir.py            # lecture de fichiers de configuration hors ligne : `check --config-dir` (A5)
+├── ruletypes.py            # Rule, Violation, NotApplicable, ConfigWarning, Check : types partagés entre
+│                           # le moteur et les drivers
 ├── drivers/
 │   ├── base.py             # interface commune d'un constructeur (voir plus bas)
-│   ├── frr.py               # driver FRRouting
-│   ├── srlinux.py           # driver Nokia SR Linux (lab multi-constructeurs, Phase D1)
-│   └── eos.py               # driver Arista EOS / cEOS (Phase F) : enable(), liste blanche exacte
+│   ├── registry.py          # DRIVER_REGISTRY (collector.DRIVER_REGISTRY en est le même objet)
+│   ├── frr.py               # driver FRRouting ...
+│   ├── frr_rules.py         # ... et ses évaluateurs de règles de configuration
+│   ├── srlinux.py           # driver Nokia SR Linux (lab multi-constructeurs, Phase D1) ...
+│   ├── srlinux_rules.py     # ... et ses évaluateurs
+│   ├── eos.py               # driver Arista EOS / cEOS (Phase F) : enable(), liste blanche exacte ...
+│   ├── eos_rules.py         # ... et ses évaluateurs
+│   └── bgp_neighbors.py     # vue « voisin BGP effectif » (peer groups, plages dynamiques), FRR et EOS
 ├── snapshot.py             # sauvegarde/chargement JSON (snapshots/<nom>/*.json + meta.json)
 ├── diff.py                  # compare deux DeviceState -> Finding (CRITIQUE/ATTENTION/INFO)
-├── compliance.py           # charge des règles YAML (yaml.safe_load), les applique -> Violation
+├── compliance.py           # le MOTEUR : charge les règles YAML (yaml.safe_load), résout l'évaluateur chez
+│                           # le driver de chaque équipement, verdict ; plus aucune syntaxe de constructeur
 ├── report.py                # sorties terminal (rich), JSON, HTML (Jinja2, autoescape)
 ├── templates/               # report.html.j2 (diff), compliance.html.j2 (check)
 └── rules/default.yml        # règles de conformité par défaut
 tests/
-├── fixtures/                # sorties JSON réelles capturées sur le lab (pas inventées)
+├── fixtures/                # sorties et configurations réelles capturées sur les labs (pas inventées)
+├── golden/                  # gel de la conformité : réponses sur des configurations réelles + mutations
+├── tools/golden.py          # enregistre, compare, ajoute et met à jour le gel (jamais en bloc)
 ├── test_*.py                 # tests unitaires (pytest)
 └── integration.sh            # scénarios de bout en bout sur le lab déployé
 ```
@@ -55,12 +68,13 @@ donnée séparément (`diff.py`), classe les constats par gravité, produit un r
 (`report.py`).
 
 **Flux d'une commande `check`** : `cli.py` charge les règles YAML (`compliance.py`, validées
-avant tout usage), collecte en direct ou charge un snapshot, applique chaque règle à chaque
-équipement concerné, produit un rapport. Trois états possibles par (règle, équipement), Phase
-D2 : conforme (aucun `Violation`), non-conforme (`Violation`), ou **non applicable**
-(`NotApplicable` -- le champ optionnel `drivers:` de la règle ne couvre pas le driver de cet
-équipement). "Non applicable" n'est ni conforme ni une violation : il apparaît dans les 3
-sorties (terminal, JSON, HTML) mais n'entre jamais dans `verdict()` ni le code retour.
+avant tout usage), collecte en direct, charge un snapshot ou lit des fichiers (`--config-dir`), puis
+`compliance.evaluate_config()` applique chaque règle à chaque équipement concerné : le moteur résout
+l'évaluateur du `kind` de la règle chez le **driver** de l'équipement, qui analyse lui-même la
+configuration (`Driver.parse_config`). Trois états possibles par (règle, équipement) : conforme (aucun
+`Violation`), non-conforme (`Violation`), ou **non applicable** (`NotApplicable`, trois causes, voir plus
+bas). "Non applicable" n'est ni conforme ni une violation : il apparaît dans les 3 sorties (terminal, JSON,
+HTML) mais n'entre jamais dans `verdict()` ni le code retour.
 
 ### Audit hors ligne : `check --config-dir` (Phase A5)
 
@@ -92,6 +106,74 @@ les fichiers de démarrage du dépôt donnent le même verdict que l'audit en di
   ni une règle hors sujet ni un trou d'un driver. Les règles de `security.yml` ne lisent que la configuration :
   aucune n'est perdue.
 - Le rapport (terminal, JSON `source`, HTML) donne, pour chaque équipement, son driver et son fichier.
+
+### Configuration structurée et règles dans les drivers (Phase A, v4)
+
+**Pourquoi.** En v0.3.0, `compliance.py` lisait le TEXTE des configurations par expressions régulières
+(836 lignes, trois syntaxes de constructeur mêlées). Résultat, mesuré : un bloc sans `exit` faisait
+disparaître une interface du rapport, `no ip ospf passive` était lu comme `ip ospf passive`, un
+`password` en double espace passait pour une absence de mot de passe. Depuis la Phase A, chaque driver
+**analyse** sa configuration en arbre et ses règles lisent l'arbre : `compliance.py` n'est plus que le moteur
+(un test statique, `tests/test_compliance_neutrality.py`, échoue si une syntaxe de constructeur y revient).
+
+**`confparse.py`** (bibliothèque standard, neutre vis-à-vis des constructeurs) : trois syntaxes, un seul
+résultat (`ParsedConfig`) : `parse_indented` (FRR, EOS), `parse_braces` (SR Linux, « info from running »),
+`parse_set` (SR Linux, lignes `set / …`). Tous donnent la même **vue plate** (un chemin de mots par ligne
+feuille, `ParsedConfig.select(...)`) : une règle SR Linux s'écrit une fois pour les deux syntaxes.
+**Exigence : aucune ligne n'est ignorée en silence.** Chaque ligne de la source tombe dans exactement une
+classe (blanc, commentaire, noeud, fermeture, brut, non conservée : la somme des classes égale le nombre de
+lignes, testé), et tout ce qui est douteux produit un `ParseWarning` (texte tronqué et **secrets masqués**).
+
+**Ce que le rapport dit d'une ligne douteuse** (jamais « conforme » sur une configuration qu'on n'a pas
+entièrement lue ; trois sorties, JSON `status`) :
+
+| Libellé | Cas | Effet |
+|---|---|---|
+| **ANALYSE INCOMPLÈTE** | une ligne n'a pas pu être lue (**NON LUE**), sans violation | code 1 au minimum |
+| **STRUCTURE INCERTAINE** | ligne lue et évaluée, mais sa place est incertaine (accolade fermante manquante) | code 1 au minimum ; les violations s'affichent quand même |
+| **NON AUDITÉ** | hors ligne, un fichier qui ressemble à une configuration n'a pas pu être lu | code 1 au minimum, compté à part |
+| information | ligne lue mais ambiguë, ou entrée de dossier qui n'est pas une configuration | aucun |
+| NON CONFORME | une violation réelle (jamais pour une ligne non lue : ce serait affirmer une violation non prouvée) | code 1 ou 2 |
+
+**L'interface d'un driver pour ses règles** (`drivers/base.py`) :
+
+```python
+class MonDriver(Driver):
+    CONFIG_CHECKS = {            # kind de règle YAML -> évaluateur
+        "mon_kind": Check(fn, needs=frozenset({"config"})),   # + "interfaces" si fn lit le modèle collecté
+    }
+    CONFIG_FILENAMES = ("mon.conf",)      # nom reconnu par `check --config-dir`
+    def parse_config(self, texte): ...    # -> ParsedConfig (confparse) ; ne lève jamais
+```
+
+`fn(rule, device, config) -> list[Violation]` lit `config` (l'arbre), jamais le texte. Les kinds neutres
+(`line_present`, `line_absent` : l'expression régulière est dans la règle YAML ;
+`interface_description_required` : lit le modèle) restent dans le moteur. Une règle qui cite dans `drivers:`
+un driver qui n'implémente pas son kind est **refusée au chargement**. `compliance.check_one(règle,
+équipement)` évalue une règle sur un équipement par le chemin complet (utile aux tests).
+
+**Trois causes de « non applicable »**, comptées à part dans la synthèse :
+« hors sujet » (la règle ne liste pas le driver : un choix), « **non implémenté par le driver X** » (la règle
+le concerne mais il ne sait pas l'évaluer : un trou de couverture) et « **ÉTAT REQUIS (hors ligne)** » (hors
+ligne seulement : la règle lit le modèle collecté, que des fichiers ne contiennent pas).
+
+**Vue « voisin BGP effectif »** (`drivers/bgp_neighbors.py`, FRR et EOS). Un peer group porte des réglages
+que ses membres héritent ; lire `neighbor PG remote-as N` comme un voisin donnait une fausse violation sur un
+groupe sans membre, et un faux « conforme » silencieux sur les membres (qui n'ont pas de `remote-as`). Un
+groupe n'est donc jamais évalué pour lui-même ; un membre est eBGP si son `remote-as`, ou celui de son groupe,
+désigne un autre AS (ou `external`, FRR seulement : EOS refuse `external|internal`) ; un réglage posé sur le
+membre **masque** celui du groupe ; une plage `bgp listen range … peer-group …` est un voisin eBGP virtuel qui
+hérite de son groupe. Un constat nomme le membre avec son groupe (`192.0.2.5 (peer group PG-OPEN)`). Treize
+configurations relevées en direct sur r3 et r4 (`tests/fixtures/peergroups/`) fixent le comportement.
+Limites : peer groups SR Linux hors périmètre (pas de BGP sur r5) ; voisins sans numéro (`neighbor <iface>
+interface …`) non lus.
+
+**Le gel de la conformité** (`tests/golden/`). Les réponses de la v0.3.0 sur des configurations réelles, toutes
+leurs mutations (une ligne retirée à la fois) et des sondes nommées : le moteur doit répondre pareil, constat
+par constat. Un écart voulu n'entre jamais en bloc : il est présenté (cas, ancienne réponse, nouvelle
+réponse, justification), validé, puis `tests/tools/golden.py replace` ne met à jour que ces entrées
+(tracées dans `meta.revisions`) ; `add` ajoute un cas nouveau sans jamais écraser (`--current-code` pour une
+capacité nouvelle, avec ses deux refus : pas d'écrasement, pas de code non commité).
 
 ## Sécurité
 
@@ -231,11 +313,11 @@ seulement un fichier dans `drivers/`. Liste complète, sans rien cacher :
    par défaut, `inventory.py` les résout via `NETCHECK_<DRIVER>_USER/PASS` en priorité sur le
    générique `NETCHECK_USER/PASS` -- sans ça, positionner ce dernier pour cibler un autre
    driver écraserait silencieusement les identifiants du nouveau constructeur.
-6. `compliance.py` : toute règle de `rules/*.yml` qui lit le TEXTE de la running-config est
-   écrite pour la syntaxe d'UN seul constructeur et doit porter `drivers: [<ce constructeur>]`
-   (Phase D2) -- sans ça, elle produit de fausses non-conformités sur tout autre driver. Une
-   règle qui ne lit que le modèle normalisé (`interface_description_required`) reste
-   universelle, sans ce champ.
+6. Règles YAML : toute règle de `rules/*.yml` dont le `kind` est propre à un constructeur
+   (évaluateur dans `CONFIG_CHECKS` de son driver, point 12) doit porter `drivers: [<ce
+   constructeur>]` (Phase D2) ; le moteur **refuse au chargement** une règle qui cite un driver
+   n'implémentant pas son kind. Une règle qui ne lit que le modèle normalisé
+   (`interface_description_required`) reste universelle, sans ce champ.
 7. Fixtures **réelles** (`tests/fixtures/<driver>/`) en interrogeant un vrai équipement --
    jamais des JSON inventés à la main, ils cachent presque toujours un champ absent ou mal
    nommé (voir `tests/fixtures/r1/bgp_summary.json` : `{}`, sans aucune clé `peers`, quand
@@ -277,10 +359,25 @@ seulement un fichier dans `drivers/`. Liste complète, sans rien cacher :
     prendre une référence, relever deux fois à 4 s d'intervalle jusqu'à un diff vide ; avant de
     conclure à un retour à la normale, attendre le retour à la référence. Découvert en Phase F :
     deux scénarios de la Phase E n'avaient réussi que par chance de timing.
-12. **Règles et intents** : les évaluateurs de règles qui lisent le texte de la configuration
-    vivent encore dans `compliance.py` (un jeu `eos_*` de +147 lignes en Phase F) ; les règles
-    YAML correspondantes portent `drivers: [<constructeur>]` et un jeu d'assertions
-    `intents/lab-<x>.yml` fournit l'état attendu.
+12. **Règles de configuration, dans le driver** (Phase A, v4 ; en v0.3.0 elles vivaient dans
+    `compliance.py`, un jeu `eos_*` de +147 lignes en Phase F). Le driver fournit :
+    `parse_config()` (une configuration analysée avec `confparse` : choisir `parse_indented`,
+    `parse_braces` ou `parse_set` ; **chaque ligne que l'analyse ne sait pas classer doit produire un
+    avertissement, jamais disparaître** ; si l'équipement lit selon le CONTEXTE et non l'indentation, comme
+    FRR et EOS, signaler une sous-commande trouvée au premier niveau, voir `flag_misplaced_subcommands` ;
+    un texte libre comme une bannière se déclare en `raw_blocks`), `CONFIG_CHECKS` (`{kind: Check(fn,
+    needs)}` dans `drivers/<constructeur>_rules.py`, `needs` contenant `"interfaces"` si `fn` lit le
+    modèle collecté, ce qui rend la règle « ÉTAT REQUIS » hors ligne) et `CONFIG_FILENAMES` (pour
+    `check --config-dir`). Les évaluateurs lisent l'arbre, jamais le texte ; les messages sont un contrat
+    (le gel les compare). Si l'équipement a des peer groups, réutiliser `bgp_neighbors.BgpView` avec la
+    syntaxe du constructeur (`Syntax`).
+13. **Tests de la phase A pour un nouveau driver** : (a) des configurations **réelles** du driver dans le
+    gel (`tests/tools/golden.py`, avec leurs mutations : `add --current-code`, jamais d'écrasement) ; (b) un
+    test que toute sortie réelle ne produit aucun avertissement d'analyse ; (c) une règle par kind, avec
+    sa preuve « pas vide » (retirer la ligne exigée la fait échouer) ; (d) si l'équipement a deux syntaxes
+    pour la même configuration, une règle qui donne la même réponse dans les deux ; (e) l'équivalence
+    hors ligne : les fichiers de démarrage du lab donnent le même verdict que le direct
+    (`tests/test_config_dir_equivalence.py`) ; (f) les intents `intents/lab-<x>.yml` (état attendu).
 
 **Mesure honnête du troisième constructeur (Arista EOS, Phase F)** :
 
@@ -293,6 +390,22 @@ seulement un fichier dans `drivers/`. Liste complète, sans rien cacher :
 | `secrets.py` | +35 / −11 : règle générique (faille réelle trouvée) |
 | `rules/security.yml` | +77 : cinq règles EOS |
 | `model.py`, `diff.py`, `assertions.py`, `management.py`, `report.py`, `guard.py`, `monitor.py`, `cli.py` | **0 ligne** |
+
+**Mesure de la Phase A (v4), même exercice une version plus tard** : la syntaxe des constructeurs a quitté
+`compliance.py`, qui passe de **836 à 397 lignes** (542 → 245 lignes de code, sans vides ni commentaires), et
+vit dans les drivers :
+
+| Fichier | Lignes | Rôle |
+|---|---|---|
+| `drivers/frr_rules.py` | 309 | 9 évaluateurs FRR, lus sur l'arbre |
+| `drivers/eos_rules.py` | 202 | 5 évaluateurs EOS |
+| `drivers/srlinux_rules.py` | 164 | 4 évaluateurs SR Linux, une seule règle pour les deux syntaxes |
+| `drivers/bgp_neighbors.py` | 142 | vue du voisin BGP effectif, partagée FRR / EOS |
+| `confparse.py` | 445 | analyse structurelle, neutre vis-à-vis des constructeurs |
+| `configdir.py` | 153 | `check --config-dir` |
+
+Ajouter un 4e constructeur ne touche donc plus `compliance.py` : un `<constructeur>_rules.py`, un
+`parse_config` et deux lignes de registre (l'import et l'entrée de `drivers/registry.py`). Les tests passent de **695 (v0.3.0) à 936**.
 
 ## Reconnaissance du loopback (`is_loopback`)
 

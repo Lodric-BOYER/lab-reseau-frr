@@ -16,7 +16,7 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   ce qui est douteux produit un avertissement (texte masqué).
 - **Les règles de configuration vivent dans les drivers** : `Driver.CONFIG_CHECKS` et
   `Driver.parse_config()` ; les règles sont dans `drivers/frr_rules.py`, `srlinux_rules.py` et
-  `eos_rules.py`. `compliance.py` ne garde que le moteur : **836 → 388 lignes**, et un test statique
+  `eos_rules.py`. `compliance.py` ne garde que le moteur : **836 → 397 lignes** (542 → 245 lignes de code), et un test statique
   (`tests/test_compliance_neutrality.py`) échoue si une syntaxe de constructeur y revient.
 - **SR Linux : une règle, deux syntaxes.** Les accolades de « info from running » et les lignes
   `set /` du fichier de démarrage donnent les mêmes chemins (vue plate de `confparse`). Les règles

@@ -27,7 +27,9 @@ des trois labs (`snapshots/v4a-ref-*`, hors Git).
 
 Jamais en bloc. L'écart est présenté sous forme de liste (cas, réponse v0.3.0, nouvelle réponse,
 justification), validé, puis `python tests/tools/golden.py replace <règles> --reason ... <cas>@<clé>...`
-met à jour **ces seules mutations** (la commande refuse une cible qui n'est pas réellement en écart, et
+met à jour **ces seules entrées** : une mutation (`<cas>@<clé>`) ou la réponse de base d'un cas
+(`<cas>@base`, nommée en premier si des mutations du même cas changent aussi ; la commande refuse une
+cible qui n'est pas réellement en écart, et
 refuse de tourner si `netcheck/` n'est pas commité). Chaque révision est tracée dans `meta.revisions`.
 `add` ajoute un cas nouveau sans toucher aux autres, sans jamais écraser un cas gelé. Trois modes :
 sans option (le moteur doit encore répondre comme la v0.3.0), `--reference-code <commit>` (scénarios évalués
