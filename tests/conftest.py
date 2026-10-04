@@ -17,7 +17,9 @@ if str(TOOLS_DIR) not in sys.path:
 def _forget_registered_secrets():
     """Le registre des valeurs secrètes (netcheck.secrets) est global au processus : un test qui crée un
     SecretStr ne doit pas masquer ce mot dans les sorties des tests suivants."""
-    from netcheck import secrets
+    from netcheck import secrets, vault
     secrets.forget_all_values()
+    vault.forget_cache()
     yield
     secrets.forget_all_values()
+    vault.forget_cache()

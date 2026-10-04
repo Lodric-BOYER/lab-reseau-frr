@@ -1,22 +1,26 @@
 """Résolution des identifiants d'accès aux équipements (phase C2, SPEC_v4 §6).
 
-Un identifiant peut venir de quatre endroits. Ordre de priorité, du plus spécifique au moins spécifique, et à
+Un identifiant peut venir de cinq endroits. Ordre de priorité, du plus spécifique au moins spécifique, et à
 spécificité égale une variable avant un fichier :
 
   1. NETCHECK_<DRIVER>_USER / _PASS             variable d'environnement, ce driver seulement
   2. NETCHECK_<DRIVER>_USER_FILE / _PASS_FILE   fichier 0600 contenant la valeur
   3. NETCHECK_USER / NETCHECK_PASS              variable, tous les drivers
   4. NETCHECK_USER_FILE / NETCHECK_PASS_FILE    fichier 0600
-  5. LAB_USER / LAB_PASS                        variable historique (labs)
-  6. la valeur du fichier d'inventaire          valeurs par défaut des images de lab (C11)
+  5. Vault (NETCHECK_VAULT_*, voir netcheck/vault.py), seulement s'il est configuré
+  6. LAB_USER / LAB_PASS                        variable historique (labs)
+  7. la valeur du fichier d'inventaire          valeurs par défaut des images de lab (C11)
 
-(HashiCorp Vault s'insérera entre 5 et 6 en phase C3 : une variable ou un fichier posé par l'opérateur
-l'emporte toujours, l'inventaire ne vient qu'en dernier.) Le niveau « driver » passe avant le niveau
-générique, fichier ou non : un NETCHECK_PASS posé pour FRR n'écrase pas le NETCHECK_SRLINUX_PASS_FILE de r5.
+Vault passe APRÈS toute variable ou tout fichier posé pour netcheck, mais AVANT `LAB_*` (un `LAB_PASS` ne
+masque donc jamais Vault) et l'inventaire. Le niveau « driver » passe avant le niveau générique, fichier ou
+non : un NETCHECK_PASS posé pour FRR n'écrase pas le NETCHECK_SRLINUX_PASS_FILE de r5.
 
 Un fichier désigné mais illisible ou mal protégé est une ERREUR, jamais un repli silencieux sur la valeur
-suivante. Chaque identifiant porte sa source (« variable NETCHECK_PASS », « fichier /chemin »,
-« inventaire »), jamais sa valeur : les rapports la citent.
+suivante. Il en va de même de Vault, dès qu'il est configuré : injoignable, authentification refusée, secret
+introuvable ou lecture refusée arrêtent netcheck (code 3), sans retomber sur `LAB_PASS` ni sur l'inventaire.
+
+Chaque identifiant porte sa source (« variable NETCHECK_PASS », « fichier /chemin »,
+« Vault (montage/chemin) », « inventaire »), jamais sa valeur : les rapports la citent.
 """
 from __future__ import annotations
 
@@ -84,10 +88,12 @@ def read_secret_file(path: str | Path, what: str = "secret") -> str:
 
 
 def _candidates(kind: str, driver: str) -> list[tuple[str, str]]:
-    """[(« env » | « file », nom de variable)] dans l'ordre de priorité. kind = « USER » ou « PASS »."""
+    """[(« env » | « file » | « vault », nom de variable)] dans l'ordre de priorité ; kind = « USER » ou
+    « PASS ». Le niveau « vault » n'a pas de variable ici : netcheck.vault lit sa propre configuration."""
     d = driver.upper()
     return [("env", f"NETCHECK_{d}_{kind}"), ("file", f"NETCHECK_{d}_{kind}_FILE"),
             ("env", f"NETCHECK_{kind}"), ("file", f"NETCHECK_{kind}_FILE"),
+            ("vault", ""),
             ("env", f"LAB_{kind}")]
 
 
@@ -97,6 +103,14 @@ def resolve(kind: str, driver: str, fallback: str | None, device: str = "?",
     env = os.environ if environ is None else environ
     tried = []
     for provider, var in _candidates(kind, driver):
+        if provider == "vault":
+            from netcheck import vault  # import tardif : vault importe ce module
+            found = vault.lookup(kind, driver, env)   # None si Vault est désactivé ou n'a pas cette clé
+            if found is not None:
+                return found
+            if env.get(vault.ENV_ADDR):
+                tried.append("Vault")
+            continue
         tried.append(var)
         raw = env.get(var)
         if not raw:                       # absent ou vide : comme avant la phase C2
