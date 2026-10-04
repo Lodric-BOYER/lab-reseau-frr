@@ -935,14 +935,96 @@ def test_cli_refuses_an_unsafe_webhook_url_without_quoting_it(lab, monkeypatch, 
     assert webhook.ENV_VAR in captured.err
 
 
-def test_cli_unexpected_error_is_the_internal_code_never_the_attention_code_1(lab, monkeypatch, capsys):
+SECRET_VALUE = "Sentinel-Secret-Value-4242"
+WEBHOOK = "https://hooks.example.org/api/SENTINEL-WEBHOOK-TOKEN"
+
+
+def _defect(monkeypatch, message=None):
+    """Un défaut interne dans la collecte, dont le message recopie un mot de passe et l'URL du webhook."""
+    from netcheck import secrets
+    secrets.SecretStr(SECRET_VALUE, "test")
+    monkeypatch.setenv(webhook.ENV_VAR, WEBHOOK)
+
     def boom(*_a, **_k):
-        raise RuntimeError("panne inattendue")
+        raise RuntimeError(message or f"panne inattendue {SECRET_VALUE} {WEBHOOK}")
     monkeypatch.setattr(collector, "collect_all", boom)
+
+
+def test_internal_defect_is_code_70_with_nothing_on_stderr(lab, monkeypatch, capsys, tmp_path):
+    _defect(monkeypatch)
     code = _cli()
-    assert code == cli.EXIT_INTERNAL == 70    # ni 0/1/2 (statut), ni 3 (refus d'usage), ni 4 (verrou)
-    assert code not in (0, 1, 2, monitor.EXIT_USAGE, monitor.EXIT_LOCKED)
-    assert "Erreur interne" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert code == cli.EXIT_INTERNAL == monitor.EXIT_INTERNAL == 70
+    assert code not in (0, 1, 2, monitor.EXIT_USAGE, monitor.EXIT_LOCKED)   # ni statut, ni refus, ni verrou
+    assert captured.err == ""                          # cron enverrait stderr par courriel
+    assert "Erreur interne" in captured.out and "RuntimeError" in captured.out
+    assert "Traceback" not in captured.out and SECRET_VALUE not in captured.out   # une ligne, sans trace
+    assert not (tmp_path / "reports" / monitor.STATE_FILENAME).exists()   # état inchangé, aucune alerte
+
+
+def test_internal_defect_trace_goes_to_summary_json_masked(lab, monkeypatch, capsys, tmp_path):
+    _defect(monkeypatch)
+    _cli()
+    capsys.readouterr()
+    path = tmp_path / "reports" / monitor.LATEST_DIRNAME / "summary.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert data["status"] == monitor.INTERNAL_STATUS == "DEFAUT_INTERNE" and data["baseline"] == "nominal"
+    assert data["internal_error"]["type"] == "RuntimeError"
+    trace = data["internal_error"]["trace"]
+    assert "Traceback" in trace and "RuntimeError" in trace and "panne inattendue" in trace
+    text = path.read_text(encoding="utf-8")
+    assert SECRET_VALUE not in text and "SENTINEL-WEBHOOK-TOKEN" not in text
+    assert "****" in trace and "<webhook>" in trace
+    assert (path.stat().st_mode & 0o777) == 0o600
+
+
+def test_internal_defect_removes_the_stale_reports_of_a_previous_run(lab, monkeypatch, capsys, tmp_path):
+    assert _cli() == 0                                 # exécution saine : rapports écrits
+    latest = tmp_path / "reports" / monitor.LATEST_DIRNAME
+    assert (latest / "diff.json").exists()
+    _defect(monkeypatch, message="panne")
+    assert _cli() == 70
+    capsys.readouterr()
+    assert [p.name for p in latest.iterdir()] == ["summary.json"]
+
+
+def test_internal_defect_with_dry_run_writes_nothing_and_shows_the_masked_trace_on_stdout(
+        lab, monkeypatch, capsys, tmp_path):
+    _defect(monkeypatch)
+    assert _cli("--dry-run") == 70
+    captured = capsys.readouterr()
+    assert captured.err == "" and "RuntimeError" in captured.out and "Traceback" in captured.out
+    assert SECRET_VALUE not in captured.out and "SENTINEL-WEBHOOK-TOKEN" not in captured.out
+    assert not (tmp_path / "reports" / monitor.LATEST_DIRNAME).exists()     # (le verrou, lui, existe)
+    assert not (tmp_path / "reports" / monitor.STATE_FILENAME).exists()
+
+
+def test_internal_defect_with_unwritable_reports_is_said_on_stdout(lab, monkeypatch, capsys, tmp_path):
+    _defect(monkeypatch, message="panne")
+    blocker = tmp_path / "blocker"
+    blocker.write_text("fichier", encoding="utf-8")
+    monkeypatch.setattr(cli, "REPORTS_DIR", blocker)
+    assert _cli("--state-file", str(tmp_path / "state.json")) == 70
+    captured = capsys.readouterr()
+    assert captured.err == "" and "NON écrite" in captured.out
+
+
+def test_internal_defect_outside_run_monitor_is_also_70_and_silent(lab, monkeypatch, capsys, tmp_path):
+    monkeypatch.setattr(webhook, "resolve_format", lambda *_a, **_k: (_ for _ in ()).throw(KeyError("x")))
+    assert _cli() == 70
+    assert capsys.readouterr().err == ""
+    assert json.loads((tmp_path / "reports" / monitor.LATEST_DIRNAME / "summary.json"
+                       ).read_text(encoding="utf-8"))["internal_error"]["type"] == "KeyError"
+
+
+def test_a_defect_while_loading_is_internal_not_a_usage_refusal(lab, monkeypatch, capsys):
+    monkeypatch.setattr(snapshot, "load", lambda _name: (_ for _ in ()).throw(TypeError("bug")))
+    assert _cli() == 70 and capsys.readouterr().err == ""
+
+
+def test_usage_refusals_still_use_stderr_and_code_3(lab, capsys):
+    assert cli.main(["monitor", "--baseline", "nosuch"]) == 3
+    assert "introuvable" in capsys.readouterr().err
 
 
 def test_cli_lock_held_is_code_4(tmp_path, lab, capsys):
@@ -972,3 +1054,13 @@ def test_compliance_and_assertions_are_used_through_the_cli(tmp_path, lab, monke
     state = json.loads((tmp_path / "reports" / monitor.STATE_FILENAME).read_text())
     assert state["components"] == {"collect": "OK", "diff": "OK", "assert": "OK", "check": "OK"}
     assert compliance.load_rules(rules)
+
+
+def test_a_usage_error_raised_after_loading_is_a_refusal_not_an_internal_defect(lab, tmp_path, capsys):
+    inventory_file = tmp_path / "inv.yml"      # pas de `host` : refus d'usage détecté juste avant la collecte
+    inventory_file.write_text("defaults: {device_type: linux, username: u, password: pw-long-enough}\n"
+                              "routers:\n  r1: {}\n", encoding="utf-8")
+    assert _cli("-i", str(inventory_file)) == 3
+    err = capsys.readouterr().err
+    assert "host" in err and "Traceback" not in err
+    assert not (tmp_path / "reports" / monitor.LATEST_DIRNAME).exists()

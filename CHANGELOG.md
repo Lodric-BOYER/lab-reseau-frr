@@ -209,6 +209,11 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   (verrou de `monitor`). **Changement de comportement pour `monitor`** : son erreur interne (« monitor n'a pas pu
   conclure ») sortait en **3** ; elle sort maintenant en **70**. Un planificateur qui testait `== 3` pour « refusé ou
   erreur interne » doit distinguer 3 (refus d'usage) et 70 (défaut interne). Tableau des codes retour du README mis à jour.
+  **Où va la trace sous `monitor`** : jamais sur stderr (cron l'enverrait par courriel) ; dans
+  `reports/monitor_latest/summary.json` (`status: DEFAUT_INTERNE`, `internal_error.type` et `.trace`, expurgée des secrets
+  et de l'URL du webhook, droits 0600), les rapports d'une exécution précédente étant retirés ; une ligne sur la sortie
+  standard. Une exception dans le chargement des fichiers n'est plus prise pour un refus d'usage (code 3) : seules
+  `ValueError`, `OSError` et les erreurs d'identifiants le sont, tout le reste est un défaut interne (70).
 
 ### Sécurité
 

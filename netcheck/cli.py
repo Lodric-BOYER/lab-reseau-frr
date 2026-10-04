@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import os
 import sys
 import traceback
 from datetime import date, datetime
@@ -439,7 +440,41 @@ def cmd_assert(args: argparse.Namespace) -> int:
 def cmd_monitor(args: argparse.Namespace) -> int:
     """Surveillance planifiée, exécution unique (Phase E, SPEC_v3 §8). Lecture seule stricte :
     ni guard, ni script, ni rollback. Voir netcheck/monitor.py pour le statut, l'anti-bruit
-    (--confirm) et les codes retour (0/1/2 = statut, 3 = refusé, 4 = verrou tenu)."""
+    (--confirm) et les codes retour (0/1/2 = statut, 3 = refusé, 4 = verrou tenu, 70 = défaut interne).
+
+    Un défaut interne (toute exception hors erreur d'usage) sort en code 70 SANS RIEN écrire sur stderr, que
+    cron enverrait par courriel : la trace, expurgée des secrets et de l'URL du webhook, va dans le
+    `summary.json` de reports/monitor_latest/ ; la sortie standard n'en porte qu'une ligne."""
+    try:
+        return _cmd_monitor(args)
+    except (usage.UsageError, credentials.CredentialError):
+        raise
+    except Exception as e:  # noqa: BLE001 -- dernier filet de monitor : jamais un code 1
+        return _monitor_internal_defect(e, args)
+
+
+def _monitor_internal_defect(error: Exception, args: argparse.Namespace) -> int:
+    url = os.environ.get(webhook.ENV_VAR, "").strip() or None
+    trace = webhook.redact(traceback.format_exc().rstrip(), url)
+    name = type(error).__name__
+    if args.dry_run:   # --dry-run n'écrit rien : la trace (expurgée) va sur la sortie standard, interactive
+        print(f"Erreur interne : monitor n'a pas pu conclure ({name}) ; rien n'est écrit (--dry-run).")
+        print(trace)
+        return EXIT_INTERNAL
+    now = datetime.now().astimezone().isoformat(timespec="seconds")
+    latest = REPORTS_DIR / monitor.LATEST_DIRNAME
+    written = monitor.write_internal_failure(latest, now, args.baseline, name, trace)
+    if written is None:
+        where = "trace NON écrite (dossier de rapports inaccessible)"
+    elif written.is_relative_to(inventory.REPO_ROOT):
+        where = f"trace expurgée dans {written.relative_to(inventory.REPO_ROOT)}"
+    else:
+        where = f"trace expurgée dans {written}"
+    print(f"Erreur interne : monitor n'a pas pu conclure ({name}) ; {where}")
+    return EXIT_INTERNAL
+
+
+def _cmd_monitor(args: argparse.Namespace) -> int:
     # --- Tout ce qui peut être refusé l'est ICI, avant la moindre collecte (code 3) -----------
     if args.confirm < 1:
         print("Erreur : --confirm doit être >= 1", file=sys.stderr)
@@ -462,7 +497,7 @@ def cmd_monitor(args: argparse.Namespace) -> int:
                 raise ValueError("--derogations n'a de sens qu'avec --rules")
             derogation_set = derogations.load(args.derogations, rules, date.today())
         inv = inventory.load(path=args.inventory)
-    except Exception as e:  # noqa: BLE001 -- toute erreur de chargement est un refus, code 3
+    except (ValueError, OSError, credentials.CredentialError) as e:   # erreur de chargement = refus, code 3
         print(f"Erreur : {webhook.redact(str(e), url)}", file=sys.stderr)
         return monitor.EXIT_USAGE
     if not _setup_host_keys(args, inv):
@@ -485,15 +520,7 @@ def cmd_monitor(args: argparse.Namespace) -> int:
         send=webhook.post,
         now=lambda: datetime.now().astimezone(),
     )
-    try:
-        return monitor.run_monitor(cfg, io)
-    except Exception as e:  # noqa: BLE001
-        # Une exception Python non gérée sortirait en code 1, lu à tort comme « ATTENTION » par un
-        # planificateur : un monitor qui n'a pas pu conclure doit le dire, sans alerte. Code 70 (défaut
-        # interne), distinct du code 3 (refus d'usage) : l'opérateur n'y peut rien, il faut le signaler.
-        print(f"Erreur interne : monitor n'a pas pu conclure ({type(e).__name__}) : "
-              f"{webhook.redact(str(e), url)}", file=sys.stderr)
-        return EXIT_INTERNAL
+    return monitor.run_monitor(cfg, io)
 
 
 def cmd_list(_args: argparse.Namespace) -> int:

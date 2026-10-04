@@ -60,6 +60,7 @@ _RANK = {OK: 0, ATTENTION: 1, ECHEC: 2}
 EXIT_CODES = {OK: 0, ATTENTION: 1, ECHEC: 2}
 EXIT_USAGE = 3
 EXIT_LOCKED = 4
+EXIT_INTERNAL = 70   # défaut interne (EX_SOFTWARE), était 3 avant la phase C ; égal à cli.EXIT_INTERNAL
 
 STATE_VERSION = 1
 MAX_FINDINGS = 10          # constats listés dans une alerte, puis « et N autres »
@@ -605,13 +606,36 @@ def payload_for(alert: Alert, fmt: str) -> dict:
 # Rapports locaux (réutilise report.write_*, qui masquent déjà les secrets)
 # ------------------------------------------------------------------------------------------
 
+MANAGED_REPORTS = ("diff.json", "diff.html", "assert.json", "assert.html", "check.json", "check.html",
+                   "summary.json")
+INTERNAL_STATUS = "DEFAUT_INTERNE"
+
+
+def write_internal_failure(directory: Path, now: str, baseline_name: str, error_type: str,
+                           trace: str) -> Path | None:
+    """Défaut interne : la trace (DÉJÀ expurgée par l'appelant) va dans `summary.json`, jamais sur stderr
+    (cron enverrait la trace par courriel). Les rapports d'une exécution précédente sont retirés : aucun
+    fichier périmé ne doit contredire cet état. Renvoie le fichier écrit, ou None si le dossier est
+    inscriptible nulle part (l'appelant le dit alors sur la sortie standard)."""
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        for name in MANAGED_REPORTS:
+            (directory / name).unlink(missing_ok=True)
+        path = directory / "summary.json"
+        summary = {"timestamp": now, "status": INTERNAL_STATUS, "baseline": baseline_name,
+                   "internal_error": {"type": error_type, "trace": trace}}
+        path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+        path.chmod(0o600)
+        return path
+    except OSError:
+        return None
+
+
 def write_reports(directory: Path, evaluation: Evaluation, baseline_name: str,
                   intent_path: str | None, rules_path: str | None, now: str,
                   credential_sources: dict | None = None) -> None:
     directory.mkdir(parents=True, exist_ok=True)
-    managed = ["diff.json", "diff.html", "assert.json", "assert.html", "check.json", "check.html",
-               "summary.json"]
-    for name in managed:   # pas de fichier périmé d'une exécution précédente (ex. --intent retiré)
+    for name in MANAGED_REPORTS:   # pas de fichier périmé d'une exécution précédente (ex. --intent retiré)
         (directory / name).unlink(missing_ok=True)
 
     report.write_json(evaluation.diff_findings, evaluation.diff_label, str(directory / "diff.json"))

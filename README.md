@@ -1137,7 +1137,7 @@ verrou et ses rapports dans `reports/` (ignoré par Git).
 | **0 / 1 / 2** | statut global OK / ATTENTION / ÉCHEC |
 | **3** | refusé **avant toute collecte** (référence, intent ou règles introuvables ou invalides, `--confirm` < 1, `NETCHECK_WEBHOOK_URL` invalide, fichier d'état inscriptible nulle part) |
 | **4** | exécution **ignorée** : une exécution précédente tient encore le verrou |
-| **70** | défaut interne : monitor n'a pas pu conclure, aucune alerte, état inchangé |
+| **70** | défaut interne : monitor n'a pas pu conclure, aucune alerte, état inchangé. **Rien sur stderr** (cron l'enverrait par courriel) : la trace, expurgée des secrets et de l'URL du webhook, est dans `reports/monitor_latest/summary.json` (`status` : `DEFAUT_INTERNE`, `internal_error.type`, `internal_error.trace`, droits 0600) ; la sortie standard n'en dit qu'une ligne. Les rapports d'une exécution précédente sont retirés. Avec `--dry-run`, rien n'est écrit : la trace va sur la sortie standard |
 
 Une exception Python non gérée sortirait en code 1, que le planificateur lirait à tort comme
 « ATTENTION » : toute erreur interne est donc convertie en code 70 avec un message, distinct du code 3 (refus
