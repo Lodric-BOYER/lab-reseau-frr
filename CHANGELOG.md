@@ -158,11 +158,30 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   22) ajouté aux trois `.clab.yml` sans toucher aux configurations des routeurs ni au gel ;
   `lab-access/bastion_lab.sh` ; `pin_hostkeys.sh` épingle aussi le bastion ; scénarios `tests/lib_bastion.sh` (sshd -T,
   adresse source vue sur le routeur, bastion à clé changée, sonde des refus, règles de clé, et sur FRR clé des
-  routeurs et connexion directe coupée avec retour prouvé). 55 mutations du code, toutes détectées.
-  Ressources (C24) : image du bastion 14,2 Mo, RAM ≈ 2,5 Mo.
+  routeurs et connexion directe coupée avec retour prouvé). 56 mutations du code de C4, toutes détectées (six
+  survivantes initiales comblées par des tests). Ressources (C24) : image du bastion 14,2 Mo, RAM ≈ 2,5 Mo.
+- **Clé configurée et mot de passe fourni : « mot de passe ignoré : clé configurée (r1, r2) ».** La source le dit dès
+  qu'un mot de passe existe quelque part (variable, fichier, `LAB_PASS`, Vault configuré, inventaire), sans jamais le
+  lire ni le demander à Vault (testé : Vault n'est jamais interrogé pour le mot de passe ; il peut l'être pour
+  l'utilisateur, selon l'ordre de priorité). 12 mutations, toutes détectées.
+- **Lab : barrière « lab prêt » et diagnostic automatique** (`tests/lib_lab.sh`, dans `test_lab*.sh` et
+  `tests/integration*.sh`). Avant le premier scénario : port 22 joignable ET bannière SSH reçue sur r1 à r5 et le
+  bastion (240 s au plus) ; un échec s'annonce « lab non prêt : rX », compte à part (code 20), distinct d'un échec de
+  netcheck. En cas d'échec d'un script, le lab encore en place est capturé avant toute destruction dans
+  `reports/diagnostics/<script>-echec-<date>.txt` (0600, sans secret) : état, code de sortie, OOM, santé, journal de
+  chaque conteneur, processus, ports à l'écoute, droits et taille des clés d'hôte, `docker stats`, mémoire et charge
+  de l'hôte. 22 tests et 22 mutations, toutes détectées.
+- **Tests du contournement paramiko 5.0.0** : une clé chiffrée de chaque type (RSA, ECDSA, Ed25519) se charge avec la
+  bonne classe ; un test statique interdit `PKey.from_path`.
 
 ### Modifié
 
+- **Image `frr-ssh` : sshd est lancé par le point d'entrée, après les clés, et son échec arrête le conteneur.**
+  Avant, `docker/entrypoint-sshkeys.sh` ne faisait que générer les clés et containerlab lançait sshd par `exec:` sans
+  qu'on regarde son code retour : un conteneur pouvait vivre sans sshd (« Connection refused » sans aucun journal,
+  constaté une fois sur r2 du lab mixte, cause non établie). Maintenant : `ssh-keygen -A` puis vérification de la clé
+  ed25519, puis `sshd`, puis FRR ; chaque échec sort en code 1 avec un message dans `docker logs`. `HEALTHCHECK` sur le
+  port 22 (`unhealthy` dans `docker ps` si sshd meurt plus tard). Les trois `.clab.yml` ne lancent plus sshd par `exec:`.
 - **Phase C4 : les trois labs ont un conteneur de plus, le bastion** (8 conteneurs au lieu de 7 : 5 routeurs, 2 PC, le
   bastion `clab-<lab>-bastion`, adresse `<réseau>.2`). `test_lab*.sh` construisent l'image `netcheck-bastion:1` et
   attendent 8 conteneurs en état running. Aucune configuration de routeur n'est modifiée. `pin_hostkeys.sh` épingle aussi

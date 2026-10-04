@@ -55,7 +55,8 @@ Il tourne sur un simple PC portable sous WSL2, sans aucun matériel réseau.
 ```
 lab.clab.yml                    topologie containerlab (lab FRR)
 lab-multivendor.clab.yml        topologie containerlab (lab v2 : FRR + Nokia SR Linux)
-docker/Dockerfile               image FRR 10.2.1 + SSH (compte netops) ; clés d'hôte générées au démarrage (docker/entrypoint-sshkeys.sh)
+docker/Dockerfile               image FRR 10.2.1 + SSH (compte netops) ; HEALTHCHECK sur le port 22
+docker/entrypoint-sshkeys.sh    génère les clés d'hôte, puis lance sshd, puis FRR ; clés ou sshd absents = le conteneur s'arrête (code 1)
 lab-access/pin_hostkeys.sh      épingle les clés d'hôte d'un lab déployé (lues dans les conteneurs) dans le known_hosts de netcheck
 lab-access/bastion_lab.sh       provisionnement du bastion de lab (clés, authorized_keys, PermitOpen ; clés des routeurs FRR)
 docker/bastion/                 image netcheck-bastion:1 : sshd sans shell, relais direct-tcpip vers les routeurs seulement
@@ -82,6 +83,7 @@ tests/integration.sh                lab FRR (S1-S5, C1/C2, guard, A1/A2 assert, 
 tests/integration_multivendor.sh    lab v2 (S1, coupure r4<->r5, C1, A1/A2 assert, M1 monitor, H1 clés d'hôte)
 tests/integration_ceos.sh           lab cEOS (S1, C1, A1, N1 mauvaise clé OSPF, N2 API exposée, G1 guard, M1 monitor, H1 clés d'hôte)
 tests/lib_bastion.sh                scénarios B1/B2 du bastion et des clés SSH (joués par les trois integration*.sh)
+tests/lib_lab.sh                    barrière « lab prêt » (port 22 + bannière SSH) et diagnostic automatique en cas d'échec
 tests/tools/bastion_probe.py    sonde du lab : ce que le bastion refuse (paramiko écrit à la main, pas netcheck)
 tests/integration_vault.sh          Vault puis OpenBao : identifiants lus dans Vault sur le lab FRR, deux appels, rôle en lecture seule, priorité, pannes
 test_lab.sh                     scénario de bout en bout du lab FRR (phases 1 et 2), 28 contrôles
@@ -608,6 +610,18 @@ charge lui-même la clé et la présente seule (`pkey`) : **ni l'agent SSH, ni l
 (avec `key_file`, Netmiko laisserait paramiko essayer aussi `~/.ssh/id_*`). La source affichée est
 **« clé : chemin »** (« Identifiants, clé : /chemin (r1, r2) »), jamais le contenu, dans les mêmes rapports que les
 autres sources.
+
+**Mot de passe fourni en plus de la clé.** Si une clé est configurée et qu'un mot de passe est aussi fourni quelque
+part (variable, variable de fichier, `LAB_PASS`, Vault configuré, valeur d'inventaire), la source le dit :
+**« mot de passe ignoré : clé configurée (r1, r2) »**. Ce mot de passe n'est ni lu (un fichier de mot de passe
+introuvable ne fait pas échouer : seule la présence de la variable est constatée), ni demandé à Vault : Vault n'est
+jamais interrogé pour le mot de passe quand une clé est configurée (il peut encore l'être pour l'**utilisateur**,
+selon l'ordre de priorité, sauf si `NETCHECK_USER` est posé). Sans mot de passe nulle part, la ligne n'apparaît pas.
+
+**Version de paramiko.** En paramiko **5.0.0**, `PKey.from_path` passe la phrase secrète en `str` à `cryptography`,
+qui exige des octets (`TypeError`), et son argument a changé de nom d'une version à l'autre : netcheck ne l'utilise
+donc pas et charge chaque clé par `from_private_key_file(chemin, phrase)` pour chaque type (Ed25519, ECDSA, RSA).
+Tests : une clé chiffrée de **chaque** type se charge avec la bonne classe, un test statique interdit `from_path`.
 
 **Bastion.** Un bloc `bastion:` au niveau de l'inventaire fait passer **toutes** les connexions par un bastion SSH :
 
@@ -1578,7 +1592,7 @@ propres licences : elles ne sont jamais dans ce dépôt ni redistribuées par lu
 | OSPF bloqué en `Init`/`ExStart` | interface mal nommée ou IP absente | `show interface brief` ; vérifier les `endpoints` du YAML |
 | BGP `Active` en permanence | pas de joignabilité r3 ↔ r4 | `ping 172.16.34.2` depuis r3 ; `show bgp neighbor` |
 | BGP `Established` mais 0 préfixe | politique ou route absente du RIB | `show ip prefix-list` ; `network` exige une route existante |
-| Netmiko `TCP connection ... failed` | sshd non démarré ou script lancé depuis Windows | `docker exec clab-frr-lab-r1 /usr/sbin/sshd` ; lancer depuis WSL |
+| Netmiko `TCP connection ... failed` | sshd absent du conteneur, ou script lancé depuis Windows | `docker ps -a` (état, `unhealthy`), `docker logs clab-frr-lab-r1` (l'entrypoint dit pourquoi il s'arrête) ; lancer depuis WSL ; en échec de test, lire `reports/diagnostics/` |
 | `% Can't open configuration file vtysh.conf` | droits du fichier (non bloquant) | déjà géré par le Dockerfile et filtré par les scripts |
 | PC qui rame | RAM WSL trop large ou autres VM | baisser `memory` dans `.wslconfig` ; fermer les autres VM |
 
