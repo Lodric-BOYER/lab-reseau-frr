@@ -124,6 +124,20 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   inactive pour ce secret (moins de 8 caractères), seule la protection `SecretStr` s'applique », avec les équipements
   concernés, à côté des sources (ligne `remarque` ; clé `remarque` des `credential_sources`). Ni avertissement ni effet
   sur le code retour ; jamais la longueur exacte ni la valeur. `SecretStr.redactable` (booléen).
+- **Phase C3, identifiants lus dans Vault ou OpenBao** (`netcheck/vault.py`, extra optionnel `netcheck[vault]` =
+  `hvac`, Apache-2.0). KV v2, authentification AppRole, configuration par `NETCHECK_VAULT_ADDR`, `_ROLE_ID`,
+  `_SECRET_ID_FILE` (fichier 0600, mêmes règles que C2, jamais en argument de ligne de commande), `_PATH`, `_MOUNT`,
+  `_CACERT`. Ordre de priorité : variable de driver, fichier de driver, variable générique, fichier générique,
+  **Vault**, `LAB_*`, inventaire (un `LAB_PASS` ne masque jamais Vault ; si les quatre premiers niveaux fournissent
+  l'identifiant, Vault n'est pas contacté). **Exactement deux appels réseau** (`POST /v1/auth/approle/login`, seule
+  écriture, puis `GET` du chemin configuré), imposés par une liste blanche exacte dans l'adaptateur de `hvac` : tout
+  autre appel est refusé avant envoi. Politique du rôle en lecture seule sur le seul chemin
+  (`lab-access/vault/netcheck-ro.hcl`). Aucun repli silencieux : Vault injoignable, authentification refusée,
+  secret introuvable, lecture refusée ou TLS refusé donnent le code 3 sur une ligne. Jeton et `secret_id` sont des
+  `SecretStr` inscrits au registre d'expurgation ; source affichée « Vault (montage/chemin) ». `http://` refusé hors
+  bouclage, TLS toujours vérifié, redirections et proxies d'environnement ignorés. Lab : `lab-access/vault_lab.sh`
+  (`hashicorp/vault:2.1.1` et `openbao/openbao:2.7.1`, mode développement sur 127.0.0.1) et
+  `tests/integration_vault.sh` (54 contrôles : lab FRR réel, journal d'audit, refus 403 du rôle, priorité, pannes).
 
 ### Modifié
 

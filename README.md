@@ -57,6 +57,8 @@ lab.clab.yml                    topologie containerlab (lab FRR)
 lab-multivendor.clab.yml        topologie containerlab (lab v2 : FRR + Nokia SR Linux)
 docker/Dockerfile               image FRR 10.2.1 + SSH (compte netops) ; clés d'hôte générées au démarrage (docker/entrypoint-sshkeys.sh)
 lab-access/pin_hostkeys.sh      épingle les clés d'hôte d'un lab déployé (lues dans les conteneurs) dans le known_hosts de netcheck
+lab-access/vault_lab.sh         Vault ou OpenBao de lab (conteneur de développement, AppRole, politique en lecture seule)
+lab-access/vault/netcheck-ro.hcl politique du rôle netcheck-ro : lecture seule sur le seul secret des identifiants du lab
 configs/daemons                 démons FRR activés
 configs/rX/frr.conf             configuration de chaque routeur FRR (montée dans le conteneur)
 configs-multivendor/r5/         config de démarrage SR Linux (syntaxe "set", lab v2)
@@ -77,6 +79,7 @@ tests/tools/webhook_recorder.py récepteur de webhook LOCAL (tests et scénarios
 tests/integration.sh                lab FRR (S1-S5, C1/C2, guard, A1/A2 assert, D1/D2 --expect et rollback, E1 monitor, H1 clés d'hôte)
 tests/integration_multivendor.sh    lab v2 (S1, coupure r4<->r5, C1, A1/A2 assert, M1 monitor, H1 clés d'hôte)
 tests/integration_ceos.sh           lab cEOS (S1, C1, A1, N1 mauvaise clé OSPF, N2 API exposée, G1 guard, M1 monitor, H1 clés d'hôte)
+tests/integration_vault.sh          Vault puis OpenBao : identifiants lus dans Vault sur le lab FRR, deux appels, rôle en lecture seule, priorité, pannes
 test_lab.sh                     scénario de bout en bout du lab FRR (phases 1 et 2), 28 contrôles
 test_lab_multivendor.sh         scénario de bout en bout du lab v2 (topologie + routage)
 test_lab_ceos.sh                scénario de bout en bout du lab cEOS (topologie, routage, durcissement), 26 contrôles
@@ -433,8 +436,9 @@ lu.
 
 ### Identifiants : variables, fichiers 0600 et source (v4, phase C2)
 
-Le mot de passe d'un équipement peut venir d'une variable, d'un **fichier 0600** ou, en dernier, de l'inventaire.
-Ordre de priorité, du plus spécifique au moins spécifique (à spécificité égale, la variable avant le fichier) :
+Le mot de passe d'un équipement peut venir d'une variable, d'un **fichier 0600**, de **Vault** ou, en dernier, de
+l'inventaire. Ordre de priorité exact, du plus spécifique au moins spécifique (à spécificité égale, la variable avant
+le fichier) ; il se joue **identifiant par identifiant** (utilisateur et mot de passe se résolvent indépendamment) :
 
 | # | Source | Portée |
 |---|---|---|
@@ -442,12 +446,14 @@ Ordre de priorité, du plus spécifique au moins spécifique (à spécificité �
 | 2 | `NETCHECK_<DRIVER>_USER_FILE` / `_PASS_FILE` (fichier) | ce driver seulement |
 | 3 | `NETCHECK_USER` / `NETCHECK_PASS` (variable) | tous les drivers |
 | 4 | `NETCHECK_USER_FILE` / `NETCHECK_PASS_FILE` (fichier) | tous les drivers |
-| 5 | `LAB_USER` / `LAB_PASS` (variable historique) | tous les drivers |
-| 6 | valeur du fichier d'inventaire | valeurs par défaut des images de lab (C11) |
+| 5 | **Vault** (`NETCHECK_VAULT_*`, voir la section suivante) | seulement s'il est configuré ; clé `<driver>_password` avant `password` |
+| 6 | `LAB_USER` / `LAB_PASS` (variable historique) | tous les drivers ; **ne masque jamais Vault** |
+| 7 | valeur du fichier d'inventaire | valeurs par défaut des images de lab (C11) |
 
-(HashiCorp Vault s'insérera entre 5 et 6 à l'étape C3 : une variable ou un fichier posé par l'opérateur l'emporte
-toujours.) Le niveau « driver » passe avant le niveau générique, **fichier ou non** : un `NETCHECK_PASS` posé pour
-FRR n'écrase pas le `NETCHECK_SRLINUX_PASS_FILE` de r5 (la garantie de la v0.3 est conservée).
+Le niveau « driver » passe avant le niveau générique, **fichier ou non** : un `NETCHECK_PASS` posé pour
+FRR n'écrase pas le `NETCHECK_SRLINUX_PASS_FILE` de r5 (la garantie de la v0.3 est conservée). Vault vient après toute
+variable ou tout fichier posé pour netcheck, et avant `LAB_*` et l'inventaire : si les niveaux 1 à 4 fournissent
+l'identifiant, Vault n'est **même pas contacté**. L'ordre est testé (`tests/test_vault.py`).
 
 - **Fichier de secret** : texte brut, **une seule ligne** (la fin de ligne finale est retirée, rien d'autre). Refusé
   (code 3, avant toute connexion, sans jamais citer le contenu) s'il n'est pas un fichier régulier (un lien
@@ -459,8 +465,8 @@ FRR n'écrase pas le `NETCHECK_SRLINUX_PASS_FILE` de r5 (la garantie de la v0.3 
   NETCHECK_PASS_FILE=~/.netcheck-pass python -m netcheck snapshot avant -i mon-inventaire.yml
   ```
 - **`SecretStr`** : le mot de passe d'un routeur n'est jamais une `str` ordinaire. `str()`, `repr()`, f-string,
-  `json.dumps`, `yaml.dump`, `pickle` et `copy` ne donnent jamais la valeur ; la seule porte est `.reveal()`, appelée en
-  un seul endroit (l'ouverture de la connexion). Sa valeur est inscrite dans un registre : tout message d'erreur de
+  `json.dumps`, `yaml.dump`, `pickle` et `copy` ne donnent jamais la valeur ; la seule porte est `.reveal()`, appelée
+  à l'ouverture de la connexion SSH et, pour Vault, à celle de la session AppRole (`netcheck/vault.py`). Sa valeur est inscrite dans un registre : tout message d'erreur de
   collecte, rapport ou alerte qui la contiendrait (une bibliothèque qui recopie le mot de passe dans son exception)
   est expurgé en `****`.
 - **La source est dite, jamais la valeur** : une ligne « Identifiants, mot de passe : variable NETCHECK_PASS (r1, r2) ;
@@ -482,6 +488,65 @@ FRR n'écrase pas le `NETCHECK_SRLINUX_PASS_FILE` de r5 (la garantie de la v0.3 
   `summary.json`). Les mots de passe des images de lab (« netops », « admin ») la déclenchent. Seule la
   valeur exacte est cherchée (pas sa forme en base64 ou en pourcentage). Les mots de passe par défaut des images de
   lab restent en clair dans `automation/inventory*.yml` (C11) ; sur un vrai réseau, utilisez une variable ou un fichier.
+
+### Vault et OpenBao : identifiants lus, jamais écrits (v4, phase C3)
+
+netcheck peut lire les identifiants des équipements dans **HashiCorp Vault** ou **OpenBao** (KV v2, authentification
+**AppRole**). Il n'y **écrit jamais** rien. `pip install 'netcheck[vault]'` installe la bibliothèque `hvac` (Apache-2.0,
+extra optionnel : sans elle, un Vault configuré donne une erreur claire, jamais un repli).
+
+| Variable | Rôle |
+|---|---|
+| `NETCHECK_VAULT_ADDR` | `https://hôte:8200`. `http://` seulement pour le **bouclage** (127.0.0.0/8, `::1`, `localhost`) ; sans cette variable, Vault est désactivé |
+| `NETCHECK_VAULT_ROLE_ID` | identifiant du rôle AppRole (non secret) |
+| `NETCHECK_VAULT_SECRET_ID_FILE` | fichier du `secret_id` : **mêmes règles que les mots de passe de C2** (une ligne, 0600 ou 0400, à vous, pas de lien symbolique). Jamais en variable ni en argument de ligne de commande |
+| `NETCHECK_VAULT_PATH` | chemin du secret KV v2, par exemple `netcheck/lab` |
+| `NETCHECK_VAULT_MOUNT` | montage KV v2 (défaut `secret`) |
+| `NETCHECK_VAULT_CACERT` | autorité de certification (optionnel). La vérification TLS **ne se désactive pas** |
+
+Le secret contient des clés texte `username` et `password`, et si besoin `<driver>_username` / `<driver>_password`
+(`srlinux_password`, `eos_password`…) qui passent avant les clés génériques. Une clé absente laisse la main au niveau
+suivant, comme une variable non définie.
+
+- **Exactement deux appels réseau** : `POST /v1/auth/approle/login` (la seule écriture : ouvrir une session, rien n'est
+  modifié) puis `GET /v1/<montage>/data/<chemin>`. Une **liste blanche exacte** posée dans l'adaptateur HTTP de `hvac`
+  refuse tout autre appel **avant** de l'envoyer (écriture ou suppression de secret, lecture ailleurs, `sys/…`,
+  `revoke-self`) ; le secret est lu une fois par exécution.
+- **La politique du rôle est en lecture seule sur ce seul chemin** (`lab-access/vault/netcheck-ro.hcl`) : deuxième
+  barrière, côté serveur. Le jeton dure 5 minutes.
+- **Aucun repli silencieux.** Vault configuré mais injoignable, authentification refusée, `secret_id` refusé (droits),
+  secret introuvable, lecture refusée, certificat TLS refusé ou réponse inattendue : **erreur sur une ligne, code 3, avant
+  toute connexion aux équipements**, même si `LAB_PASS` ou l'inventaire portent une valeur.
+- Le jeton et le `secret_id` sont des `SecretStr` inscrits dans le registre d'expurgation ; ils n'apparaissent dans aucune
+  sortie (test à l'appui). La source affichée est **« Vault (montage/chemin) »**, jamais une valeur. Aucune redirection
+  n'est suivie et les variables de proxy de l'environnement sont ignorées : le jeton ne sort que vers l'adresse configurée.
+
+**Lab.** `lab-access/vault_lab.sh` démarre un conteneur de **développement** (en mémoire, lié à `127.0.0.1`, perdu à
+l'arrêt) et le provisionne (AppRole, politique en lecture seule, secret `secret/netcheck/lab` avec les identifiants du lab
+FRR). Le jeton racine du mode développement et le `secret_id` vont dans `lab-access/.keys/` (0700/0600, ignoré par Git),
+jamais dans le dépôt ni sur une ligne de commande :
+
+```bash
+bash lab-access/vault_lab.sh up && bash lab-access/vault_lab.sh provision      # ENGINE=openbao pour OpenBao
+eval "$(bash lab-access/vault_lab.sh env)"                                      # NETCHECK_VAULT_* (des chemins, pas de secret)
+python -m netcheck snapshot avant                                               # « mot de passe : Vault (secret/netcheck/lab) (r1…r5) »
+bash lab-access/vault_lab.sh down
+```
+
+`bash tests/integration_vault.sh` (54 contrôles) le rejoue sur le lab FRR réel, en lecture seule, avec un inventaire dont
+le mot de passe est **faux** (seul Vault peut ouvrir les sessions SSH), puis sur OpenBao 2.7.1 : journal d'audit du serveur
+(**deux** requêtes, `update auth/approle/login` et `read secret/data/netcheck/lab`), refus 403 du rôle (écriture,
+suppression, autre chemin, liste, `sys/mounts`, sa propre politique, création d'un `secret_id`, tous testés par des appels
+HTTP directs et non par netcheck), priorité (`LAB_PASS` ne masque pas Vault ; `NETCHECK_USER`/`NETCHECK_PASS` passent
+avant), pannes (`secret_id` invalide, droits 0644, Vault arrêté : code 3, aucun snapshot, aucun repli). Compatibilité
+OpenBao : même client, mêmes résultats ; seule différence, OpenBao 2.7 n'active pas un journal d'audit par l'API, les
+preuves par journal sont donc propres à Vault.
+
+**Licences.** `hvac` (Apache-2.0) est un extra optionnel. L'image `hashicorp/vault` (BUSL-1.1, © IBM) n'est utilisée que
+comme conteneur de lab **non redistribué** par ce dépôt ; OpenBao est sous MPL-2.0. **Limites.** KV v2 et AppRole
+seulement (ni jeton fourni, ni Kubernetes, ni espaces de noms Enterprise) ; le jeton n'est pas révoqué en fin
+d'exécution (`revoke-self` n'est pas dans la liste blanche : seule l'ouverture de session est une écriture) mais expire
+après 5 minutes ; le mode développement n'est ni persistant ni scellé : un vrai Vault se configure autrement.
 
 ### Codes retour
 

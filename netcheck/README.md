@@ -415,12 +415,21 @@ prefix-list (premier correspondant) : un `permit` est signalé même précédé 
   porte `username` (str), `password` (`SecretStr`) et `credential_sources` (source de chacun, jamais une valeur).
   `SecretStr` ne se formate ni ne se sérialise (`str`, `repr`, `json`, `yaml`, `pickle`, `copy`) ; sa valeur est inscrite
   dans un registre global (seuil de 8 caractères) que `mask_secrets` et `redact_known` appliquent à tout texte publié.
-  `collector._connect` est le seul endroit qui appelle `.reveal()` ; `collect_all` expurge les messages d'erreur de
-  collecte, point de passage unique de toutes les commandes. `check` et `assert` reçoivent `credentials=` (terminal,
+  `.reveal()` n'est appelé qu'à l'ouverture de la connexion SSH (`collector._connect`) et de la session AppRole
+  (`vault.py`) ; `collect_all` expurge les messages d'erreur de collecte, point de passage unique de toutes les
+  commandes. `check` et `assert` reçoivent `credentials=` (terminal,
   JSON `credential_sources`, HTML), `snapshot.save` l'écrit dans `meta.json`, `monitor.write_reports` dans
   `summary.json`. Hors ligne, `load(resolve_credentials=False)` ne résout rien. Le test sentinelle
   (`tests/test_secret_sentinel.py`) parcourt cinq commandes, trois fournisseurs et deux modes (réussite, exception qui
   recopie le mot de passe) et cherche la valeur dans tout ce qui est produit.
+- **Vault et OpenBao (phase C3, `vault.py`).** Cinquième niveau de `credentials.resolve` (après le fichier générique,
+  avant `LAB_*`) : `vault.lookup(kind, driver, environ)` lit le secret KV v2 une fois par processus (cache,
+  `vault.forget_cache()` dans `conftest.py`) et renvoie `(valeur, Source("Vault", "(montage/chemin)"))` ou `None` (Vault
+  désactivé ou clé absente). Deux appels seulement, imposés par `GuardedAdapter` (sous-classe de `hvac.adapters.JSONAdapter`
+  qui compare `(méthode, chemin)` à `allowed_calls(config)` ; `VaultCallRefused` est un `PermissionError`, donc un défaut
+  interne, code 70, pas une erreur d'usage). Toute panne est une `VaultError` (sous-classe de `CredentialError`, code 3).
+  `hvac` ignore son paramètre `verify` quand on lui passe une session : TLS se règle sur `session.verify`. Tests contre
+  un faux Vault HTTP et HTTPS local (`tests/test_vault.py`, sans conteneur) et, sur conteneur, `tests/integration_vault.sh`.
 - **`monitor` ne modifie rien** : il n'importe ni `guard` ni `subprocess` (vérifié par un test
   statique) et n'écrit que son état, son verrou et ses rapports locaux. **`guard`** est la seule
   commande qui exécute quelque chose de modifiant -- et c'est le script de l'utilisateur.
