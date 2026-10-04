@@ -158,8 +158,12 @@ c4_router_keys_and_cut() {
 
   out=$(NETCHECK_KEY_FILE="$PWD/$rkey" $NC snapshot c4_key --force -i "$wrong" 2>&1); code=$?
   [[ "$code" == "0" ]] && ok "clé seule (mot de passe d'inventaire FAUX) : snapshot des 5 routeurs, code 0" || { ko "clé seule : code $code"; echo "$out" | tail -6; }
-  grep -q "clé : $PWD/$rkey (r1, r2, r3, r4, r5)" <<<"$out" && ! grep -q "mot de passe" <<<"$out" \
-    && ok "source affichée : « clé : chemin (r1…r5) », aucun mot de passe présenté" || { ko "source de la clé"; echo "$out"; }
+  # Le mot de passe d'inventaire (faux) existe : la source doit dire qu'il est IGNORÉ, jamais qu'il est utilisé.
+  grep -q "clé : $PWD/$rkey (r1, r2, r3, r4, r5)" <<<"$out" \
+    && grep -q "mot de passe ignoré : clé configurée (r1, r2, r3, r4, r5)" <<<"$out" \
+    && ! grep -q "Identifiants, mot de passe :" <<<"$out" \
+    && ok "source affichée : « clé : chemin (r1…r5) » et « mot de passe ignoré : clé configurée », aucun mot de passe utilisé" \
+    || { ko "source de la clé"; echo "$out"; }
   out=$(NETCHECK_KEY_FILE="$PWD/lab-access/.keys/netcheck_bastion" $NC snapshot c4_wrongkey --force -i "$inv" 2>&1); code=$?
   [[ "$code" == "1" && "$(grep -c "INJOIGNABLE" <<<"$out")" == "5" ]] \
     && ok "mauvaise clé + BON mot de passe d'inventaire : les 5 routeurs refusent (code 1) : aucun repli sur le mot de passe" \
