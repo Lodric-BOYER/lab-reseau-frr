@@ -33,6 +33,13 @@ ok() { echo "  ✅ $1"; PASS=$((PASS + 1)); }
 ko() { echo "  ❌ $1"; FAIL=$((FAIL + 1)); }
 title() { echo; echo "=== $1 ==="; }
 
+# Clés d'hôte (phase C1) : strict par défaut. Les clés du lab sont lues DANS les conteneurs et épinglées
+# dans le known_hosts dédié (jamais le ~/.ssh/known_hosts) ; à refaire après chaque déploiement.
+export NETCHECK_KNOWN_HOSTS="$PWD/lab-access/.keys/known_hosts"
+# shellcheck source=tests/lib_hostkeys.sh
+source "$(dirname "$0")/lib_hostkeys.sh"
+bash lab-access/pin_hostkeys.sh ceos >/dev/null || { echo "épinglage des clés d'hôte impossible (lab déployé ?)"; exit 1; }
+
 # Voisins OSPF Full sur r4 (cEOS, Cli) et r5 (FRR, vtysh) : deux commandes différentes, un seul
 # critère de convergence -- comme wait_ospf() dans test_lab_ceos.sh.
 ospf_full_r4() { docker exec "$LAB-r4" Cli -p 15 -c "show ip ospf neighbor" 2>/dev/null | grep -c FULL; }
@@ -496,6 +503,8 @@ kill "$recorder_pid" 2>/dev/null; wait "$recorder_pid" 2>/dev/null
 unset NETCHECK_WEBHOOK_URL
 wait_converged && ok "retour à la normale : OSPF Full des deux côtés" || ko "OSPF non reconvergé après la panne simulée"
 sleep 5
+
+c1_hostkeys_scenarios ceos automation/inventory-ceos.yml 172.20.22.11 172.20.22.14
 
 # ---------------------------------------------------------------- Bilan
 echo

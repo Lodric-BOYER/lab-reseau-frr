@@ -34,4 +34,4 @@ jobs:
       - name: ruff check
         run: ruff check netcheck/ tests/
       - name: shellcheck (preinstalle sur ubuntu-latest)
-        run: shellcheck test_lab.sh test_lab_multivendor.sh test_lab_ceos.sh automation/monitor.sh tests/*.sh
+        run: shellcheck test_lab.sh test_lab_multivendor.sh test_lab_ceos.sh automation/monitor.sh docker/entrypoint-sshkeys.sh lab-access/*.sh tests/*.sh

@@ -22,6 +22,13 @@ ok() { echo "  ✅ $1"; PASS=$((PASS + 1)); }
 ko() { echo "  ❌ $1"; FAIL=$((FAIL + 1)); }
 title() { echo; echo "=== $1 ==="; }
 
+# Clés d'hôte (phase C1) : strict par défaut. Les clés du lab sont lues DANS les conteneurs et épinglées
+# dans le known_hosts dédié (jamais le ~/.ssh/known_hosts) ; à refaire après chaque déploiement.
+export NETCHECK_KNOWN_HOSTS="$PWD/lab-access/.keys/known_hosts"
+# shellcheck source=tests/lib_hostkeys.sh
+source "$(dirname "$0")/lib_hostkeys.sh"
+bash lab-access/pin_hostkeys.sh frr >/dev/null || { echo "épinglage des clés d'hôte impossible (lab déployé ?)"; exit 1; }
+
 # Exécute plusieurs commandes vtysh en une seule session (mode configuration).
 vtconf() { local r="$1"; shift; local args=(); for c in "$@"; do args+=(-c "$c"); done
   docker exec "$LAB-$r" vtysh "${args[@]}" >/dev/null; }
@@ -521,6 +528,8 @@ if grep -rq "$E_SECRET" "$E_OUT" "$E_STATE" reports/monitor_latest reports/monit
 else
   ok "l'URL du webhook n'apparaît dans aucune sortie, aucun état, aucun rapport"
 fi
+
+c1_hostkeys_scenarios frr automation/inventory.yml 172.20.20.11 172.20.20.12
 
 # ---------------------------------------------------------------- Bilan
 echo

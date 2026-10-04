@@ -28,6 +28,13 @@ ok() { echo "  ✅ $1"; PASS=$((PASS + 1)); }
 ko() { echo "  ❌ $1"; FAIL=$((FAIL + 1)); }
 title() { echo; echo "=== $1 ==="; }
 
+# Clés d'hôte (phase C1) : strict par défaut. Les clés du lab sont lues DANS les conteneurs et épinglées
+# dans le known_hosts dédié (jamais le ~/.ssh/known_hosts) ; à refaire après chaque déploiement.
+export NETCHECK_KNOWN_HOSTS="$PWD/lab-access/.keys/known_hosts"
+# shellcheck source=tests/lib_hostkeys.sh
+source "$(dirname "$0")/lib_hostkeys.sh"
+bash lab-access/pin_hostkeys.sh multivendor >/dev/null || { echo "épinglage des clés d'hôte impossible (lab déployé ?)"; exit 1; }
+
 # Voisins OSPF Full sur r4 (FRR, vtysh) et r5 (SR Linux, sr_cli) : deux commandes différentes,
 # un seul critère de convergence -- comme wait_ospf() dans test_lab_multivendor.sh.
 ospf_full_r4() { docker exec "$LAB-r4" vtysh -c "show ip ospf neighbor" 2>/dev/null | grep -c Full; }
@@ -160,6 +167,21 @@ wait_identical() {   # preuve de retour : l'état est IDENTIQUE à l'état d'ava
   return 1
 }
 wait_converged && wait_ospf6 1 && ok "état nominal : OSPFv2 et OSPFv3 Full des deux côtés" || ko "lab non convergé avant A3"
+# Les voisins OSPFv3 Full ne disent pas que les ROUTES IPv6 sont revenues (après A2, celles de SR Linux arrivent
+# plus tard) : une référence prise trop tôt ferait diverger le retour prouvé, sans rapport avec ce qu'on teste.
+wait_route6() {
+  for _ in $(seq 1 30); do
+    local n=0
+    for r in r1 r2 r3 r4; do
+      docker exec "$LAB-$r" vtysh -c "show ipv6 route 2001:db8:a2::/64" 2>/dev/null | grep -q "2001:db8:a2::/64" && n=$((n + 1))
+    done
+    docker exec "$LAB-r4" vtysh -c "show ipv6 route 2001:db8:2:ff::5/128" 2>/dev/null | grep -q "2001:db8:2:ff::5/128" && n=$((n + 1))
+    [[ "$n" == "5" ]] && return 0
+    sleep 3
+  done
+  return 1
+}
+wait_route6 && ok "routes IPv6 de SR Linux revenues sur r1 à r4 (référence stable)" || ko "routes IPv6 non revenues avant A3"
 $NC snapshot a3_avant --force "${INV[@]}" >/dev/null
 docker exec "$LAB-r4" ip link set eth2 down
 wait_ospf6 0 && ok "voisin OSPFv3 perdu des deux côtés (r4 FRR et r5 SR Linux, poll actif)" \
@@ -263,6 +285,8 @@ echo "$out" | grep -q "netcheck monitor : OK (diff OK · assert OK · check OK)"
   && ok "statut OK sur les trois composants (r5 SR Linux inclus)" || { ko "statut inattendu"; echo "$out"; }
 grep -q '"status": "OK"' "$M_STATE" && ok "état enregistré (premier relevé OK, rien à annoncer)" \
   || ko "fichier d'état absent ou inattendu"
+
+c1_hostkeys_scenarios multivendor automation/inventory-multivendor.yml 172.20.21.11 172.20.21.15
 
 # ---------------------------------------------------------------- Bilan
 echo

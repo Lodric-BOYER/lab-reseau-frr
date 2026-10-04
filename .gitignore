@@ -30,3 +30,8 @@ reports/
 
 # Métadonnées Windows ("mark of the web") copiées par erreur dans le dépôt
 *:Zone.Identifier
+
+# Phase C : clés SSH, known_hosts épinglé et secrets générés par les scripts de lab (jamais commités, C15)
+lab-access/.keys/
+lab-access/**/.env
+lab-access/**/.env.*
