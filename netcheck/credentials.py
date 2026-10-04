@@ -52,12 +52,10 @@ class Source:
         return f"{self.kind} {self.name}".strip()
 
 
-def read_secret_file(path: str | Path, what: str = "secret") -> str:
-    """Lit un secret dans un fichier texte. Refus (CredentialError) si le fichier n'est pas un fichier
-    régulier (pas un lien symbolique), n'appartient pas à l'utilisateur courant, est lisible par d'autres
-    (droits autres que 0600 ou 0400), est vide, trop gros, ou fait plus d'une ligne (un fichier
-    d'environnement entier donnerait une valeur fausse). La fin de ligne finale est retirée ; rien d'autre
-    n'est modifié."""
+def check_private_file(path: str | Path, what: str, max_bytes: int) -> Path:
+    """Les règles de C2 pour tout fichier qui porte un secret (mot de passe, clé privée SSH) : fichier
+    régulier (pas un lien symbolique), à l'utilisateur courant, droits 0600 ou 0400, pas trop gros. Ne lit
+    jamais le contenu. Renvoie le chemin développé (`~`)."""
     p = Path(path).expanduser()
     if p.is_symlink():
         raise CredentialError(
@@ -76,8 +74,18 @@ def read_secret_file(path: str | Path, what: str = "secret") -> str:
         if mode not in (0o600, 0o400):
             raise CredentialError(
                 f"{what} : {p} a les droits {mode:o}, attendu 600 (lisible par vous seul) : chmod 600 '{p}'")
-    if info.st_size > MAX_SECRET_FILE_BYTES:
-        raise CredentialError(f"{what} : {p} fait plus de {MAX_SECRET_FILE_BYTES} octets : refusé")
+    if info.st_size > max_bytes:
+        raise CredentialError(f"{what} : {p} fait plus de {max_bytes} octets : refusé")
+    return p
+
+
+def read_secret_file(path: str | Path, what: str = "secret") -> str:
+    """Lit un secret dans un fichier texte. Refus (CredentialError) si le fichier n'est pas un fichier
+    régulier (pas un lien symbolique), n'appartient pas à l'utilisateur courant, est lisible par d'autres
+    (droits autres que 0600 ou 0400), est vide, trop gros, ou fait plus d'une ligne (un fichier
+    d'environnement entier donnerait une valeur fausse). La fin de ligne finale est retirée ; rien d'autre
+    n'est modifié."""
+    p = check_private_file(path, what, MAX_SECRET_FILE_BYTES)
     text = p.read_text(encoding="utf-8")
     value = text[:-2] if text.endswith("\r\n") else text[:-1] if text.endswith("\n") else text
     if not value:
@@ -126,31 +134,52 @@ def resolve(kind: str, driver: str, fallback: str | None, device: str = "?",
 
 
 def resolve_device(router: dict, environ: dict | None = None) -> dict:
-    """Ajoute à un routeur de l'inventaire son identité résolue : `username` (str), `password` (SecretStr)
-    et `credential_sources` ({« username » | « password » : source}), sans aucune valeur."""
+    """Ajoute à un routeur de l'inventaire son identité résolue : `username` (str) et, soit `password`
+    (SecretStr), soit (phase C4, une clé est configurée) `key_file` et `key_passphrase`. Le mot de passe n'est
+    alors NI résolu NI présenté, jamais en repli. `credential_sources` donne la source de chacun, sans aucune
+    valeur (« username » et « password » ou « key »)."""
+    from netcheck import sshkeys  # import tardif : sshkeys importe ce module
     name, driver = router["name"], router.get("driver", "frr")
     user, user_src = resolve("USER", driver, router.get("username"), name, environ)
+    env = os.environ if environ is None else environ
+    key = sshkeys.resolve_key(driver, router.get("key_file"), name, env)
+    if key is not None:
+        without_password = {k: v for k, v in router.items() if k != "password"}
+        return {**without_password, "username": user, "key_file": key.path, "key_passphrase": key.passphrase,
+                "credential_sources": {"username": user_src.label, "key": key.path}}
     password, pass_src = resolve("PASS", driver, router.get("password"), name, environ)
     return {**router, "username": user, "password": SecretStr(password, pass_src.label),
             "credential_sources": {"username": user_src.label, "password": pass_src.label}}
 
 
 def describe_sources(routers: dict) -> dict[str, dict[str, list[str]]] | None:
-    """{« utilisateur » | « mot de passe » : {source : [équipements]}} pour les rapports ; None si aucun
-    routeur n'a d'identité résolue (mode hors ligne). Jamais une valeur."""
-    out: dict[str, dict[str, list[str]]] = {"utilisateur": {}, "mot de passe": {}}
+    """{« utilisateur » | « mot de passe » | « clé » | « bastion » : {source : [équipements]}} pour les
+    rapports ; None si aucun routeur n'a d'identité résolue (mode hors ligne). Jamais une valeur.
+    « clé : /chemin (r1, r2) » ; « bastion : jump@hôte (clé /chemin) »."""
+    out: dict[str, dict[str, list[str]]] = {"utilisateur": {}, "mot de passe": {}, "clé": {}}
     seen = False
     short = []
+    bastions: dict[str, list[str]] = {}
     for name, router in sorted(routers.items()):
         sources = router.get("credential_sources")
         if not sources:
             continue
         seen = True
         out["utilisateur"].setdefault(sources["username"], []).append(name)
-        out["mot de passe"].setdefault(sources["password"], []).append(name)
+        if "key" in sources:
+            out["clé"].setdefault(sources["key"], []).append(name)
+        else:
+            out["mot de passe"].setdefault(sources["password"], []).append(name)
+        bastion = router.get("bastion")
+        if bastion is not None:
+            bastions.setdefault(bastion.label, [f"clé {bastion.key.path}"])
         password = router.get("password")
         if isinstance(password, SecretStr) and not password.redactable:
             short.append(name)
+    if not out["clé"]:
+        del out["clé"]              # pas de clé : la forme des rapports d'avant C4 est inchangée
+    if bastions:
+        out["bastion"] = bastions
     if short:
         # Même forme que les sources : le terminal, le JSON, le HTML, meta.json, le journal de guard et le
         # summary.json de monitor la portent sans plomberie. Information : aucun effet sur le code retour.

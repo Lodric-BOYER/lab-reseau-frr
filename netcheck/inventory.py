@@ -12,10 +12,11 @@ identifiant (`credential_sources`), jamais sa valeur.
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from netcheck import credentials
+from netcheck import credentials, sshkeys
 from netcheck.drivers.registry import DRIVER_REGISTRY
 from netcheck.usage import UsageError, load_yaml
 
@@ -32,6 +33,8 @@ class Inventory:
     # Phase C1 : `lab: true` dans le fichier. Seul un inventaire de lab peut utiliser --host-keys accept-new.
     lab: bool = False
     source: str = ""   # fichier d'origine, pour les messages
+    # Phase C4 : bastion résolu (clé contrôlée et chargée), ou None (hors ligne, ou pas de bloc `bastion:`).
+    bastion: sshkeys.Bastion | None = None
 
 
 def load(only: list[str] | None = None, path: Path | str | None = None,
@@ -56,6 +59,14 @@ def load(only: list[str] | None = None, path: Path | str | None = None,
     if not isinstance(declared, dict) or not declared:
         raise UsageError(f"Inventaire {path} : `routers` doit être un objet non vide (un routeur par clé)")
 
+    # Phase C4 : bloc `bastion:` au niveau de l'inventaire. Sa structure est toujours validée ; sa clé n'est
+    # lue (et contrôlée) qu'en mode direct : les commandes hors ligne n'ont besoin d'aucun fichier de clé.
+    bastion_spec = data.get("bastion")
+    if bastion_spec is not None:
+        _check_bastion(bastion_spec, path)
+    bastion = sshkeys.resolve_bastion(bastion_spec, os.environ) \
+        if bastion_spec is not None and resolve_credentials else None
+
     routers = {}
     for name, attrs in declared.items():
         if not isinstance(name, str):
@@ -67,6 +78,8 @@ def load(only: list[str] | None = None, path: Path | str | None = None,
             continue
         r = {**defaults, **(attrs or {}), "name": name}
         _check_router(r, path)
+        if bastion is not None:
+            r["bastion"] = bastion
         routers[name] = credentials.resolve_device(r) if resolve_credentials else r
 
     if only and set(only) - set(routers):
@@ -84,13 +97,37 @@ def load(only: list[str] | None = None, path: Path | str | None = None,
         lists[key] = value
 
     return Inventory(routers=routers, management_interfaces=lists["management_interfaces"],
-                     management_vrfs=lists["management_vrfs"], lab=lab, source=str(path))
+                     management_vrfs=lists["management_vrfs"], lab=lab, source=str(path), bastion=bastion)
+
+
+def _check_bastion(spec, path: Path) -> None:
+    """Structure du bloc `bastion:` (host, port, username, key_file). Jamais de mot de passe de bastion."""
+    if not isinstance(spec, dict):
+        raise UsageError(f"Inventaire {path} : `bastion` doit être un objet (host, username, key_file, port)")
+    unknown = sorted(set(spec) - set(sshkeys.BASTION_KEYS))
+    if unknown:
+        raise UsageError(f"Inventaire {path} : bastion : clé(s) inconnue(s) {unknown} (attendu : "
+                         f"{', '.join(sshkeys.BASTION_KEYS)} ; un bastion n'a jamais de mot de passe)")
+    for key in ("host", "username"):
+        if not isinstance(spec.get(key), str) or not spec[key].strip():
+            raise UsageError(f"Inventaire {path} : bastion : `{key}` manque (ou n'est pas du texte)")
+    if "key_file" in spec and (not isinstance(spec["key_file"], str) or not spec["key_file"].strip()):
+        raise UsageError(f"Inventaire {path} : bastion : `key_file` doit être un chemin (texte)")
+    if "port" in spec:
+        port = spec["port"]
+        if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
+            raise UsageError(f"Inventaire {path} : bastion : `port` doit être un entier de 1 à 65535")
 
 
 def _check_router(router: dict, path: Path) -> None:
     """Types des champs d'un routeur. Aucun message ne cite une valeur d'identifiant : l'inventaire peut
     contenir un mot de passe."""
     name = router["name"]
+    if "bastion" in router:
+        raise UsageError(f"Inventaire {path} : routeur {name} : `bastion` se déclare une fois, au niveau de "
+                         "l'inventaire, pas par routeur")
+    if "key_file" in router and (not isinstance(router["key_file"], str) or not router["key_file"].strip()):
+        raise UsageError(f"Inventaire {path} : routeur {name} : `key_file` doit être un chemin (texte)")
     for key in ("username", "password"):
         if key in router and not isinstance(router[key], str):
             raise UsageError(f"Inventaire {path} : routeur {name} : `{key}` doit être du texte "

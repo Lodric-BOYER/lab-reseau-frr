@@ -363,8 +363,15 @@ def test_no_code_path_accepts_unverified_keys():
         for node in ast.walk(tree):
             if isinstance(node, ast.Attribute | ast.Name):
                 name = node.attr if isinstance(node, ast.Attribute) else node.id
-                if name in forbidden_names or name == "set_missing_host_key_policy":
+                if name in forbidden_names:
                     offenders.append(f"{path.name}:{node.lineno} {name}")
+            # Phase C4 : le client du bastion pose une politique, mais UNIQUEMENT RejectPolicy().
+            if isinstance(node, ast.Call) and getattr(node.func, "attr", "") == "set_missing_host_key_policy":
+                arg = node.args[0] if node.args else None
+                func = getattr(arg, "func", None)
+                called = getattr(func, "attr", getattr(func, "id", ""))
+                if not (isinstance(arg, ast.Call) and called == "RejectPolicy"):
+                    offenders.append(f"{path.name}:{node.lineno} politique autre que RejectPolicy()")
             if isinstance(node, ast.keyword) and isinstance(node.value, ast.Constant):
                 if (node.arg, node.value.value) in {("ssh_strict", False), ("system_host_keys", True)}:
                     offenders.append(f"{path.name}:{node.value.lineno} {node.arg}={node.value.value}")

@@ -13,10 +13,12 @@ from pathlib import Path
 from netmiko import ConnectHandler
 
 from netcheck import hostkeys
+from netcheck.bastion import BastionLink
 from netcheck.drivers.base import Driver
 from netcheck.drivers.registry import DRIVER_REGISTRY
 from netcheck.model import DeviceState
 from netcheck.secrets import redact_known, reveal
+from netcheck.sshkeys import KeySpec, load_private_key
 
 # automation/ n'est pas un paquet Python (pas de __init__.py) : on réutilise run_parallel tel
 # quel en ajoutant son dossier à sys.path, sans dupliquer sa logique (C2 : rien n'y est modifié).
@@ -100,20 +102,51 @@ def _connect(router: dict):
     policy = hostkeys.current()
     host, port = router["host"], int(router.get("port", 22))
     hostkeys.check_file(policy.path)
-    hostkeys.learn(host, port, policy)
+    link = None
     try:
-        return ConnectHandler(
-            device_type=router["device_type"], host=host, port=port,
-            username=router["username"], password=reveal(router["password"]),
+        extra: dict = {}   # sock (bastion), pkey (clé) ou password : ce qui dépend du routeur
+        bastion = router.get("bastion")
+        if bastion is not None:
+            # Phase C4 : tout passe par le bastion, premier contact (accept-new) compris. Jamais de repli
+            # direct : si le bastion échoue, l'équipement est injoignable (BastionError), c'est tout.
+            link = BastionLink.open(bastion, policy)
+            hostkeys.learn(host, port, policy, opener=link.open_channel)
+            extra["sock"] = link.open_channel(host, port)
+        else:
+            hostkeys.learn(host, port, policy)
+        if router.get("key_file"):
+            # Clé déjà chargée, présentée seule (use_keys reste False : Netmiko ferait sinon essayer aussi les
+            # clés de ~/.ssh) ; pas de mot de passe, jamais en repli.
+            extra["pkey"] = load_private_key(KeySpec(router["key_file"], router.get("key_passphrase")),
+                                             f"clé de {router.get('name', host)}")
+        else:
+            extra["password"] = reveal(router["password"])
+        conn = ConnectHandler(
+            device_type=router["device_type"], host=host, port=port, username=router["username"],
             timeout=10, conn_timeout=10,
             ssh_strict=True, system_host_keys=False,
-            alt_host_keys=True, alt_key_file=str(policy.path),
+            alt_host_keys=True, alt_key_file=str(policy.path), allow_agent=False,
+            **extra,
         )
     except Exception as e:  # noqa: BLE001 -- on ne remplace que les refus de clé d'hôte
+        if link is not None:
+            link.close()
         explained = hostkeys.explain(e, host, policy)
         if explained is None:
             raise
         raise hostkeys.HostKeyError(explained) from e
+    conn._netcheck_bastion = link   # fermé avec la session par _disconnect
+    return conn
+
+
+def _disconnect(conn) -> None:
+    """Ferme la session vers l'équipement, puis la session vers le bastion qui la portait."""
+    try:
+        conn.disconnect()
+    finally:
+        link = getattr(conn, "_netcheck_bastion", None)
+        if link is not None:
+            link.close()
 
 
 def collect(router: dict, driver: Driver | None = None) -> DeviceState:
@@ -151,7 +184,7 @@ def collect(router: dict, driver: Driver | None = None) -> DeviceState:
             out = conn.send_command(cli, read_timeout=30)
             raw[command] = driver.clean_output(out)
     finally:
-        conn.disconnect()
+        _disconnect(conn)
     state = driver.parse(raw, router["name"], router["host"])
     # Champ lu par compliance.py pour filtrer les règles par driver (Phase D2). Le nom du
     # routeur dans l'inventaire fait foi (pas le type de l'instance `driver` reçue), pour que

@@ -129,10 +129,14 @@ def _is_known(path: Path, name: str) -> bool:
     return hk.lookup(name) is not None
 
 
-def _fetch_server_key(host: str, port: int) -> paramiko.PKey:
-    """Lit la clé d'hôte annoncée par le serveur, sans s'authentifier."""
+def _fetch_server_key(host: str, port: int, opener=None) -> paramiko.PKey:
+    """Lit la clé d'hôte annoncée par le serveur, sans s'authentifier. `opener(host, port)` (phase C4) donne
+    un canal ouvert VIA le bastion : le premier contact d'un routeur ne doit jamais se faire en direct."""
     try:
-        sock = socket.create_connection((host, port), timeout=CONNECT_TIMEOUT)
+        if opener:
+            sock = opener(host, port)
+        else:
+            sock = socket.create_connection((host, port), timeout=CONNECT_TIMEOUT)
     except OSError as e:
         raise HostKeyError(f"{host}:{port} injoignable pour lire sa clé d'hôte : {e}") from None
     transport = paramiko.Transport(sock)
@@ -145,7 +149,7 @@ def _fetch_server_key(host: str, port: int) -> paramiko.PKey:
         transport.close()
 
 
-def learn(host: str, port: int, policy: HostKeyPolicy) -> bool:
+def learn(host: str, port: int, policy: HostKeyPolicy, opener=None) -> bool:
     """Mode accept-new : enregistre la clé d'un hôte INCONNU (premier contact). Renvoie True si une
     entrée a été écrite. Un hôte déjà connu n'est pas recontacté ici : la connexion stricte qui
     suit le vérifie, et refuse une clé changée. Sans effet en mode strict."""
@@ -157,7 +161,7 @@ def learn(host: str, port: int, policy: HostKeyPolicy) -> bool:
     check_file(path)
     if _is_known(path, name):
         return False
-    key = _fetch_server_key(host, port)
+    key = _fetch_server_key(host, port, opener)
     with _lock:
         if _is_known(path, name):   # un autre thread l'a enregistré entre-temps
             return False
