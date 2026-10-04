@@ -53,6 +53,23 @@
     "code_commit": "914a4b3",
     "reason": "A4 : peer groups BGP et plages dynamiques (13 relevés en direct de r3 FRR et r4 cEOS) et limite 0 sur un membre. Capacité nouvelle : réponses validées en tableau (cas, v0.3.0, nouvelle réponse, justification), code fe6b04e/914a4b3",
     "current_code": true
+   },
+   {
+    "cases": [
+     "dualstack:frr-r1",
+     "dualstack:frr-r2",
+     "dualstack:frr-r3",
+     "dualstack:frr-r4",
+     "dualstack:frr-r5",
+     "dualstack:eos-r4",
+     "dualstack:srlinux-r5",
+     "lab:dualstack-frr",
+     "lab:dualstack-multivendor",
+     "lab:dualstack-ceos"
+    ],
+    "code_commit": "baba43e",
+    "reason": "B3 : configurations relevees en direct sur les labs en double pile (capacite nouvelle, IPv6) ; reponse verifiee contre des attentes ecrites a la main (tests/test_golden_dualstack.py)",
+    "current_code": true
    }
   ],
   "revisions": [
@@ -4672,6 +4689,1012 @@
       "srlinux-mtu-marge-suffisante",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   }
+  },
+  "dualstack:frr-r1": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 58,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "syslog-actif",
+       "r1",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       null
+      ],
+      [
+       "moyenne",
+       "lodric-journalisation-active",
+       "r1",
+       "aucune ligne ne correspond à /^log syslog/",
+       null
+      ]
+     ]
+    },
+    "57:87bd9f47": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "lodric-ospf-router-id-explicite",
+       "r1",
+       "aucune ligne ne correspond à /^\\s*ospf router-id \\d+\\.\\d+\\.\\d+\\.\\d+/",
+       null
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r1",
+       "ligne interdite trouvée : 'password ****'",
+       null
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r1",
+       "ligne interdite trouvée : 'enable password ****'",
+       null
+      ]
+     ]
+    },
+    "probe:static-default-route": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "lodric-pas-de-route-defaut-statique",
+       "r1",
+       "ligne interdite trouvée : 'ip route 0.0.0.0/0 10.0.0.1'",
+       null
+      ]
+     ]
+    }
+   }
+  },
+  "dualstack:frr-r2": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 58,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "syslog-actif",
+       "r2",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       null
+      ],
+      [
+       "moyenne",
+       "lodric-journalisation-active",
+       "r2",
+       "aucune ligne ne correspond à /^log syslog/",
+       null
+      ]
+     ]
+    },
+    "58:d440318f": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "lodric-ospf-router-id-explicite",
+       "r2",
+       "aucune ligne ne correspond à /^\\s*ospf router-id \\d+\\.\\d+\\.\\d+\\.\\d+/",
+       null
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r2",
+       "ligne interdite trouvée : 'password ****'",
+       null
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r2",
+       "ligne interdite trouvée : 'enable password ****'",
+       null
+      ]
+     ]
+    },
+    "probe:static-default-route": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "lodric-pas-de-route-defaut-statique",
+       "r2",
+       "ligne interdite trouvée : 'ip route 0.0.0.0/0 10.0.0.1'",
+       null
+      ]
+     ]
+    }
+   }
+  },
+  "dualstack:frr-r3": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 129,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "syslog-actif",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       null
+      ],
+      [
+       "moyenne",
+       "lodric-journalisation-active",
+       "r3",
+       "aucune ligne ne correspond à /^log syslog/",
+       null
+      ]
+     ]
+    },
+    "84:e41c0385": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans route-map/prefix-list en entrée",
+       null
+      ]
+     ]
+    },
+    "85:9d44bc02": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 172.16.34.2 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "94:f14496aa": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 2001:db8:34::3 sans route-map/prefix-list en entrée",
+       null
+      ]
+     ]
+    },
+    "95:bedd2805": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 2001:db8:34::3 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "100:2ffec6c2": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "lodric-ospf-router-id-explicite",
+       "r3",
+       "aucune ligne ne correspond à /^\\s*ospf router-id \\d+\\.\\d+\\.\\d+\\.\\d+/",
+       null
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'password ****'",
+       null
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r3",
+       "ligne interdite trouvée : 'enable password ****'",
+       null
+      ]
+     ]
+    },
+    "probe:static-default-route": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "lodric-pas-de-route-defaut-statique",
+       "r3",
+       "ligne interdite trouvée : 'ip route 0.0.0.0/0 10.0.0.1'",
+       null
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@69": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r3",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    }
+   }
+  },
+  "dualstack:frr-r4": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 116,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "syslog-actif",
+       "r4",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       null
+      ],
+      [
+       "moyenne",
+       "lodric-journalisation-active",
+       "r4",
+       "aucune ligne ne correspond à /^log syslog/",
+       null
+      ]
+     ]
+    },
+    "70:f9e7f374": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans route-map/prefix-list en entrée",
+       null
+      ]
+     ]
+    },
+    "71:d45c9864": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "80:d6a9aad6": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r4",
+       "voisin eBGP 2001:db8:34::2 sans route-map/prefix-list en entrée",
+       null
+      ]
+     ]
+    },
+    "81:9fe05a0f": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r4",
+       "voisin eBGP 2001:db8:34::2 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    },
+    "86:575bcfac": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "lodric-ospf-router-id-explicite",
+       "r4",
+       "aucune ligne ne correspond à /^\\s*ospf router-id \\d+\\.\\d+\\.\\d+\\.\\d+/",
+       null
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r4",
+       "ligne interdite trouvée : 'password ****'",
+       null
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r4",
+       "ligne interdite trouvée : 'enable password ****'",
+       null
+      ]
+     ]
+    },
+    "probe:static-default-route": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "lodric-pas-de-route-defaut-statique",
+       "r4",
+       "ligne interdite trouvée : 'ip route 0.0.0.0/0 10.0.0.1'",
+       null
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@55": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-politique-entrante",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en entrée",
+       null
+      ],
+      [
+       "haute",
+       "ebgp-politique-sortante",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans route-map/prefix-list en sortie",
+       null
+      ]
+     ]
+    }
+   }
+  },
+  "dualstack:frr-r5": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 45,
+   "mutants_changed": {
+    "9:83f2453e": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "syslog-actif",
+       "r5",
+       "aucune ligne ne correspond à /^log syslog informational$/",
+       null
+      ],
+      [
+       "moyenne",
+       "lodric-journalisation-active",
+       "r5",
+       "aucune ligne ne correspond à /^log syslog/",
+       null
+      ]
+     ]
+    },
+    "43:33cc72b7": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "basse",
+       "lodric-ospf-router-id-explicite",
+       "r5",
+       "aucune ligne ne correspond à /^\\s*ospf router-id \\d+\\.\\d+\\.\\d+\\.\\d+/",
+       null
+      ]
+     ]
+    },
+    "probe:clear-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r5",
+       "ligne interdite trouvée : 'password ****'",
+       null
+      ]
+     ]
+    },
+    "probe:clear-enable-password": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "critique",
+       "pas-de-mot-de-passe-en-clair",
+       "r5",
+       "ligne interdite trouvée : 'enable password ****'",
+       null
+      ]
+     ]
+    },
+    "probe:static-default-route": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "lodric-pas-de-route-defaut-statique",
+       "r5",
+       "ligne interdite trouvée : 'ip route 0.0.0.0/0 10.0.0.1'",
+       null
+      ]
+     ]
+    }
+   }
+  },
+  "dualstack:eos-r4": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "syslog-actif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-entrante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-sortante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lan-en-ospf-passif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-pas-de-route-defaut-statique",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-ospf-router-id-explicite",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 116,
+   "mutants_changed": {}
+  },
+  "dualstack:srlinux-r5": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "syslog-actif",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "pas-de-mot-de-passe-en-clair",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lan-en-ospf-passif",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-journalisation-active",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-pas-de-route-defaut-statique",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-ospf-router-id-explicite",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ]
+    ]
+   },
+   "mutants_total": 121,
+   "mutants_changed": {
+    "78:15ff2f67": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "srlinux-ospf-point-to-point",
+       "r5",
+       "interface OSPF ethernet-1/1.0 active (non passive) sans interface-type point-to-point : risque d'élection DR/BDR inutile",
+       null
+      ]
+     ]
+    },
+    "84:19b9e7e0": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "srlinux-ospf-point-to-point",
+       "r5",
+       "interface OSPF ethernet-1/2.0 active (non passive) sans interface-type point-to-point : risque d'élection DR/BDR inutile",
+       null
+      ]
+     ]
+    },
+    "87:19b9e7e0": {
+     "compliant": false,
+     "code": 1,
+     "violations": [
+      [
+       "moyenne",
+       "srlinux-ospf-point-to-point",
+       "r5",
+       "interface OSPF lo0.0 active (non passive) sans interface-type point-to-point : risque d'élection DR/BDR inutile",
+       null
+      ]
+     ]
+    },
+    "probe:ip-mtu-1514@8": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "srlinux-mtu-marge-suffisante",
+       "r5",
+       "interface ethernet-1/1 : mtu 1514 - ip-mtu 1514 = 0 < marge minimale 14 (cf. Phase C : ip-mtu-too-large)",
+       null
+      ]
+     ]
+    }
+   }
+  },
+  "lab:dualstack-frr": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   }
+  },
+  "lab:dualstack-multivendor": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "syslog-actif",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "pas-de-mot-de-passe-en-clair",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lan-en-ospf-passif",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-journalisation-active",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-pas-de-route-defaut-statique",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-ospf-router-id-explicite",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   }
+  },
+  "lab:dualstack-ceos": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "syslog-actif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-entrante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-sortante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lan-en-ospf-passif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-pas-de-route-defaut-statique",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-ospf-router-id-explicite",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
      ],
      [
       "srlinux-ospf-point-to-point",

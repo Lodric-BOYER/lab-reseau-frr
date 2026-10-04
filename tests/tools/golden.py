@@ -55,13 +55,22 @@ INPUTS = GOLDEN_DIR / "inputs"
 RULE_FILES = {
     "default": REPO / "netcheck" / "rules" / "default.yml",
     "security": REPO / "netcheck" / "rules" / "security.yml",
+    # Phase B3 : fichier NOUVEAU (règles OSPFv3). Aucun code de référence n'y répond : son gel est créé par
+    # `record-new` avec le code courant commité, jamais par `record` (qui réécrirait les deux autres).
+    "security-ipv6": REPO / "netcheck" / "rules" / "security-ipv6.yml",
 }
+# Fichiers de règles de la v0.3.0 : les seuls que `record` (code de référence) peut réécrire.
+REFERENCE_RULE_FILES = ("default", "security")
 # Union des interfaces de management des trois inventaires (une seule valeur pour les cas par
 # équipement ; les cas « lab » utilisent celle de leur inventaire).
 MGMT_ALL = {"eth0", "mgmt0", "Management0"}
 LAB_MGMT = {"lab:frr": {"eth0"}, "lab:multivendor": {"eth0", "mgmt0"},
             "lab:ceos": {"eth0", "Management0"}, "lab:config-frr": {"eth0"},
-            "lab:config-ceos": {"eth0", "Management0"}}
+            "lab:config-ceos": {"eth0", "Management0"},
+            # Phase B3 : labs en double pile (configurations relevées en direct).
+            "lab:dualstack-frr": {"eth0"}, "lab:dualstack-multivendor": {"eth0", "mgmt0"},
+            "lab:dualstack-ceos": {"eth0", "Management0"}}
+DUALSTACK = FIXTURES / "live_dualstack"
 
 # Snapshots réels de référence (pris avec le code v0.3.0) -> inventaire du lab correspondant.
 REFERENCES = {
@@ -138,6 +147,13 @@ def devices() -> dict[str, DeviceState]:
     for path in sorted((FIXTURES / "peergroups").glob("*.txt")):
         vendor = path.stem.split("_")[0]
         out[f"peergroup:{path.stem}"] = _config_only("r3" if vendor == "frr" else "r4", vendor, path)
+    # Ajoutés en B3 (double pile) : `running-config` relevées en direct sur les trois labs en double pile
+    # (tests/fixtures/live_dualstack/), configuration seule. Capacité nouvelle (IPv6) : leur réponse est
+    # celle du code B3 (`add --current-code`), vérifiée contre des attentes écrites à la main.
+    for r in ("r1", "r2", "r3", "r4", "r5"):
+        out[f"dualstack:frr-{r}"] = _config_only(r, "frr", DUALSTACK / f"frr_{r}.txt")
+    out["dualstack:eos-r4"] = _config_only("r4", "eos", DUALSTACK / "eos_r4.txt")
+    out["dualstack:srlinux-r5"] = _config_only("r5", "srlinux", DUALSTACK / "srl_r5.txt")
     return out
 
 
@@ -169,6 +185,11 @@ def labs() -> dict[str, dict[str, DeviceState]]:
         "lab:config-frr": {r: d[f"config:frr-{r}"] for r in ("r1", "r2", "r3", "r4", "r5")},
         "lab:config-ceos": {**{r: d[f"config:frr-{r}"] for r in ("r1", "r2", "r3", "r5")},
                             "r4": d["config:eos-r4"]},
+        "lab:dualstack-frr": {r: d[f"dualstack:frr-{r}"] for r in ("r1", "r2", "r3", "r4", "r5")},
+        "lab:dualstack-multivendor": {**{r: d[f"dualstack:frr-{r}"] for r in ("r1", "r2", "r3", "r4")},
+                                      "r5": d["dualstack:srlinux-r5"]},
+        "lab:dualstack-ceos": {**{r: d[f"dualstack:frr-{r}"] for r in ("r1", "r2", "r3", "r5")},
+                               "r4": d["dualstack:eos-r4"]},
     }
 
 
@@ -217,6 +238,14 @@ def probes(state: DeviceState):
             for variant, suffix in (("default", ""), ("default-le32", " le 32")):
                 extra = f"{m.group(1)}99 permit 0.0.0.0/0{suffix}\n"
                 yield f"probe:prefix-list-{variant}@{i + 1}", _insert_after(state, lines, i, extra)
+        # B3 : la route par défaut IPv6 ajoutée à une `ipv6 prefix-list` existante (FRR seulement : EOS
+        # écrit ses listes IPv6 en sous-mode). Sans effet sur les entrées d'avant la double pile, qui n'en
+        # ont aucune.
+        m = re.match(r"^(ipv6 prefix-list \S+ seq )\d+ permit ", line)
+        if m:
+            for variant, suffix in (("default", ""), ("default-le128", " le 128")):
+                extra = f"{m.group(1)}99 permit ::/0{suffix}\n"
+                yield f"probe:ipv6-prefix-list-{variant}@{i + 1}", _insert_after(state, lines, i, extra)
         # Limite de préfixes/routes remplacée par 0 (illimité côté EOS).
         if re.search(r"\b(?:maximum-prefix|maximum-routes) \d+", line):
             zero = re.sub(r"\b(maximum-prefix|maximum-routes) \d+", r"\1 0", line)
@@ -395,6 +424,8 @@ def add_cases(case_ids: list[str], reason: str, reference_commit: str | None = N
                          "le gel enregistre la réponse d'un code qui existe dans l'historique")
     updates: dict[str, dict] = {}
     for rules_name in RULE_FILES:
+        if not golden_path(rules_name).exists():
+            continue                      # gel pas encore créé (`record-new`) : il recevra tous les cas
         data = json.loads(golden_path(rules_name).read_text(encoding="utf-8"))
         reference = data["meta"]["code_commit"]
         if reference_commit is None and not current_code:
@@ -428,6 +459,27 @@ def add_cases(case_ids: list[str], reason: str, reference_commit: str | None = N
             detail = (f"{case['mutants_total']} mutations ({changed_count} changent la réponse)"
                       if "mutants_total" in case else "réponse de base")
             print(f"{rules_name} : + {case_id} : {detail}, conforme={case['base'].get('compliant')}")
+
+
+def record_new(rules_name: str) -> None:
+    """Crée le gel d'un fichier de règles ajouté APRÈS la v0.3.0 (Phase B3 : `security-ipv6`) avec le code
+    courant, qui doit être commité (la réponse gelée vient d'un code qui existe dans l'historique). Tous
+    les cas y entrent. Refuse d'écraser un gel existant, et ne touche à aucun autre fichier."""
+    if rules_name in REFERENCE_RULE_FILES:
+        raise SystemExit(f"{rules_name} fait partie des fichiers de la v0.3.0 : "
+                         f"jamais réécrit par record-new")
+    path = golden_path(rules_name)
+    if path.exists():
+        raise SystemExit(f"{path.name} existe déjà : jamais écrasé")
+    if _netcheck_dirty():
+        raise SystemExit("netcheck/ a des modifications non commitées : commitez le code d'abord")
+    data = build(rules_name)
+    data["meta"]["created_with"] = {"code_commit": _code_commit(), "current_code": True,
+                                    "reason": "fichier de règles ajouté en B3 : aucune réponse de la v0.3.0"}
+    path.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    cases = data["cases"]
+    print(f"{path.relative_to(REPO)} : {len(cases)} cas, "
+          f"{sum(c.get('mutants_total', 0) for c in cases.values())} mutations")
 
 
 def _base_now(rules, case_id: str) -> dict | None:
@@ -564,6 +616,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("record")
+    new = sub.add_parser("record-new", help="crée le gel d'un fichier de règles NOUVEAU (refuse d'écraser)")
+    new.add_argument("rules", choices=sorted(set(RULE_FILES) - set(REFERENCE_RULE_FILES)))
     sub.add_parser("compare")
     add = sub.add_parser("add", help="ajoute des cas nouveaux au gel (jamais d'écrasement)")
     add.add_argument("cases", nargs="+")
@@ -583,9 +637,13 @@ def main(argv: list[str] | None = None) -> int:
     ref.add_argument("action", choices=["record", "compare"])
     args = parser.parse_args(argv)
 
+    if args.command == "record-new":
+        record_new(args.rules)
+        return 0
+
     if args.command == "record":
         GOLDEN_DIR.mkdir(exist_ok=True)
-        for rules_name in RULE_FILES:
+        for rules_name in REFERENCE_RULE_FILES:
             data = build(rules_name)
             golden_path(rules_name).write_text(
                 json.dumps(data, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")

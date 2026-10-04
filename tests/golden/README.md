@@ -66,3 +66,23 @@ un fichier sans `exit` est lu entièrement.
 **A3c, EOS : aucun écart du gel.** Hors gel (anciens moteurs comparés sur des entrées fabriquées) : le texte
 d'une bannière n'est plus lu comme de la configuration, et des espaces multiples dans
 `neighbor X maximum-routes N` ne donnent plus « sans limite ».
+
+## Phase B3 : cas double pile et troisième fichier de règles (ajouts, aucun écart)
+
+Rien du gel existant ne bouge : les deux fichiers de la v0.3.0 reçoivent des cas **ajoutés** (`add --current-code`,
+zéro ligne supprimée du gel), et les règles OSPFv3 ont leur propre fichier de règles, donc leur propre gel.
+
+- **Cas ajoutés** (`default` et `security`) : `dualstack:frr-r1` à `frr-r5`, `dualstack:eos-r4`, `dualstack:srlinux-r5`
+  (les `running-config` relevées en direct sur les labs en double pile, `tests/fixtures/live_dualstack/`, configuration
+  seule, une mutation par ligne) et `lab:dualstack-frr|multivendor|ceos`. Capacité nouvelle (IPv6) : aucune réponse de la
+  v0.3.0 à préserver, la réponse gelée est celle du code B3 (commit `baba43e`, enregistré dans `meta.additions`).
+- **Sondes IPv6** : `probe:ipv6-prefix-list-default[-le128]@<ligne>` ajoute `permit ::/0` à une `ipv6 prefix-list`
+  existante. Elles ne s'appliquent qu'aux entrées qui ont de telles lignes : aucun des 37 cas d'avant n'en a, leur
+  nombre de mutations est inchangé.
+- **`compliance_security-ipv6.json`** : le gel de `netcheck/rules/security-ipv6.yml` (règles d'authentification OSPFv3),
+  créé par `python tests/tools/golden.py record-new security-ipv6` avec le code courant commité ; la commande refuse
+  d'écraser un gel existant et de toucher aux fichiers de la v0.3.0. Tous les cas y entrent (47) : les 37 d'avant ne
+  disent rien d'OSPFv3 (règles « hors sujet » ou conformes), les cas double pile portent le défaut du lien r4-r5.
+- **Vérification** : `tests/test_golden_dualstack.py` compare ces réponses à des attentes écrites à la main d'après les
+  configurations réelles (aucune violation hors lien r4-r5 ; supprimer l'authentification d'une interface fait apparaître la
+  violation ; une route par défaut IPv6 ajoutée à la politique d'entrée est signalée).

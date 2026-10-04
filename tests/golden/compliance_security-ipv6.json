@@ -1,0 +1,1722 @@
+{
+ "meta": {
+  "netcheck_version": "0.3.0",
+  "code_commit": "baba43e",
+  "rules": "netcheck/rules/security-ipv6.yml",
+  "mutation": "suppression d'une ligne non vide (hors '!') et sondes nommées (probe:*) ; seules les mutations dont la réponse diffère de la base sont stockées, et seulement les champs qui diffèrent",
+  "columns": {
+   "violations": [
+    "gravité",
+    "règle",
+    "équipement",
+    "détail",
+    "catégorie"
+   ],
+   "not_applicable": [
+    "règle",
+    "équipement",
+    "raison"
+   ]
+  },
+  "created_with": {
+   "code_commit": "baba43e",
+   "current_code": true,
+   "reason": "fichier de règles ajouté en B3 : aucune réponse de la v0.3.0"
+  }
+ },
+ "cases": {
+  "fixture:frr-r1": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 42,
+   "mutants_changed": {}
+  },
+  "fixture:frr-r3": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 75,
+   "mutants_changed": {}
+  },
+  "fixture:frr-r4": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 68,
+   "mutants_changed": {}
+  },
+  "fixture:srlinux-r5": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {}
+  },
+  "fixture:srlinux-r5-hardened": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 92,
+   "mutants_changed": {}
+  },
+  "fixture:eos-degraded_api_exposed": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 86,
+   "mutants_changed": {}
+  },
+  "fixture:eos-degraded_bgp_connect": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {}
+  },
+  "fixture:eos-degraded_bgp_maxpath": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {}
+  },
+  "fixture:eos-degraded_interface_shutdown": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 81,
+   "mutants_changed": {}
+  },
+  "fixture:eos-degraded_ospf_down": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {}
+  },
+  "fixture:eos-r4": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {}
+  },
+  "config:frr-r1": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 38,
+   "mutants_changed": {}
+  },
+  "config:frr-r2": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 32,
+   "mutants_changed": {}
+  },
+  "config:frr-r3": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 76,
+   "mutants_changed": {}
+  },
+  "config:frr-r4": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 68,
+   "mutants_changed": {}
+  },
+  "config:frr-r5": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 30,
+   "mutants_changed": {}
+  },
+  "config:eos-r4": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 90,
+   "mutants_changed": {}
+  },
+  "peergroup:eos_s1_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 87,
+   "mutants_changed": {}
+  },
+  "peergroup:eos_s2_override": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 89,
+   "mutants_changed": {}
+  },
+  "peergroup:eos_s3_open_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {}
+  },
+  "peergroup:eos_s5_orphan_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {}
+  },
+  "peergroup:eos_s6_listen_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 86,
+   "mutants_changed": {}
+  },
+  "peergroup:eos_s7_listen_open_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 80,
+   "mutants_changed": {}
+  },
+  "peergroup:frr_s1_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 89,
+   "mutants_changed": {}
+  },
+  "peergroup:frr_s2_override": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 91,
+   "mutants_changed": {}
+  },
+  "peergroup:frr_s3_open_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 82,
+   "mutants_changed": {}
+  },
+  "peergroup:frr_s4_external": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 84,
+   "mutants_changed": {}
+  },
+  "peergroup:frr_s5_orphan_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 82,
+   "mutants_changed": {}
+  },
+  "peergroup:frr_s6_listen_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 88,
+   "mutants_changed": {}
+  },
+  "peergroup:frr_s7_listen_open_group": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 82,
+   "mutants_changed": {}
+  },
+  "dualstack:frr-r1": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 58,
+   "mutants_changed": {
+    "20:96a07cda": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf6-authentification",
+       "r1",
+       "interface eth1 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ]
+     ]
+    },
+    "33:11017a91": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf6-authentification",
+       "r1",
+       "interface eth2 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ]
+     ]
+    },
+    "44:dc923aa1": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf6-authentification",
+       "r1",
+       "interface eth3 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ]
+     ]
+    },
+    "53:dc923aa1": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf6-authentification",
+       "r1",
+       "interface lo : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ]
+     ]
+    }
+   }
+  },
+  "dualstack:frr-r2": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 58,
+   "mutants_changed": {
+    "31:96a07cda": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf6-authentification",
+       "r2",
+       "interface eth1 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ]
+     ]
+    },
+    "44:d9c7ac84": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf6-authentification",
+       "r2",
+       "interface eth2 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ]
+     ]
+    },
+    "54:dc923aa1": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf6-authentification",
+       "r2",
+       "interface lo : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ]
+     ]
+    }
+   }
+  },
+  "dualstack:frr-r3": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 129,
+   "mutants_changed": {
+    "33:11017a91": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf6-authentification",
+       "r3",
+       "interface eth1 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ]
+     ]
+    },
+    "46:d9c7ac84": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf6-authentification",
+       "r3",
+       "interface eth2 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ]
+     ]
+    },
+    "57:dc923aa1": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf6-authentification",
+       "r3",
+       "interface eth3 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ]
+     ]
+    },
+    "66:dc923aa1": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ospf6-authentification",
+       "r3",
+       "interface lo : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ]
+     ]
+    }
+   }
+  },
+  "dualstack:frr-r4": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ospf6-authentification",
+      "r4",
+      "interface eth2 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+      "ospf"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 116,
+   "mutants_changed": {
+    "31:dc923aa1": {
+     "violations": [
+      [
+       "haute",
+       "ospf6-authentification",
+       "r4",
+       "interface eth1 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf6-authentification",
+       "r4",
+       "interface eth2 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ]
+     ]
+    },
+    "34:7c000824": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "42:97c45740": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "52:dc923aa1": {
+     "violations": [
+      [
+       "haute",
+       "ospf6-authentification",
+       "r4",
+       "interface eth2 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf6-authentification",
+       "r4",
+       "interface lo : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ]
+     ]
+    }
+   }
+  },
+  "dualstack:frr-r5": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ospf6-authentification",
+      "r5",
+      "interface eth1 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+      "ospf"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 45,
+   "mutants_changed": {
+    "11:30372a65": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "19:97c45740": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "30:dc923aa1": {
+     "violations": [
+      [
+       "haute",
+       "ospf6-authentification",
+       "r5",
+       "interface eth1 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf6-authentification",
+       "r5",
+       "interface eth2 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ]
+     ]
+    },
+    "39:dc923aa1": {
+     "violations": [
+      [
+       "haute",
+       "ospf6-authentification",
+       "r5",
+       "interface eth1 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ],
+      [
+       "haute",
+       "ospf6-authentification",
+       "r5",
+       "interface lo : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+       "ospf"
+      ]
+     ]
+    }
+   }
+  },
+  "dualstack:eos-r4": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "eos-ospf6-authentification-ipsec",
+      "r4",
+      "interface Ethernet2 : adjacence OSPFv3 active sans authentification (ospfv3 authentication ipsec)",
+      "ospf"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 116,
+   "mutants_changed": {
+    "28:53e21df1": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf6-authentification-ipsec",
+       "r4",
+       "interface Ethernet1 : adjacence OSPFv3 active sans authentification (ospfv3 authentication ipsec)",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ospf6-authentification-ipsec",
+       "r4",
+       "interface Ethernet2 : adjacence OSPFv3 active sans authentification (ospfv3 authentication ipsec)",
+       "ospf"
+      ]
+     ]
+    },
+    "31:0a64c078": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "41:b3968488": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "43:6afa61e9": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "47:53e21df1": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf6-authentification-ipsec",
+       "r4",
+       "interface Ethernet2 : adjacence OSPFv3 active sans authentification (ospfv3 authentication ipsec)",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ospf6-authentification-ipsec",
+       "r4",
+       "interface Loopback0 : adjacence OSPFv3 active sans authentification (ospfv3 authentication ipsec)",
+       "ospf"
+      ]
+     ]
+    }
+   }
+  },
+  "dualstack:srlinux-r5": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "srlinux-ospf6-authentification-keychain",
+      "r5",
+      "interface OSPFv3 ethernet-1/1.0 active (non passive) sans authentification (aucune keychain référencée)",
+      "ospf"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ]
+    ]
+   },
+   "mutants_total": 121,
+   "mutants_changed": {
+    "71:36affac2": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "81:c2b7df62": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "82:c2b7df62": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "85:c2b7df62": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "88:c2b7df62": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "89:c2b7df62": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "90:c2b7df62": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "91:66cfc8a4": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "93:8867e1a5": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "97:81aaac1c": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "101:19b9e7e0": {
+     "violations": [
+      [
+       "haute",
+       "srlinux-ospf6-authentification-keychain",
+       "r5",
+       "interface OSPFv3 ethernet-1/1.0 active (non passive) sans authentification (aucune keychain référencée)",
+       "ospf"
+      ],
+      [
+       "haute",
+       "srlinux-ospf6-authentification-keychain",
+       "r5",
+       "interface OSPFv3 ethernet-1/2.0 active (non passive) sans authentification (aucune keychain référencée)",
+       "ospf"
+      ]
+     ]
+    },
+    "104:19b9e7e0": {
+     "violations": [
+      [
+       "haute",
+       "srlinux-ospf6-authentification-keychain",
+       "r5",
+       "interface OSPFv3 ethernet-1/1.0 active (non passive) sans authentification (aucune keychain référencée)",
+       "ospf"
+      ],
+      [
+       "haute",
+       "srlinux-ospf6-authentification-keychain",
+       "r5",
+       "interface OSPFv3 lo0.0 active (non passive) sans authentification (aucune keychain référencée)",
+       "ospf"
+      ]
+     ]
+    }
+   }
+  },
+  "lab:frr": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   }
+  },
+  "lab:multivendor": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   }
+  },
+  "lab:ceos": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   }
+  },
+  "lab:config-frr": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   }
+  },
+  "lab:config-ceos": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   }
+  },
+  "lab:dualstack-frr": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ospf6-authentification",
+      "r4",
+      "interface eth2 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+      "ospf"
+     ],
+     [
+      "haute",
+      "ospf6-authentification",
+      "r5",
+      "interface eth1 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+      "ospf"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   }
+  },
+  "lab:dualstack-multivendor": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ospf6-authentification",
+      "r4",
+      "interface eth2 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+      "ospf"
+     ],
+     [
+      "haute",
+      "srlinux-ospf6-authentification-keychain",
+      "r5",
+      "interface OSPFv3 ethernet-1/1.0 active (non passive) sans authentification (aucune keychain référencée)",
+      "ospf"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r5",
+      "driver 'srlinux' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   }
+  },
+  "lab:dualstack-ceos": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ospf6-authentification",
+      "r5",
+      "interface eth1 : adjacence OSPFv3 active sans authentification (ipv6 ospf6 authentication)",
+      "ospf"
+     ],
+     [
+      "haute",
+      "eos-ospf6-authentification-ipsec",
+      "r4",
+      "interface Ethernet2 : adjacence OSPFv3 active sans authentification (ospfv3 authentication ipsec)",
+      "ospf"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r1",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r2",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r5",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   }
+  },
+  "scenario:frr-r3-reinjection": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "eos-ospf6-authentification-ipsec",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r3",
+      "driver 'frr' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   }
+  },
+  "scenario:eos-peergroup-member-maximum-routes-0": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   }
+  }
+ }
+}
