@@ -27,6 +27,8 @@ title() { echo; echo "=== $1 ==="; }
 export NETCHECK_KNOWN_HOSTS="$PWD/lab-access/.keys/known_hosts"
 # shellcheck source=tests/lib_hostkeys.sh
 source "$(dirname "$0")/lib_hostkeys.sh"
+# shellcheck source=tests/lib_bastion.sh
+source "$(dirname "$0")/lib_bastion.sh"
 bash lab-access/pin_hostkeys.sh frr >/dev/null || { echo "épinglage des clés d'hôte impossible (lab déployé ?)"; exit 1; }
 
 # Exécute plusieurs commandes vtysh en une seule session (mode configuration).
@@ -530,6 +532,7 @@ else
 fi
 
 c1_hostkeys_scenarios frr automation/inventory.yml 172.20.20.11 172.20.20.12
+c4_bastion_scenarios frr automation/inventory.yml 172.20.20 clab-frr-lab oui
 
 # ---------------------------------------------------------------- Bilan
 echo

@@ -24,6 +24,13 @@ mgmt:
 
 topology:
   nodes:
+    # --- Bastion SSH (phase C4) : relais vers les adresses de gestion, sur le réseau de management seulement ---
+    # Image : docker build -t netcheck-bastion:1 docker/bastion/ ; clé et liste PermitOpen posées après le
+    # déploiement par lab-access/bastion_lab.sh. Aucun lien de données, aucune config de routeur modifiée.
+    bastion:
+      kind: linux
+      image: netcheck-bastion:1
+      mgmt-ipv4: 172.20.22.2
     # --- Routeurs AS65001 (inchanges, configs/ existant, C9) ---
     r1:
       kind: linux

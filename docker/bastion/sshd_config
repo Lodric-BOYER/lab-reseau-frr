@@ -1,0 +1,40 @@
+# sshd du bastion de lab (phase C4). Relais seulement : clé publique, compte « jump », aucun shell.
+# Le drop-in 10-permitopen.conf (créé par lab-access/bastion_lab.sh) fixe PermitOpen ; il est lu EN PREMIER
+# (le premier PermitOpen rencontré l'emporte).
+Include /etc/ssh/sshd_config.d/*.conf
+
+Port 22
+HostKey /etc/ssh/ssh_host_ed25519_key
+LogLevel VERBOSE
+
+LoginGraceTime 20
+MaxAuthTries 3
+StrictModes yes
+
+PermitRootLogin no
+AllowUsers jump
+AuthenticationMethods publickey
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitEmptyPasswords no
+# Clé publique dans un fichier appartenant à root : le compte ne peut pas l'élargir.
+AuthorizedKeysFile /etc/ssh/authorized_keys/%u
+
+# Seul le relais de port local (direct-tcpip), et seulement vers PermitOpen.
+AllowTcpForwarding local
+AllowStreamLocalForwarding no
+GatewayPorts no
+AllowAgentForwarding no
+X11Forwarding no
+PermitTunnel no
+PermitTTY no
+PermitUserEnvironment no
+PermitUserRC no
+
+ClientAliveInterval 30
+ClientAliveCountMax 3
+
+# Deuxième barrière : même si une demande de session passait, aucune commande ne s'exécute.
+Match User jump
+    ForceCommand /bin/false

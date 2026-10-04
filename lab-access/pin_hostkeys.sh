@@ -8,6 +8,8 @@
 # Refuse (code 1) si deux routeurs du lab annoncent la même clé : une clé partagée empêcherait
 # l'épinglage de distinguer un routeur d'un autre.
 #
+# Le bastion du lab (phase C4, <préfixe>-bastion, adresse <réseau>.2) est épinglé aussi, s'il est déployé.
+#
 # Fichier : $NETCHECK_KNOWN_HOSTS, sinon lab-access/.keys/known_hosts (ignoré par Git, droits 0600).
 # Les entrées des adresses de CE lab sont remplacées ; les autres lignes sont conservées.
 set -uo pipefail
@@ -63,12 +65,35 @@ for r in $ROUTERS; do
   printf '%s %s %s\n' "$ip" "$type" "$blob" >>"$NEW"
   echo "  $r $ip $fp"
 done
+# Bastion (phase C4), s'il est déployé : sa clé est épinglée dans le MÊME fichier, avec la même exigence
+# d'unicité. Absent (lab déployé avant la phase C4) : simple remarque, pas une erreur.
+bastion="$PREFIX-bastion"
+BASTION_PINNED=0
+if docker inspect "$bastion" >/dev/null 2>&1; then
+  b_ip="$(docker inspect -f "{{(index .NetworkSettings.Networks \"$NET\").IPAddress}}" "$bastion")"
+  if [ "$b_ip" != "$SUBNET.2" ]; then
+    echo "  bastion : adresse $b_ip inattendue (attendue $SUBNET.2)" >&2; STATUS=1
+  elif ! pub="$(docker exec "$bastion" cat /etc/ssh/ssh_host_ed25519_key.pub)" || [ -z "$pub" ]; then
+    echo "  bastion : clé d'hôte illisible" >&2; STATUS=1
+  else
+    read -r type blob _ <<<"$pub"
+    fp="$(ssh-keygen -lf /dev/stdin <<<"$type $blob" | awk '{print $2}')"
+    if [ -n "${SEEN[$fp]:-}" ]; then
+      echo "  bastion : clé IDENTIQUE à celle de ${SEEN[$fp]} ($fp) : refusé" >&2; STATUS=1
+    else
+      printf '%s %s %s\n' "$b_ip" "$type" "$blob" >>"$NEW"
+      echo "  bastion $b_ip $fp"; BASTION_PINNED=1
+    fi
+  fi
+else
+  echo "  (pas de bastion dans ce déploiement)"
+fi
 [ "$STATUS" -eq 0 ] || { echo "Épinglage annulé : $KNOWN inchangé." >&2; exit 1; }
 
 # Fusion : on garde les lignes des autres adresses, on remplace celles de ce lab.
 if [ -f "$KNOWN" ]; then
-  grep -v -E "^$SUBNET\.1[1-5] " "$KNOWN" >>"$NEW" || true
+  grep -v -E "^$SUBNET\.(1[1-5]|2) " "$KNOWN" >>"$NEW" || true
 fi
 mv "$NEW" "$KNOWN"; trap - EXIT
 chmod 600 "$KNOWN"
-echo "Épinglé dans $KNOWN ($(grep -c -E "^$SUBNET\.1[1-5] " "$KNOWN") entrées pour ce lab)."
+echo "Épinglé dans $KNOWN ($(grep -c -E "^$SUBNET\.1[1-5] " "$KNOWN") entrées pour ce lab, bastion : $([ "$BASTION_PINNED" = 1 ] && echo oui || echo non))."

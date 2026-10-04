@@ -29,7 +29,11 @@ case "$1" in
       fmt="$3"; c="$4"
       case "$fmt" in
         *Config.Image*) echo "${STUB_IMAGE:-frr-ssh:10.2.1}" ;;
-        *IPAddress*)    echo "${STUB_SUBNET}.1${c##*-r}" ;;
+        *IPAddress*)
+          case "$c" in
+            *-bastion) echo "${STUB_BASTION_IP:-${STUB_SUBNET}.2}" ;;
+            *)         echo "${STUB_SUBNET}.1${c##*-r}" ;;
+          esac ;;
       esac
     else
       [ -f "$STUB_DIR/$2.pub" ] || exit 1
@@ -138,3 +142,59 @@ def test_unknown_lab_name_is_a_usage_error(stub):
     result = _run(stub, args=["inconnu"])
     assert result.returncode == 2
     assert "usage" in result.stderr
+
+
+# --- Bastion (phase C4) --------------------------------------------------------------------------------
+
+
+def _bastion_key(stub, prefix="clab-frr-lab") -> str:
+    pub = _make_key(stub[2], "genb")
+    (stub[2] / f"{prefix}-bastion.pub").write_text(pub + "\n", encoding="utf-8")
+    return pub
+
+
+def test_the_bastion_key_is_pinned_with_the_routers_in_the_same_file(stub):
+    _install_keys(stub[2], "clab-frr-lab")
+    pub = _bastion_key(stub)
+    result = _run(stub)
+    assert result.returncode == 0, result.stderr
+    known = (stub[0] / "kh" / "known_hosts").read_text(encoding="utf-8").splitlines()
+    assert len(known) == 6 and f"172.20.20.2 {' '.join(pub.split()[:2])}" in known
+    assert "bastion : oui" in result.stdout and "bastion 172.20.20.2 SHA256:" in result.stdout
+
+
+def test_a_lab_without_a_bastion_is_still_pinned(stub):
+    _install_keys(stub[2], "clab-frr-lab")
+    result = _run(stub)
+    assert result.returncode == 0 and "bastion : non" in result.stdout
+    assert len((stub[0] / "kh" / "known_hosts").read_text(encoding="utf-8").splitlines()) == 5
+
+
+def test_a_bastion_key_identical_to_a_router_key_is_refused_and_nothing_is_written(stub):
+    pubs = _install_keys(stub[2], "clab-frr-lab")
+    (stub[2] / "clab-frr-lab-bastion.pub").write_text(pubs[3] + "\n", encoding="utf-8")
+    result = _run(stub)
+    assert result.returncode == 1 and "bastion : clé IDENTIQUE" in result.stderr
+    assert not (stub[0] / "kh" / "known_hosts").exists()
+
+
+def test_a_bastion_at_an_unexpected_address_is_refused(stub):
+    _install_keys(stub[2], "clab-frr-lab")
+    _bastion_key(stub)
+    result = _run(stub, extra_env={"STUB_BASTION_IP": "172.20.20.77"})
+    assert result.returncode == 1 and "bastion : adresse 172.20.20.77 inattendue" in result.stderr
+
+
+def test_repinning_replaces_the_bastion_line_and_keeps_other_labs(stub):
+    _install_keys(stub[2], "clab-frr-lab")
+    _bastion_key(stub)
+    assert _run(stub).returncode == 0
+    known = stub[0] / "kh" / "known_hosts"
+    known.write_text(known.read_text(encoding="utf-8") + "10.9.9.9 ssh-ed25519 AAAAautre\n", encoding="utf-8")
+    new_pub = _make_key(stub[2], "genb2")
+    (stub[2] / "clab-frr-lab-bastion.pub").write_text(new_pub + "\n", encoding="utf-8")
+    assert _run(stub).returncode == 0
+    lines = known.read_text(encoding="utf-8").splitlines()
+    assert sum(ln.startswith("172.20.20.2 ") for ln in lines) == 1 and len(lines) == 7
+    assert any(ln.startswith("10.9.9.9 ") for ln in lines)
+    assert new_pub.split()[1] in "\n".join(lines)

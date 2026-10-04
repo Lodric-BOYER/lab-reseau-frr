@@ -126,10 +126,10 @@ check "python3 avec module venv"           python3 -m venv --help
 
 # ---------------------------------------------------------------- 2. Image et déploiement
 title "2. Image et déploiement"
-check "construction de l'image frr-ssh:10.2.1"  docker build -q -t frr-ssh:10.2.1 docker/
-check "déploiement du lab (7 conteneurs)"        containerlab deploy -t lab.clab.yml --reconfigure
+check "construction des images frr-ssh:10.2.1 et netcheck-bastion:1"  bash -c 'docker build -q -t frr-ssh:10.2.1 docker/ && docker build -q -t netcheck-bastion:1 docker/bastion/'
+check "déploiement du lab (8 conteneurs)"        containerlab deploy -t lab.clab.yml --reconfigure
 running=$(docker ps --filter "name=$LAB-" --filter status=running -q | wc -l)
-[[ $running -eq 7 ]] && ok "7 conteneurs en état running" || ko "$running/7 conteneurs en état running"
+[[ $running -eq 8 ]] && ok "8 conteneurs en état running (5 routeurs, 2 PC, le bastion)" || ko "$running/8 conteneurs en état running"
 
 # ---------------------------------------------------------------- 3. Routage
 title "3. Routage (phase 1)"

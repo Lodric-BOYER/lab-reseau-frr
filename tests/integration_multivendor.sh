@@ -33,6 +33,8 @@ title() { echo; echo "=== $1 ==="; }
 export NETCHECK_KNOWN_HOSTS="$PWD/lab-access/.keys/known_hosts"
 # shellcheck source=tests/lib_hostkeys.sh
 source "$(dirname "$0")/lib_hostkeys.sh"
+# shellcheck source=tests/lib_bastion.sh
+source "$(dirname "$0")/lib_bastion.sh"
 bash lab-access/pin_hostkeys.sh multivendor >/dev/null || { echo "épinglage des clés d'hôte impossible (lab déployé ?)"; exit 1; }
 
 # Voisins OSPF Full sur r4 (FRR, vtysh) et r5 (SR Linux, sr_cli) : deux commandes différentes,
@@ -287,6 +289,7 @@ grep -q '"status": "OK"' "$M_STATE" && ok "état enregistré (premier relevé OK
   || ko "fichier d'état absent ou inattendu"
 
 c1_hostkeys_scenarios multivendor automation/inventory-multivendor.yml 172.20.21.11 172.20.21.15
+c4_bastion_scenarios multivendor automation/inventory-multivendor.yml 172.20.21 clab-frr-lab-multivendor non
 
 # ---------------------------------------------------------------- Bilan
 echo

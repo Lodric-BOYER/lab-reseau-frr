@@ -38,6 +38,8 @@ title() { echo; echo "=== $1 ==="; }
 export NETCHECK_KNOWN_HOSTS="$PWD/lab-access/.keys/known_hosts"
 # shellcheck source=tests/lib_hostkeys.sh
 source "$(dirname "$0")/lib_hostkeys.sh"
+# shellcheck source=tests/lib_bastion.sh
+source "$(dirname "$0")/lib_bastion.sh"
 bash lab-access/pin_hostkeys.sh ceos >/dev/null || { echo "épinglage des clés d'hôte impossible (lab déployé ?)"; exit 1; }
 
 # Voisins OSPF Full sur r4 (cEOS, Cli) et r5 (FRR, vtysh) : deux commandes différentes, un seul
@@ -505,6 +507,7 @@ wait_converged && ok "retour à la normale : OSPF Full des deux côtés" || ko "
 sleep 5
 
 c1_hostkeys_scenarios ceos automation/inventory-ceos.yml 172.20.22.11 172.20.22.14
+c4_bastion_scenarios ceos automation/inventory-ceos.yml 172.20.22 clab-frr-lab-ceos non
 
 # ---------------------------------------------------------------- Bilan
 echo
