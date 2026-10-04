@@ -55,7 +55,8 @@ Il tourne sur un simple PC portable sous WSL2, sans aucun matériel réseau.
 ```
 lab.clab.yml                    topologie containerlab (lab FRR)
 lab-multivendor.clab.yml        topologie containerlab (lab v2 : FRR + Nokia SR Linux)
-docker/Dockerfile               image FRR 10.2.1 + SSH (compte netops)
+docker/Dockerfile               image FRR 10.2.1 + SSH (compte netops) ; clés d'hôte générées au démarrage (docker/entrypoint-sshkeys.sh)
+lab-access/pin_hostkeys.sh      épingle les clés d'hôte d'un lab déployé (lues dans les conteneurs) dans le known_hosts de netcheck
 configs/daemons                 démons FRR activés
 configs/rX/frr.conf             configuration de chaque routeur FRR (montée dans le conteneur)
 configs-multivendor/r5/         config de démarrage SR Linux (syntaxe "set", lab v2)
@@ -73,9 +74,9 @@ docs/audit/                     rapports d'audit de sécurité avant/après durc
 tests/                          fixtures et scénarios de bout en bout de netcheck
 tests/expect/                   fichiers --expect de référence (changement prévu, effet de bord oublié)
 tests/tools/webhook_recorder.py récepteur de webhook LOCAL (tests et scénarios, aucun appel externe)
-tests/integration.sh                lab FRR (S1-S5, C1/C2, guard, A1/A2 assert, D1/D2 --expect et rollback, E1 monitor)
-tests/integration_multivendor.sh    lab v2 (S1, coupure r4<->r5, C1, A1/A2 assert, M1 monitor)
-tests/integration_ceos.sh           lab cEOS (S1, C1, A1, N1 mauvaise clé OSPF, N2 API exposée, G1 guard, M1 monitor)
+tests/integration.sh                lab FRR (S1-S5, C1/C2, guard, A1/A2 assert, D1/D2 --expect et rollback, E1 monitor, H1 clés d'hôte)
+tests/integration_multivendor.sh    lab v2 (S1, coupure r4<->r5, C1, A1/A2 assert, M1 monitor, H1 clés d'hôte)
+tests/integration_ceos.sh           lab cEOS (S1, C1, A1, N1 mauvaise clé OSPF, N2 API exposée, G1 guard, M1 monitor, H1 clés d'hôte)
 test_lab.sh                     scénario de bout en bout du lab FRR (phases 1 et 2), 28 contrôles
 test_lab_multivendor.sh         scénario de bout en bout du lab v2 (topologie + routage)
 test_lab_ceos.sh                scénario de bout en bout du lab cEOS (topologie, routage, durcissement), 26 contrôles
@@ -117,6 +118,10 @@ sudo containerlab deploy -t lab.clab.yml
 ```
 
 containerlab affiche un tableau des 7 conteneurs (`clab-frr-lab-r1` …). Compte ~30 s pour la convergence OSPF + BGP.
+
+Les clés d'hôte SSH des routeurs sont générées **au démarrage de chaque conteneur** (pas à la construction de
+l'image) : chaque routeur a la sienne, et elle change à chaque déploiement. netcheck vérifie ces clés : voir
+[Clés d'hôte SSH et migration](#clés-dhôte-ssh-et-migration-v4-phase-c1).
 
 ### 2. Vérifier, du bas vers le haut
 
@@ -377,6 +382,49 @@ Verdict : OK  (11 OK, 0 échec(s), 0 non évaluable(s))
 Surveillance à exécution unique, pour cron ou un timer systemd : statut global (le pire du diff,
 des assertions et de la conformité), alerte par webhook **seulement quand le statut change**.
 Lecture seule stricte. Voir « [Surveillance planifiée et alertes](#surveillance-planifiée-et-alertes-v3) ».
+
+### Clés d'hôte SSH et migration (v4, phase C1)
+
+**Avant la v0.4.0, netcheck acceptait n'importe quelle clé d'hôte** (un défaut de Netmiko, `ssh_strict=False`, jamais
+surchargé) : un équipement imité sur le réseau de management était invisible. Maintenant la clé de chaque équipement
+doit figurer dans un fichier `known_hosts` **dédié** à netcheck ; le `~/.ssh/known_hosts` de l'utilisateur n'est jamais
+lu.
+
+| Élément | Valeur |
+|---|---|
+| Fichier | `--known-hosts FICHIER`, sinon `NETCHECK_KNOWN_HOSTS`, sinon `~/.netcheck/known_hosts` (format OpenSSH ; refusé s'il est modifiable par d'autres comptes) |
+| `--host-keys strict` (défaut) | clé inconnue : refusée (« clé d'hôte inconnue ») ; clé changée : refusée (« clé d'hôte CHANGÉE », les deux empreintes sont affichées) |
+| `--host-keys accept-new` | **réservé au lab** : le premier contact enregistre la clé, puis la connexion se fait en strict ; une clé changée reste refusée. Refusé (code 3, avant toute connexion) si l'inventaire ne déclare pas `lab: true` ; avertit à chaque usage |
+| Valeur « ignorer » | **n'existe pas** (`--host-keys ignore` est refusé par la CLI ; un test échoue si une politique qui accepte tout revient) |
+| Variables | `NETCHECK_HOST_KEYS` (mode), `NETCHECK_KNOWN_HOSTS` (fichier) ; l'option de la CLI l'emporte |
+| Commandes concernées | `snapshot`, `check` (en direct), `guard`, `assert` (en direct), `monitor` |
+
+**Migration depuis la v0.3.0** (sans elle, toute collecte échoue avec « clé d'hôte inconnue ») :
+
+1. **Vos équipements.** Obtenez l'empreinte par un canal de confiance (console, documentation, inventaire), puis
+   épinglez la clé après l'avoir comparée :
+   ```bash
+   ssh-keyscan -t ed25519 192.0.2.10 > /tmp/cle.pub && ssh-keygen -lf /tmp/cle.pub   # comparez l'empreinte
+   mkdir -p -m 700 ~/.netcheck && cat /tmp/cle.pub >> ~/.netcheck/known_hosts && chmod 600 ~/.netcheck/known_hosts
+   ```
+   (`ssh-keyscan` lit la clé par le réseau : ce n'est une vérification que si vous comparez l'empreinte à une source
+   indépendante.)
+2. **Le lab** (clés générées au démarrage des conteneurs, donc nouvelles à chaque déploiement). Après chaque
+   `containerlab deploy` :
+   ```bash
+   bash lab-access/pin_hostkeys.sh frr            # ou multivendor, ceos
+   export NETCHECK_KNOWN_HOSTS="$PWD/lab-access/.keys/known_hosts"
+   ```
+   Le script lit les clés **dans les conteneurs** (`docker exec`, pas le réseau) et refuse deux routeurs qui annoncent
+   la même clé. L'image `frr-ssh` génère maintenant ses clés au démarrage : **reconstruisez-la**
+   (`docker build -t frr-ssh:10.2.1 docker/`), sinon tous les routeurs FRR partagent la clé cuite dans l'ancienne image.
+3. **Une clé « CHANGÉE »** n'est jamais à contourner : vérifiez l'équipement (réinstallation légitime ?), retirez
+   l'ancienne entrée (`ssh-keygen -R 192.0.2.10 -f ~/.netcheck/known_hosts`) et épinglez la nouvelle.
+4. **`monitor` planifié** : `automation/monitor.sh` lance netcheck avec le `HOME` du planificateur, donc
+   `~/.netcheck/known_hosts` ; sinon ajoutez `--known-hosts /chemin/known_hosts` aux arguments.
+
+**Limite.** `automation/labtools.py` (scripts `health.py`, `backup.py`, `drift.py`, hors netcheck) garde
+`AutoAddPolicy` : la vérification ne concerne que `netcheck`.
 
 ### Codes retour
 
@@ -713,7 +761,7 @@ porte une VRF de démonstration. Les configurations existantes (FRR, EOS, SR Lin
 **Contrôles** : `test_lab.sh` passe de 28 à **47** contrôles, `test_lab_multivendor.sh` de 15 à **28**,
 `test_lab_ceos.sh` de 26 à **44** (OSPFv3 Full, authentification RFC 7166, BGP IPv6, `ping6`, chemin IPv6, VRF,
 durcissement IPv6 des deux côtés, coupure de l'IPv6 seul sur le lab FRR). Les scripts d'intégration de netcheck
-(80, 27 et 38 contrôles en B1 ; **117, 47 et 72 depuis la phase B4**) sont verts, rejoués à froid. `automation/health.py` lit OSPFv3 et BGP IPv6 quand l'inventaire
+(80, 27 et 38 contrôles en B1 ; 117, 47 et 72 en B4 ; **126, 57 et 81 depuis la phase C1**, qui ajoute le scénario H1 des clés d'hôte) sont verts, rejoués à froid. `automation/health.py` lit OSPFv3 et BGP IPv6 quand l'inventaire
 déclare `ospf6_neighbors` et `bgp6_peers`.
 
 **Mesures** (démarrage à froid, 3 essais par lab, convergence comptée depuis la fin du déploiement, sonde à 1 s) :

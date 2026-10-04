@@ -398,6 +398,18 @@ prefix-list (premier correspondant) : un `permit` est signalé même précédé 
   EOS : douze chaînes depuis la phase B2, suffixe `| json` compris). Le niveau 1 ne voit pas ce que `translate()`
   fabrique ; le niveau 2 porte sur ce qui part réellement. Un driver ne peut donc jamais faire
   passer une commande de configuration, une redirection ou un second pipe.
+- **Clés d'hôte SSH (phase C1, `hostkeys.py`).** Netmiko accepte toute clé par défaut (`ssh_strict=False`) ; netcheck
+  l'imposait sans le dire. `collector._connect` appelle maintenant Netmiko avec `ssh_strict=True`,
+  `system_host_keys=False`, `alt_host_keys=True` et `alt_key_file=<known_hosts dédié>` : une clé absente du fichier est
+  refusée (`RejectPolicy`), le fichier de l'utilisateur n'est jamais lu. Politique du processus posée par la CLI
+  (`--host-keys`, `--known-hosts`, `NETCHECK_HOST_KEYS`, `NETCHECK_KNOWN_HOSTS`) avant toute connexion. `accept-new` lit la
+  clé annoncée (`paramiko.Transport`, sans authentification), l'ajoute au fichier (0600, ajout atomique sous verrou),
+  puis la connexion qui suit est stricte : une clé changée reste refusée. Il exige `lab: true` à deux endroits (la CLI
+  refuse avant toute collecte, `learn()` refuse en second rideau). Netmiko enveloppe l'exception de clé de Paramiko dans
+  une `NetmikoTimeoutException` : `hostkeys.explain` remonte la chaîne des causes pour produire « inconnue » ou « CHANGÉE »
+  (avec les deux empreintes SHA256). Tests : un faux serveur SSH local (`tests/test_hostkeys.py`), un test statique (AST)
+  qui interdit `AutoAddPolicy`, `WarningPolicy`, `ssh_strict=False`, `system_host_keys=True`, et qui exige
+  `ssh_strict=True` à chaque appel de `ConnectHandler`.
 - **`monitor` ne modifie rien** : il n'importe ni `guard` ni `subprocess` (vérifié par un test
   statique) et n'écrit que son état, son verrou et ses rapports locaux. **`guard`** est la seule
   commande qui exécute quelque chose de modifiant -- et c'est le script de l'utilisateur.

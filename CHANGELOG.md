@@ -95,9 +95,30 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   (IPv4 et IPv6, peer groups compris, famille par famille), mutations de vraies configurations, preuve en direct sur le
   lab cEOS (injection puis retour prouvé, `tests/integration_ceos.sh`, C6). Un seul texte de constat pour FRR et EOS
   (`drivers/ebgp_filters.py`).
+- **Phase C1, clés d'hôte SSH vérifiées** (`netcheck/hostkeys.py`) : fichier `known_hosts` dédié
+  (`~/.netcheck/known_hosts`, `--known-hosts`, `NETCHECK_KNOWN_HOSTS`), option `--host-keys strict|accept-new`
+  (`NETCHECK_HOST_KEYS`) sur `snapshot`, `check`, `guard`, `assert` et `monitor`. Il n'existe aucun mode « ignorer » :
+  `--host-keys ignore` est refusé par la CLI, et un test statique échoue si `AutoAddPolicy` ou `ssh_strict=False`
+  reviennent. `accept-new` enregistre la clé d'un équipement inconnu au premier contact, puis se connecte en strict ;
+  une clé changée reste refusée ; il est refusé (code 3, avant toute connexion) si l'inventaire ne déclare pas
+  `lab: true`, et avertit à chaque usage. Un `known_hosts` modifiable par d'autres comptes est refusé.
+  `lab-access/pin_hostkeys.sh <lab>` épingle les clés lues DANS les conteneurs (`docker exec`, jamais par le réseau)
+  et refuse deux routeurs qui annoncent la même clé. Le champ `port` d'un routeur est lu (22 par défaut).
+- **Image `frr-ssh` : clés d'hôte générées au démarrage du conteneur** (`docker/entrypoint-sshkeys.sh`), plus à la
+  construction. Avant, tous les routeurs FRR d'un lab avaient la MÊME clé (relevé : même empreinte sur r1 et r2,
+  cuite dans l'image) : l'épinglage ne distinguait pas r1 de r3 et en compromettre un permettait d'usurper les autres.
+  Après : 5 empreintes différentes sur le lab FRR, et des clés nouvelles à chaque déploiement.
 
 ### Modifié
 
+- **INCOMPATIBLE, phase C1 : netcheck vérifie les clés d'hôte, strict par défaut.** Jusqu'ici netcheck acceptait
+  n'importe quelle clé d'hôte (Netmiko `ssh_strict=False`, soit `AutoAddPolicy`, jamais surchargé) : une
+  interposition sur le réseau de management était invisible. Maintenant, un équipement dont la clé est absente du
+  `known_hosts` dédié est refusé (« clé d'hôte inconnue »), une clé changée aussi (« clé d'hôte CHANGÉE », avec les
+  deux empreintes). **Migration** : voir la section du même nom dans le README (épingler les clés avec `ssh-keyscan`
+  ou `lab-access/pin_hostkeys.sh`). `automation/labtools.py` (`health.py`, `backup.py`, `drift.py`, hors
+  netcheck) n'est pas modifié et garde `AutoAddPolicy` : limite connue.
+- Les trois inventaires de lab déclarent `lab: true` (seul moyen d'utiliser `--host-keys accept-new`).
 - **Phase B3, règles IPv6 : les trois silences sont fermés.** L'authentification OSPFv3 (trois règles, une par
   driver, dans `netcheck/rules/security-ipv6.yml`), `::/0` autorisé en entrée et un préfixe IPv6 local autorisé en
   entrée (les deux règles existantes lisent maintenant l'IPv6). Mutations de vraies configurations des labs en double
@@ -235,6 +256,9 @@ Phase B4 :
   des entrées d'une prefix-list : un `permit` est signalé même précédé d'un `deny` plus large (faux positif). Ouverture
   prévue en phase E : simuler l'ordre (la première entrée ou séquence qui correspond décide), pour les prefix-lists et
   les route-maps, FRR et EOS.
+- `automation/labtools.py` (utilisé par `health.py`, `backup.py`, `drift.py`) accepte toujours n'importe quelle clé
+  d'hôte (`AutoAddPolicy`) : ces scripts de lab sont hors du périmètre de netcheck (C2). La vérification des clés
+  d'hôte de la phase C1 ne concerne que `netcheck`.
 - Une keychain SR Linux sans aucune clé n'est pas détectée (comportement de la v0.3.0, conservé) :
   amélioration prévue en phase E.
 
