@@ -15,6 +15,8 @@ PASS=0; FAIL=0
 ok()    { echo "  ✅ $1"; PASS=$((PASS + 1)); }
 ko()    { echo "  ❌ $1"; FAIL=$((FAIL + 1)); }
 check() { local d=$1; shift; if "$@" >/dev/null 2>&1; then ok "$d"; else ko "$d"; fi; }
+# shellcheck source=tests/lib_lab.sh
+source "$(dirname "$0")/tests/lib_lab.sh"
 title() { echo; echo "=== $1 ==="; }
 vt()    { docker exec "$LAB-$1" vtysh -c "$2" 2>/dev/null; }
 
@@ -130,6 +132,7 @@ check "construction des images frr-ssh:10.2.1 et netcheck-bastion:1"  bash -c 'd
 check "déploiement du lab (8 conteneurs)"        containerlab deploy -t lab.clab.yml --reconfigure
 running=$(docker ps --filter "name=$LAB-" --filter status=running -q | wc -l)
 [[ $running -eq 8 ]] && ok "8 conteneurs en état running (5 routeurs, 2 PC, le bastion)" || ko "$running/8 conteneurs en état running"
+lab_ready_lab 172.20.20 "test_lab-frr" 240
 
 # ---------------------------------------------------------------- 3. Routage
 title "3. Routage (phase 1)"
@@ -223,6 +226,7 @@ check "ping6 pc1 -> pc2 rétabli"       docker exec "$LAB-pc1" ping -6 -c 3 -W 1
 cd ..
 
 # ---------------------------------------------------------------- Bilan
+lab_diag_if_failed "test_lab-frr"
 [[ "${1:-}" == "--destroy" ]] && containerlab destroy -t lab.clab.yml --cleanup >/dev/null 2>&1 && echo && echo "Lab détruit."
 echo
 echo "=== Bilan : $PASS contrôles réussis, $FAIL échec(s) ==="

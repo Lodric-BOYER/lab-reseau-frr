@@ -26,6 +26,8 @@ mkdir -p "$JSON_DIR"
 PASS=0; FAIL=0
 ok() { echo "  ✅ $1"; PASS=$((PASS + 1)); }
 ko() { echo "  ❌ $1"; FAIL=$((FAIL + 1)); }
+# shellcheck source=tests/lib_lab.sh
+source "$(dirname "$0")/lib_lab.sh"
 title() { echo; echo "=== $1 ==="; }
 
 # Clés d'hôte (phase C1) : strict par défaut. Les clés du lab sont lues DANS les conteneurs et épinglées
@@ -35,6 +37,7 @@ export NETCHECK_KNOWN_HOSTS="$PWD/lab-access/.keys/known_hosts"
 source "$(dirname "$0")/lib_hostkeys.sh"
 # shellcheck source=tests/lib_bastion.sh
 source "$(dirname "$0")/lib_bastion.sh"
+lab_ready_lab 172.20.21 "integration-mixte" 240
 bash lab-access/pin_hostkeys.sh multivendor >/dev/null || { echo "épinglage des clés d'hôte impossible (lab déployé ?)"; exit 1; }
 
 # Voisins OSPF Full sur r4 (FRR, vtysh) et r5 (SR Linux, sr_cli) : deux commandes différentes,
@@ -292,6 +295,7 @@ c1_hostkeys_scenarios multivendor automation/inventory-multivendor.yml 172.20.21
 c4_bastion_scenarios multivendor automation/inventory-multivendor.yml 172.20.21 clab-frr-lab-multivendor non
 
 # ---------------------------------------------------------------- Bilan
+lab_diag_if_failed "integration-mixte"
 echo
 echo "=== Bilan : $PASS contrôles réussis, $FAIL échec(s) ==="
 (( FAIL == 0 )) && echo "🎉 Le lab multi-constructeurs est conforme au cahier des charges (netcheck)." \

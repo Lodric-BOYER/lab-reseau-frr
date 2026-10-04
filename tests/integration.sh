@@ -20,6 +20,8 @@ mkdir -p "$JSON_DIR"
 PASS=0; FAIL=0
 ok() { echo "  ✅ $1"; PASS=$((PASS + 1)); }
 ko() { echo "  ❌ $1"; FAIL=$((FAIL + 1)); }
+# shellcheck source=tests/lib_lab.sh
+source "$(dirname "$0")/lib_lab.sh"
 title() { echo; echo "=== $1 ==="; }
 
 # Clés d'hôte (phase C1) : strict par défaut. Les clés du lab sont lues DANS les conteneurs et épinglées
@@ -29,6 +31,7 @@ export NETCHECK_KNOWN_HOSTS="$PWD/lab-access/.keys/known_hosts"
 source "$(dirname "$0")/lib_hostkeys.sh"
 # shellcheck source=tests/lib_bastion.sh
 source "$(dirname "$0")/lib_bastion.sh"
+lab_ready_lab 172.20.20 "integration-frr" 240
 bash lab-access/pin_hostkeys.sh frr >/dev/null || { echo "épinglage des clés d'hôte impossible (lab déployé ?)"; exit 1; }
 
 # Exécute plusieurs commandes vtysh en une seule session (mode configuration).
@@ -535,6 +538,7 @@ c1_hostkeys_scenarios frr automation/inventory.yml 172.20.20.11 172.20.20.12
 c4_bastion_scenarios frr automation/inventory.yml 172.20.20 clab-frr-lab oui
 
 # ---------------------------------------------------------------- Bilan
+lab_diag_if_failed "integration-frr"
 echo
 echo "=== Bilan : $PASS contrôles réussis, $FAIL échec(s) ==="
 (( FAIL == 0 )) && echo "🎉 Tous les scénarios netcheck sont conformes au cahier des charges." \

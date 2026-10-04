@@ -20,6 +20,8 @@ PASS=0; FAIL=0
 ok()    { echo "  ✅ $1"; PASS=$((PASS + 1)); }
 ko()    { echo "  ❌ $1"; FAIL=$((FAIL + 1)); }
 check() { local d=$1; shift; if "$@" >/dev/null 2>&1; then ok "$d"; else ko "$d"; fi; }
+# shellcheck source=tests/lib_lab.sh
+source "$(dirname "$0")/tests/lib_lab.sh"
 title() { echo; echo "=== $1 ==="; }
 vt()    { docker exec "$LAB-$1" vtysh -c "$2" 2>/dev/null; }
 srl()   { docker exec "$LAB-r5" sr_cli -- "$@" 2>/dev/null; }
@@ -141,6 +143,7 @@ check "construction des images frr-ssh:10.2.1 et netcheck-bastion:1"  bash -c 'd
 check "déploiement du lab (8 conteneurs)"        containerlab deploy -t lab-multivendor.clab.yml --reconfigure
 running=$(docker ps --filter "name=$LAB-" --filter status=running -q | wc -l)
 [[ $running -eq 8 ]] && ok "8 conteneurs en état running (5 routeurs, 2 PC, le bastion)" || ko "$running/8 conteneurs en état running"
+lab_ready_lab 172.20.21 "test_lab-mixte" 240
 
 # ---------------------------------------------------------------- 3. Routage
 title "3. Routage (FRR <-> SR Linux)"
@@ -191,6 +194,7 @@ check "VRF DEMO (r2) : dum-demo est dans le VRF DEMO"  bash -c "docker exec $LAB
 check "VRF DEMO (r2) : la route 10.99.9.0/24 est dans le VRF"  bash -c "docker exec $LAB-r2 vtysh -c 'show ip route vrf DEMO 10.99.9.0/24' | grep -q blackhole"
 
 # ---------------------------------------------------------------- Bilan
+lab_diag_if_failed "test_lab-mixte"
 [[ "${1:-}" == "--destroy" ]] && containerlab destroy -t lab-multivendor.clab.yml --cleanup >/dev/null 2>&1 && echo && echo "Lab détruit."
 echo
 echo "=== Bilan : $PASS contrôles réussis, $FAIL échec(s) ==="
