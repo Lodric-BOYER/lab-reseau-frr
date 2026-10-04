@@ -20,6 +20,7 @@ ok() { echo "  ✅ $1"; PASS=$((PASS + 1)); }
 ko() { echo "  ❌ $1"; FAIL=$((FAIL + 1)); }
 title() { echo; echo "=== $1 ==="; }
 skip() { echo "  ⏭  $1"; }
+info() { echo "  ℹ️  $1"; }
 
 # Aucun identifiant hérité de l'environnement : seul Vault (ou l'inventaire) peut les fournir.
 unset NETCHECK_USER NETCHECK_PASS NETCHECK_USER_FILE NETCHECK_PASS_FILE LAB_USER LAB_PASS
@@ -49,27 +50,87 @@ except urllib.error.HTTPError as error:
 EOF
 }
 
+# approle_login BASE FICHIER-ROLE_ID FICHIER-SECRET_ID [FICHIER-JETON] : code HTTP ; le jeton (si 200) va dans le
+# fichier 0600, jamais à l'écran.
+approle_login() {
+  ( umask 077; "$NC_PY" - "$@" <<'EOF'
+import json, sys, urllib.error, urllib.request
+base, role_file, sid_file = sys.argv[1:4]
+out = sys.argv[4] if len(sys.argv) > 4 else None
+body = json.dumps({"role_id": open(role_file).read().strip(), "secret_id": open(sid_file).read().strip()}).encode()
+try:
+    reply = json.load(urllib.request.urlopen(urllib.request.Request(base + "/v1/auth/approle/login", data=body), timeout=5))
+    if out:
+        open(out, "w").write(reply["auth"]["client_token"])
+    print(200)
+except urllib.error.HTTPError as error:
+    print(error.code)
+EOF
+  )
+}
+
 vault_scenarios() {
   local engine="$1" container port
   case "$engine" in vault) container=netcheck-vault; port=18200 ;; openbao) container=netcheck-openbao; port=18201 ;; esac
   local base="http://127.0.0.1:$port"
   local label="$engine"
   local lab=(env "ENGINE=$engine" bash lab-access/vault_lab.sh)
+  local role_file="lab-access/.keys/$container.role_id" sid_file="lab-access/.keys/$container.secret_id"
+  fresh() { "${lab[@]}" secret-id; }   # le rôle n'accepte QU'UN usage de secret_id : un nouveau avant chaque exécution
+  # probe_role NOM PARAMETRES... : rôle de sonde (même politique), role_id et secret_id dans $JSON_DIR/NOM.{role,sid}
+  probe_role() {
+    local name="$1"; shift
+    "${lab[@]}" admin write "auth/approle/role/$name" token_policies=netcheck-ro "$@" >/dev/null
+    ( umask 077
+      "${lab[@]}" admin read -field=role_id "auth/approle/role/$name/role-id" > "$JSON_DIR/$name.role"
+      "${lab[@]}" admin write -f -field=secret_id "auth/approle/role/$name/secret-id" > "$JSON_DIR/$name.sid" )
+  }
 
   title "V1 ($label) : le conteneur de développement et le provisionnement"
-  "${lab[@]}" up >"$JSON_DIR/$engine.up" 2>&1 && ok "conteneur démarré ($(docker ps --filter "name=^$container\$" --format '{{.Image}}'))" \
+  "${lab[@]}" up >"$JSON_DIR/$engine.up" 2>&1 && ok "conteneur démarré en réseau hôte, écoute 127.0.0.1 ($(docker ps --filter "name=^$container\$" --format '{{.Image}}'))" \
     || { ko "démarrage impossible"; cat "$JSON_DIR/$engine.up"; return; }
-  "${lab[@]}" provision >"$JSON_DIR/$engine.prov" 2>&1 && ok "AppRole + politique en lecture seule + secret du lab" \
+  "${lab[@]}" provision >"$JSON_DIR/$engine.prov" 2>&1 && ok "AppRole durci + politique en lecture seule + secret du lab" \
     || { ko "provisionnement impossible"; cat "$JSON_DIR/$engine.prov"; return; }
   eval "$("${lab[@]}" env)"
+  # Le rôle tel que le serveur l'a enregistré : chaque réglage de durcissement.
+  local roleconf
+  roleconf=$("${lab[@]}" admin read -format=json auth/approle/role/netcheck-ro | "$NC_PY" -c '
+import ipaddress, json, sys
+d = json.load(sys.stdin)["data"]
+# Le serveur normalise : « ::1/128 » est rendu « ::1 » pour le jeton ; ip_network les égalise.
+norm = lambda cidrs: sorted(str(ipaddress.ip_network(c)) for c in cidrs)
+cidr = norm(["127.0.0.0/8", "::1/128"])
+checks = {
+    "token_num_uses": d["token_num_uses"] == 1,
+    "token_ttl": d["token_ttl"] == 60,
+    "token_max_ttl": d["token_max_ttl"] == 120,
+    "secret_id_num_uses": d["secret_id_num_uses"] == 1,
+    "secret_id_ttl": d["secret_id_ttl"] == 900,
+    "token_bound_cidrs": norm(d["token_bound_cidrs"]) == cidr,
+    "secret_id_bound_cidrs": norm(d["secret_id_bound_cidrs"]) == cidr,
+    "bind_secret_id": d["bind_secret_id"] is True,
+    "token_policies": d["token_policies"] == ["netcheck-ro"],
+}
+print(" ".join(k for k, v in checks.items() if not v) or "OK")')
+  [[ "$roleconf" == "OK" ]] \
+    && ok "rôle enregistré : jeton à 1 usage, 60 s (max 120 s) ; secret_id à 1 usage, 15 min ; CIDR = bouclage (jeton et secret_id)" \
+    || ko "réglages du rôle différents de l'attendu : $roleconf"
+  [[ "$(stat -c %a "$sid_file" "$role_file" | sort -u | tr '\n' ' ')" == "600 " ]] \
+    && ok "role_id et secret_id : fichiers 0600" || ko "droits des fichiers de clés"
+  # Mesure de RAM (C24), conteneur provisionné au repos.
+  local ram_idle
+  ram_idle=$(docker stats --no-stream --format '{{.MemUsage}}' "$container" | awk '{print $1}')
+  info "RAM de $container au repos, provisionné : $ram_idle (image $(docker image ls --format '{{.Size}}' "$(docker ps --filter "name=^$container\$" --format '{{.Image}}')" | head -1))"
+  echo "$engine ram_idle=$ram_idle" >> "$JSON_DIR/ram.txt"
   # Journal d'audit du serveur : disponible sur Vault ; OpenBao 2.7 ne l'active pas par l'API.
   local audit_on=0 audit_offset=0
   docker exec "$container" test -f /tmp/audit.log && audit_on=1
   audit_count() { docker exec "$container" cat /tmp/audit.log | wc -l; }
-  ((audit_on)) && audit_offset=$(audit_count)
 
   title "V2 ($label) : netcheck lit les identifiants dans Vault (inventaire à mot de passe FAUX, lab FRR réel)"
   local out code
+  fresh
+  ((audit_on)) && audit_offset=$(audit_count)
   out=$($NC snapshot "vault_v2_$engine" --force -i "$WRONG_INV" 2>&1); code=$?
   [[ "$code" == "0" ]] && ok "snapshot des 5 routeurs : code 0 (les sessions SSH ont été ouvertes avec le mot de passe de Vault)" \
     || { ko "snapshot : code $code"; echo "$out"; }
@@ -88,35 +149,31 @@ vault_scenarios() {
   title "V3 ($label) : exactement deux appels reçus par Vault (journal d'audit du serveur)"
   local calls
   if ((audit_on)); then
-  calls=$(docker exec "$container" cat /tmp/audit.log | tail -n +$((audit_offset + 1)) | "$NC_PY" -c '
+    calls=$(docker exec "$container" cat /tmp/audit.log | tail -n +$((audit_offset + 1)) | "$NC_PY" -c '
 import json, sys
 for line in sys.stdin:
     entry = json.loads(line)
     if entry.get("type") == "request":
-        print(entry["request"]["operation"], entry["request"]["path"])')
-  [[ "$calls" == $'update auth/approle/login\nread secret/data/netcheck/lab' ]] \
-    && ok "journal d'audit : « update auth/approle/login » puis « read secret/data/netcheck/lab », rien d'autre" \
-    || { ko "appels inattendus"; echo "$calls"; }
+        print(entry["request"]["operation"], entry["request"]["path"], entry["request"].get("remote_address"))')
+    [[ "$calls" == $'update auth/approle/login 127.0.0.1\nread secret/data/netcheck/lab 127.0.0.1' ]] \
+      && ok "journal d'audit : « update auth/approle/login » puis « read secret/data/netcheck/lab », depuis 127.0.0.1, rien d'autre" \
+      || { ko "appels inattendus"; echo "$calls"; }
   else
     skip "journal d'audit indisponible sur $engine : contrôle réservé à Vault"
   fi
 
-  title "V4 ($label) : preuve négative par le serveur : le rôle ne peut ni écrire ni lire ailleurs (appels HTTP directs, pas netcheck)"
-  local token_file="$JSON_DIR/$engine.token" role_id
-  role_id=$(cat "lab-access/.keys/$container.role_id")
-  ( umask 077
-    "$NC_PY" - "$base" "$role_id" "lab-access/.keys/$container.secret_id" > "$token_file" <<'EOF'
-import json, sys, urllib.request
-base, role_id, secret_id_file = sys.argv[1:4]
-body = json.dumps({"role_id": role_id, "secret_id": open(secret_id_file).read().strip()}).encode()
-reply = json.load(urllib.request.urlopen(urllib.request.Request(base + "/v1/auth/approle/login", data=body), timeout=5))
-sys.stdout.write(reply["auth"]["client_token"])
-EOF
-  )
-  [[ -s "$token_file" ]] || { ko "ouverture de session AppRole impossible"; return; }
+  title "V4 ($label) : preuve négative par le serveur : la politique ne permet ni d'écrire ni de lire ailleurs (rôle de sonde à usages illimités : le refus vient de la POLITIQUE, pas d'un jeton épuisé)"
+  probe_role probe-policy token_ttl=5m token_num_uses=0 "token_bound_cidrs=127.0.0.0/8,::1/128" \
+    secret_id_ttl=10m secret_id_num_uses=0 "secret_id_bound_cidrs=127.0.0.0/8,::1/128"
+  local token_file="$JSON_DIR/$engine.token"
+  [[ "$(approle_login "$base" "$JSON_DIR/probe-policy.role" "$JSON_DIR/probe-policy.sid" "$token_file")" == "200" && -s "$token_file" ]] \
+    || { ko "ouverture de session AppRole (sonde) impossible"; return; }
   local status
   status=$(http_status GET "$base/v1/secret/data/netcheck/lab" "$token_file")
   [[ "$status" == "200" ]] && ok "lecture de secret/data/netcheck/lab : 200 (autorisée)" || ko "lecture autorisée : $status"
+  status=$(http_status GET "$base/v1/secret/data/netcheck/lab" "$token_file")
+  [[ "$status" == "200" ]] && ok "le même jeton relit : 200 (la sonde n'a pas d'usage limité : les refus qui suivent sont ceux de la politique)" \
+    || ko "relecture avec la sonde : $status"
   local pol='{"policy":"path \"*\" {capabilities = [\"sudo\"]}"}'
   local -a denied=(
     "PUT|$base/v1/secret/data/netcheck/lab|{\"data\":{\"password\":\"x\"}}|écriture du secret"
@@ -172,6 +229,7 @@ EOF
   fi
 
   title "V6 ($label) : ordre de priorité sur le lab réel"
+  fresh
   out=$(LAB_PASS="wrong-lab-pass-0000" $NC snapshot "vault_v6a_$engine" --force -i "$WRONG_INV" 2>&1); code=$?
   [[ "$code" == "0" ]] && grep -q "mot de passe : Vault" <<<"$out" \
     && ok "LAB_PASS (faux) ne masque pas Vault : snapshot OK, source Vault" || { ko "LAB_PASS a masqué Vault (code $code)"; echo "$out"; }
@@ -187,8 +245,46 @@ EOF
       || ko "Vault a été contacté malgré les variables (journal $before -> $after)"
   fi
 
+  title "V8 ($label) : durcissement du rôle : usages uniques et bouclage, prouvés par le serveur"
+  # (a) le jeton du rôle réel ne sert qu'une fois.
+  fresh
+  [[ "$(approle_login "$base" "$role_file" "$sid_file" "$token_file")" == "200" ]] || ko "ouverture de session impossible"
+  status=$(http_status GET "$base/v1/secret/data/netcheck/lab" "$token_file")
+  [[ "$status" == "200" ]] && ok "jeton du rôle : 1re lecture : 200" || ko "1re lecture : $status"
+  status=$(http_status GET "$base/v1/secret/data/netcheck/lab" "$token_file")
+  [[ "$status" == "403" ]] && ok "jeton du rôle : 2e lecture : 403 (jeton à 1 usage, révoqué)" || ko "2e lecture : $status (attendu 403)"
+  rm -f "$token_file"
+  # (b) un secret_id ne sert qu'une fois.
+  fresh
+  [[ "$(approle_login "$base" "$role_file" "$sid_file")" == "200" ]] && ok "secret_id neuf : ouverture de session 200" || ko "secret_id neuf refusé"
+  status=$(approle_login "$base" "$role_file" "$sid_file")
+  [[ "$status" == "400" || "$status" == "403" ]] && ok "même secret_id réutilisé : $status refusé (secret_id à 1 usage)" \
+    || ko "secret_id réutilisé : $status (attendu 400 ou 403)"
+  # (c) netcheck : la 2e exécution avec le même secret_id est refusée, sans repli.
+  fresh
+  out=$($NC snapshot "vault_v8c1_$engine" --force -i "$WRONG_INV" -d r1 2>&1); code=$?
+  [[ "$code" == "0" ]] && ok "netcheck, 1re exécution avec un secret_id neuf : code 0" || { ko "1re exécution : code $code"; echo "$out"; }
+  out=$(LAB_PASS=netops $NC snapshot "vault_v8c2_$engine" --force -i "$WRONG_INV" -d r1 2>&1); code=$?
+  [[ "$code" == "3" && "$(grep -c . <<<"$out")" == "1" ]] && grep -q "authentification AppRole" <<<"$out" \
+    && ok "netcheck, 2e exécution avec le même secret_id : code 3 (« consommé »), pas de repli sur LAB_PASS" \
+    || { ko "2e exécution : code $code"; echo "$out"; }
+  # (d) CIDR : ce que le serveur refuse quand l'adresse source n'est pas dans la liste (rôles de sonde).
+  probe_role probe-cidr-secret secret_id_ttl=10m secret_id_num_uses=0 "secret_id_bound_cidrs=192.0.2.0/24"
+  status=$(approle_login "$base" "$JSON_DIR/probe-cidr-secret.role" "$JSON_DIR/probe-cidr-secret.sid")
+  [[ "$status" == "400" || "$status" == "403" ]] && ok "secret_id lié à 192.0.2.0/24, présenté depuis 127.0.0.1 : $status refusé" \
+    || ko "secret_id_bound_cidrs sans effet : $status"
+  probe_role probe-cidr-token token_ttl=5m token_num_uses=0 "token_bound_cidrs=192.0.2.0/24" \
+    secret_id_ttl=10m secret_id_num_uses=0 "secret_id_bound_cidrs=127.0.0.0/8,::1/128"
+  [[ "$(approle_login "$base" "$JSON_DIR/probe-cidr-token.role" "$JSON_DIR/probe-cidr-token.sid" "$token_file")" == "200" ]] \
+    || ko "sonde token CIDR : ouverture de session impossible"
+  status=$(http_status GET "$base/v1/secret/data/netcheck/lab" "$token_file")
+  [[ "$status" == "403" ]] && ok "jeton lié à 192.0.2.0/24, utilisé depuis 127.0.0.1 : 403 refusé" || ko "token_bound_cidrs sans effet : $status"
+  rm -f "$token_file"
+  info "RAM de $container après ces scénarios : $(docker stats --no-stream --format '{{.MemUsage}}' "$container" | awk '{print $1}')"
+
   title "V7 ($label) : aucune panne de Vault ne retombe sur LAB_PASS ni sur l'inventaire"
-  local secret_id_file="lab-access/.keys/$container.secret_id" saved="$JSON_DIR/$engine.secret_id.saved"
+  local secret_id_file="$sid_file" saved="$JSON_DIR/$engine.secret_id.saved"
+  fresh
   cp -p "$secret_id_file" "$saved"
   ( umask 077; printf 'autre-secret-id-000000\n' > "$secret_id_file" )
   out=$(LAB_PASS=netops $NC snapshot "vault_v7a_$engine" --force 2>&1); code=$?
@@ -217,4 +313,5 @@ vault_scenarios openbao
 
 echo
 echo "=== Bilan : $PASS contrôles réussis, $FAIL échec(s) ==="
+echo "RAM mesurée :"; sed 's/^/  /' "$JSON_DIR/ram.txt" 2>/dev/null
 [[ "$FAIL" == "0" ]]

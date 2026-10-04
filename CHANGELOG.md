@@ -137,7 +137,14 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   `SecretStr` inscrits au registre d'expurgation ; source affichée « Vault (montage/chemin) ». `http://` refusé hors
   bouclage, TLS toujours vérifié, redirections et proxies d'environnement ignorés. Lab : `lab-access/vault_lab.sh`
   (`hashicorp/vault:2.1.1` et `openbao/openbao:2.7.1`, mode développement sur 127.0.0.1) et
-  `tests/integration_vault.sh` (54 contrôles : lab FRR réel, journal d'audit, refus 403 du rôle, priorité, pannes).
+  `tests/integration_vault.sh` (lab FRR réel, journal d'audit, refus 403 du rôle, priorité, pannes).
+  **Rôle AppRole durci** (après C3, sans toucher à la liste blanche) : `token_num_uses=1`, `token_ttl=60s`,
+  `token_max_ttl=120s`, `secret_id_num_uses=1`, `secret_id_ttl=15m`, `token_bound_cidrs` et `secret_id_bound_cidrs` au
+  bouclage ; conséquence : chaque exécution consomme un `secret_id` (`vault_lab.sh secret-id`). Le conteneur de lab
+  partage le réseau de l'hôte pour que Vault voie `127.0.0.1` (derrière une redirection Docker il voyait `172.x.0.1`).
+  `tests/integration_vault.sh` : 76 contrôles, dont les réglages relus sur le serveur, jeton et `secret_id` à usage
+  unique, liaison CIDR prouvée, rôle de sonde à usages illimités pour que les refus 403 viennent de la politique.
+  Ressources (C24) : Vault ≈ 34-35 Mo de RAM et image de 744 Mo ; OpenBao ≈ 22 Mo et 275 Mo.
 
 ### Modifié
 

@@ -513,7 +513,7 @@ suivant, comme une variable non définie.
   refuse tout autre appel **avant** de l'envoyer (écriture ou suppression de secret, lecture ailleurs, `sys/…`,
   `revoke-self`) ; le secret est lu une fois par exécution.
 - **La politique du rôle est en lecture seule sur ce seul chemin** (`lab-access/vault/netcheck-ro.hcl`) : deuxième
-  barrière, côté serveur. Le jeton dure 5 minutes.
+  barrière, côté serveur.
 - **Aucun repli silencieux.** Vault configuré mais injoignable, authentification refusée, `secret_id` refusé (droits),
   secret introuvable, lecture refusée, certificat TLS refusé ou réponse inattendue : **erreur sur une ligne, code 3, avant
   toute connexion aux équipements**, même si `LAB_PASS` ou l'inventaire portent une valeur.
@@ -521,32 +521,69 @@ suivant, comme une variable non définie.
   sortie (test à l'appui). La source affichée est **« Vault (montage/chemin) »**, jamais une valeur. Aucune redirection
   n'est suivie et les variables de proxy de l'environnement sont ignorées : le jeton ne sort que vers l'adresse configurée.
 
-**Lab.** `lab-access/vault_lab.sh` démarre un conteneur de **développement** (en mémoire, lié à `127.0.0.1`, perdu à
-l'arrêt) et le provisionne (AppRole, politique en lecture seule, secret `secret/netcheck/lab` avec les identifiants du lab
-FRR). Le jeton racine du mode développement et le `secret_id` vont dans `lab-access/.keys/` (0700/0600, ignoré par Git),
-jamais dans le dépôt ni sur une ligne de commande :
+**Rôle AppRole durci : configuration recommandée en entreprise.** `lab-access/vault_lab.sh provision` crée le rôle
+`netcheck-ro` ainsi ; ces réglages ne touchent pas à la liste blanche du client, ils bornent ce que le serveur accepte :
+
+| Réglage | Valeur | Pourquoi |
+|---|---|---|
+| `token_num_uses` | **1** | netcheck fait une seule lecture avec son jeton ; il est ensuite révoqué |
+| `token_ttl` / `token_max_ttl` | **60 s / 120 s** | un jeton volé expire avant d'être utile |
+| `secret_id_num_uses` | **1** | un `secret_id` ne sert qu'à **une** ouverture de session |
+| `secret_id_ttl` | **15 min** | un `secret_id` non utilisé expire vite |
+| `token_bound_cidrs`, `secret_id_bound_cidrs` | **127.0.0.0/8, ::1/128** | le jeton et le `secret_id` ne valent que depuis l'hôte de netcheck ; en production, mettez l'adresse (ou le réseau) de la machine qui exécute netcheck |
+| `token_policies` | `netcheck-ro` seule | lecture seule sur le seul chemin du secret |
+| `bind_secret_id` | `true` | le `role_id` seul ne suffit pas |
+
+Conséquence voulue : **chaque exécution de netcheck consomme un `secret_id`**, qu'un orchestrateur (Vault Agent, CI, un
+jeton enveloppé) dépose dans le fichier 0600 juste avant ; une 2e exécution avec le même fichier est refusée (code 3,
+« secret_id invalide, expiré ou consommé »), sans repli. Dans le lab, `bash lab-access/vault_lab.sh secret-id` en fournit
+un. Pour que Vault voie `127.0.0.1` comme adresse source (derrière une redirection de port Docker il verrait la passerelle
+du pont, `172.x.0.1`, et refuserait la liaison au bouclage), le conteneur de lab partage le réseau de l'hôte et n'écoute
+que sur `127.0.0.1`. Un `monitor` planifié a donc besoin d'un mécanisme de livraison du `secret_id` à chaque exécution :
+c'est le prix du durcissement, pas un oubli.
+
+**Lab.** `lab-access/vault_lab.sh` démarre un conteneur de **développement** (en mémoire, écoute `127.0.0.1`, perdu à
+l'arrêt) et le provisionne (AppRole durci, politique en lecture seule, secret `secret/netcheck/lab` avec les identifiants
+du lab FRR). Le jeton racine du mode développement et le `secret_id` vont dans `lab-access/.keys/` (0700/0600, ignoré par
+Git), jamais dans le dépôt ni sur une ligne de commande :
 
 ```bash
 bash lab-access/vault_lab.sh up && bash lab-access/vault_lab.sh provision      # ENGINE=openbao pour OpenBao
 eval "$(bash lab-access/vault_lab.sh env)"                                      # NETCHECK_VAULT_* (des chemins, pas de secret)
 python -m netcheck snapshot avant                                               # « mot de passe : Vault (secret/netcheck/lab) (r1…r5) »
+bash lab-access/vault_lab.sh secret-id                                          # un NOUVEAU secret_id avant chaque exécution
 bash lab-access/vault_lab.sh down
 ```
 
-`bash tests/integration_vault.sh` (54 contrôles) le rejoue sur le lab FRR réel, en lecture seule, avec un inventaire dont
+Ressources du conteneur de lab (C24, mesurées : deux démarrages à froid par moteur, à 20 s et 40 s après le
+provisionnement ; machine de 15,5 Go) :
+
+| | `hashicorp/vault:2.1.1` | `openbao/openbao:2.7.1` |
+|---|---|---|
+| Image (disque) | 744 Mo | 275 Mo |
+| RAM du conteneur, au repos | **≈ 34-35 Mo** | **≈ 22 Mo** |
+| RAM après les scénarios d'intégration | ≈ 40 Mo | ≈ 27 Mo |
+
+(Les 155 Mo relevés dans le rapport de C3 l'avaient été 2 secondes après le démarrage, avant que le processus ne
+se stabilise : à retenir, la valeur stable.)
+
+`bash tests/integration_vault.sh` (76 contrôles) le rejoue sur le lab FRR réel, en lecture seule, avec un inventaire dont
 le mot de passe est **faux** (seul Vault peut ouvrir les sessions SSH), puis sur OpenBao 2.7.1 : journal d'audit du serveur
-(**deux** requêtes, `update auth/approle/login` et `read secret/data/netcheck/lab`), refus 403 du rôle (écriture,
-suppression, autre chemin, liste, `sys/mounts`, sa propre politique, création d'un `secret_id`, tous testés par des appels
-HTTP directs et non par netcheck), priorité (`LAB_PASS` ne masque pas Vault ; `NETCHECK_USER`/`NETCHECK_PASS` passent
+(**deux** requêtes, `update auth/approle/login` et `read secret/data/netcheck/lab`, depuis `127.0.0.1`), refus 403 de
+la politique (écriture, suppression, autre chemin, liste, `sys/mounts`, sa propre politique, création d'un `secret_id`,
+tous testés par des appels HTTP directs et non par netcheck, avec un rôle de sonde à usages illimités pour que le refus
+vienne bien de la politique), **durcissement prouvé par le serveur** (réglages du rôle relus, jeton refusé à la 2e
+lecture, `secret_id` refusé à la 2e ouverture de session, 2e exécution de netcheck refusée en code 3, liaison CIDR
+refusée depuis une adresse hors liste pour le `secret_id` et pour le jeton), priorité (`LAB_PASS` ne masque pas Vault ; `NETCHECK_USER`/`NETCHECK_PASS` passent
 avant), pannes (`secret_id` invalide, droits 0644, Vault arrêté : code 3, aucun snapshot, aucun repli). Compatibilité
 OpenBao : même client, mêmes résultats ; seule différence, OpenBao 2.7 n'active pas un journal d'audit par l'API, les
 preuves par journal sont donc propres à Vault.
 
 **Licences.** `hvac` (Apache-2.0) est un extra optionnel. L'image `hashicorp/vault` (BUSL-1.1, © IBM) n'est utilisée que
 comme conteneur de lab **non redistribué** par ce dépôt ; OpenBao est sous MPL-2.0. **Limites.** KV v2 et AppRole
-seulement (ni jeton fourni, ni Kubernetes, ni espaces de noms Enterprise) ; le jeton n'est pas révoqué en fin
-d'exécution (`revoke-self` n'est pas dans la liste blanche : seule l'ouverture de session est une écriture) mais expire
-après 5 minutes ; le mode développement n'est ni persistant ni scellé : un vrai Vault se configure autrement.
+seulement (ni jeton fourni, ni Kubernetes, ni espaces de noms Enterprise) ; le jeton n'est pas révoqué explicitement en
+fin d'exécution (`revoke-self` n'est pas dans la liste blanche : seule l'ouverture de session est une écriture) : il est
+à 1 usage, donc révoqué par Vault après la lecture, et expire en 60 s sinon ; le mode développement n'est ni persistant ni scellé : un vrai Vault se configure autrement.
 
 ### Codes retour
 
