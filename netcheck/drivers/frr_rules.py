@@ -31,6 +31,7 @@ from netcheck.drivers.bgp_neighbors import FRR_SYNTAX, BgpView
 from netcheck.drivers.ebgp_filters import (
     DEFAULT_ROUTE,
     default_route_violation,
+    inbound_prefix_lists,
     reinjection_violation,
     same_network,
 )
@@ -248,26 +249,9 @@ def _check_bgp_neighbor_ttl_security_required(rule: Rule, device: DeviceState, c
 # Politiques d'entrée : ce que la prefix-list autorise réellement
 # ------------------------------------------------------------------------------------------
 
-def _route_map_in_name(bgp: BgpView, neighbor: str) -> str | None:
-    """Nom du route-map appliqué en entrée ('in') à ce voisin (le sien, à défaut celui de son peer
-    group), ou None si aucun (dans ce cas, la règle ebgp-politique-entrante existante signale déjà le
-    problème -- pas le rôle des règles de politique ci-dessous, qui supposent qu'un route-map en entrée
-    existe)."""
-    lines = _policy_lines(bgp, neighbor, "route-map", "in")
-    return lines[0].words[3] if lines else None
-
-
-def _route_map_prefix_lists(cfg: ParsedConfig, route_map: str) -> list[tuple[str, str]]:
-    """(famille, nom) des prefix-lists référencées par 'match ip address prefix-list' (famille « ip ») et
-    'match ipv6 address prefix-list' (famille « ipv6 », Phase B3) dans un route-map (toutes ses séquences, pas
-    seulement la première)."""
-    found = []
-    for block in cfg.top("route-map", route_map):
-        for line in block.children:
-            if len(line.words) >= 5 and line.words[0] == "match" and line.words[1] in ("ip", "ipv6") \
-                    and line.words[2:4] == ("address", "prefix-list"):
-                found.append((line.words[1], line.words[4]))
-    return found
+# Les route-maps d'entrée d'un voisin (TOUS, par famille d'adresses, séquences `deny` ignorées) sont lus par
+# `ebgp_filters.inbound_prefix_lists`, comme pour EOS (Phase B4). Un voisin sans route-map en entrée n'a
+# rien à lire ici : la règle ebgp-politique-entrante existante signale déjà le problème.
 
 
 def _prefix_list_networks(cfg: ParsedConfig, name: str, family: str = "ip") -> list[str]:
@@ -288,17 +272,16 @@ def _check_bgp_neighbor_no_default_route_policy(rule: Rule, device: DeviceState,
     sur le filtrage lui-même). Toute entrée dont le réseau de base est la route par défaut la couvre,
     qu'elle porte ou non une clause `le`/`ge` -- 'permit 0.0.0.0/0' et 'permit 0.0.0.0/0 le 32' sont donc
     tous deux détectés par la même vérification sur le réseau de base. Les prefix-lists IPv4 et IPv6 d'un
-    route-map sont lues chacune pour sa famille (`match ip address` et `match ipv6 address`)."""
+    route-map sont lues chacune pour sa famille (`match ip address` et `match ipv6 address`). Phase B4 :
+    tous les route-maps d'entrée du voisin sont lus (par famille d'adresses), les séquences `deny` d'un
+    route-map sont ignorées."""
     config = _config(cfg)
     bgp = _bgp(config)
     if bgp is None:
         return []
     violations = []
     for ip in bgp.ebgp:
-        route_map = _route_map_in_name(bgp, ip)
-        if route_map is None:
-            continue
-        for family, pl in _route_map_prefix_lists(config, route_map):
+        for family, pl in inbound_prefix_lists(config, bgp, ip):
             for network in _prefix_list_networks(config, pl, family):
                 if same_network(family, network, DEFAULT_ROUTE[family]):
                     violations.append(
@@ -320,10 +303,7 @@ def _check_bgp_neighbor_no_own_prefixes_policy(rule: Rule, device: DeviceState, 
     own_networks = [n.words[1] for n in bgp.below if len(n.words) >= 2 and n.words[0] == "network"]
     violations = []
     for ip in bgp.ebgp:
-        route_map = _route_map_in_name(bgp, ip)
-        if route_map is None:
-            continue
-        for family, pl in _route_map_prefix_lists(config, route_map):
+        for family, pl in inbound_prefix_lists(config, bgp, ip):
             for network in _prefix_list_networks(config, pl, family):
                 if any(same_network(family, network, own) for own in own_networks):
                     violations.append(

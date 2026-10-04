@@ -202,6 +202,14 @@ Phase B4 :
   `ebgp-pas-de-reinjection-de-prefixes-locaux` comptaient toute entrée IPv4, `deny` compris : `deny 0.0.0.0/0` (le bon
   filtre) ou `deny <notre préfixe>` étaient signalés comme des autorisations (faux positifs, code 2). Seuls les `permit`
   comptent, comme en IPv6 depuis la phase B3. Aucune entrée du gel de référence ne contient de `deny` : zéro écart du gel.
+- **FRR : une séquence `deny` de route-map signalée à tort, et un route-map d'entrée jamais lu (faux positif et faux
+  négatif).** `ebgp-pas-de-route-par-defaut` et `ebgp-pas-de-reinjection-de-prefixes-locaux` lisaient toutes les
+  séquences d'un route-map sans regarder leur action : `route-map X deny 5` + une liste qui contient `0.0.0.0/0` (la
+  manière classique de refuser la route par défaut) donnait une violation. Elles ne lisaient aussi que le PREMIER
+  route-map en entrée d'un voisin : un voisin actif en IPv4 et en IPv6 avec un route-map par famille, dont celui de la
+  seconde famille laissait passer `::/0`, était « conforme ». Maintenant : séquences `deny` ignorées, tous les route-maps
+  d'entrée lus par famille, un membre de peer group ne masque son groupe que dans sa famille (même lecture que pour EOS,
+  `drivers/ebgp_filters.py`). Zéro écart du gel ; 14 mutations de cette lecture détectées.
 - **EOS : deux règles qui ne lisaient pas EOS (silence depuis la v0.3.0).** Une route par défaut ou un préfixe local
   autorisé en entrée d'un voisin eBGP d'un routeur EOS n'était signalé par aucune règle (« non applicable » : `drivers:
   [frr]`). Les deux règles sont maintenant `drivers: [frr, eos]`. Écart du gel : les réponses des cas EOS perdent deux
@@ -223,9 +231,8 @@ Phase B4 :
   routes de lien local ne sont pas comparées par `diff`.
 - `validated_by` d'une dérogation est un texte libre non vérifiable (signature en phase J). `monitor --derogations`
   lit la date du jour (pas de `--today`).
-- Règles de politique d'entrée : l'évaluateur FRR ne lit que le premier route-map en entrée d'un voisin et compte aussi
-  les séquences `deny` d'un route-map (faux positif sur `route-map X deny 5` + liste contenant `0.0.0.0/0`) ; l'évaluateur
-  EOS lit tous les route-maps par famille et ignore les séquences `deny`. Aucun des deux ne simule l'ordre des séquences.
+- Règles de politique d'entrée : aucune des deux règles (FRR, EOS) ne simule l'ordre des séquences d'un route-map ni
+  des entrées d'une prefix-list : un `permit` est signalé même précédé d'un `deny` plus large.
 - Une keychain SR Linux sans aucune clé n'est pas détectée (comportement de la v0.3.0, conservé) :
   amélioration prévue en phase E.
 

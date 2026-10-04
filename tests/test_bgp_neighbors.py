@@ -199,7 +199,9 @@ def test_an_override_on_the_member_masks_the_group():
 def _route_map_in(config: str, ip: str) -> str | None:
     from netcheck.drivers import frr_rules
     cfg = DRIVER_REGISTRY["frr"]().parse_config(config)
-    return frr_rules._route_map_in_name(frr_rules._bgp(cfg), ip)
+    lines = frr_rules._bgp(cfg).lines_by_family(
+        ip, lambda rest: len(rest) == 3 and rest[0] == "route-map" and rest[2] == "in")
+    return lines[0].words[3] if lines else None
 
 
 def test_membership_does_not_depend_on_the_order_of_the_lines():

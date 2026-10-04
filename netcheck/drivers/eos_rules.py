@@ -27,6 +27,7 @@ from netcheck.drivers.bgp_neighbors import EOS_SYNTAX, BgpView
 from netcheck.drivers.ebgp_filters import (
     DEFAULT_ROUTE,
     default_route_violation,
+    inbound_prefix_lists,
     reinjection_violation,
     same_network,
 )
@@ -176,24 +177,6 @@ def _check_eos_bgp_neighbor_maximum_routes_required(rule: Rule, device: DeviceSt
 # Politiques d'entrée : ce que la prefix-list autorise réellement (Phase B4)
 # ------------------------------------------------------------------------------------------
 
-def _route_map_prefix_lists(cfg: ParsedConfig, route_map: str) -> list[tuple[str, str]]:
-    """(famille, nom) des prefix-lists que les séquences `permit` d'un route-map font correspondre :
-    `match ip address prefix-list` (famille « ip ») et `match ipv6 address prefix-list` (« ipv6 »). Une
-    séquence `deny` est ignorée : elle REFUSE ce qu'elle reconnaît, c'est la manière classique d'écarter la
-    route par défaut (`route-map X deny 5` + `match ip address prefix-list DEFAUT`), pas une faute. Sans
-    action, EOS lit `permit`."""
-    found: list[tuple[str, str]] = []
-    for block in cfg.top("route-map", route_map):
-        if block.words[2:3] == ("deny",):
-            continue
-        for line in block.children:
-            w = line.words
-            is_match = len(w) >= 5 and w[0] == "match" and w[1] in ("ip", "ipv6")
-            if is_match and w[2:4] == ("address", "prefix-list"):
-                found.append((w[1], w[4]))
-    return found
-
-
 def _prefix_list_permits(cfg: ParsedConfig, family: str, name: str) -> list[str]:
     """Réseau (sans le `ge`/`le` éventuel) de chaque entrée `permit` d'une prefix-list EOS. Relevé sur cEOS
     4.34.8M (sessions de configuration abandonnées) : une liste IPv6 s'écrit TOUJOURS en sous-mode
@@ -214,23 +197,17 @@ def _prefix_list_permits(cfg: ParsedConfig, family: str, name: str) -> list[str]
 
 def _in_policies(cfg: ParsedConfig, bgp: BgpView, neighbor: str) -> list[tuple[str, str, list[str]]]:
     """(famille, prefix-list, réseaux autorisés) de chaque prefix-list des route-maps appliqués en ENTRÉE au
-    voisin, avec ses réglages effectifs PAR FAMILLE d'adresses (le membre masque son groupe famille par
-    famille). Un voisin sans route-map en entrée n'a rien à lire ici : la règle de politique d'entrée le
-    dit déjà."""
-    seen: list[tuple[str, str]] = []
-    for line in bgp.lines_by_family(
-            neighbor, lambda rest: len(rest) == 3 and rest[0] == "route-map" and rest[2] == "in"):
-        for key in _route_map_prefix_lists(cfg, line.words[3]):
-            if key not in seen:
-                seen.append(key)
-    return [(family, name, _prefix_list_permits(cfg, family, name)) for family, name in seen]
+    voisin (voir `ebgp_filters.inbound_prefix_lists`)."""
+    return [(family, name, _prefix_list_permits(cfg, family, name))
+            for family, name in inbound_prefix_lists(cfg, bgp, neighbor)]
 
 
 def _check_eos_bgp_neighbor_no_default_route_policy(rule: Rule, device: DeviceState, cfg) -> list[Violation]:
     """La prefix-list appliquée en entrée à chaque voisin eBGP ne doit autoriser la route par défaut
     (0.0.0.0/0 et ::/0) sous aucune forme, avec ou sans `ge`/`le` (Phase B4 : la v0.3.0 ne lisait pas du
     tout EOS ici). Politique déclarée, pas table de routage. Seuls les `permit` comptent (voir
-    `ebgp_filters`) et seules les séquences `permit` des route-maps (voir `_route_map_prefix_lists`)."""
+    `ebgp_filters`) et seules les séquences `permit` des route-maps (voir
+    `ebgp_filters.route_map_prefix_lists`)."""
     config = _config(cfg)
     bgp = _bgp(config)
     if bgp is None:

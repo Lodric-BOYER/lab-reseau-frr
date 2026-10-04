@@ -377,11 +377,16 @@ dans des sessions de configuration abandonnées :
 Les deux formes de prefix-list sont lues. Seules les séquences `permit` d'un route-map comptent : `route-map X deny 5` +
 une liste qui contient `0.0.0.0/0` est la manière classique de REFUSER la route par défaut, pas une faute.
 
-**Limites connues.** Les évaluateurs FRR de ces deux règles ne lisent que le **premier** route-map en entrée d'un
-voisin (un voisin actif dans deux familles avec deux route-maps n'en voit qu'un) et lisent aussi les séquences `deny`
-d'un route-map (une séquence `deny` + une liste qui contient `0.0.0.0/0` est signalée à tort) : l'évaluateur EOS, lui,
-lit tous les route-maps par famille et ignore les séquences `deny`. À aligner sur EOS, sur décision (écart du gel à
-valider). Aucune des deux règles ne simule l'ordre des séquences.
+**FRR aligné sur EOS.** Les deux évaluateurs partagent la même lecture des route-maps d'entrée
+(`drivers/ebgp_filters.py`) : **tous** les route-maps d'entrée du voisin sont lus, par famille d'adresses (un voisin
+actif en IPv4 et en IPv6 avec un route-map par famille n'en laisse plus passer un dangereux : avant, seul le premier
+était lu), le réglage propre d'un membre de peer group ne masque celui de son groupe que dans sa famille, et les
+séquences `deny` d'un route-map ne produisent aucune violation (`route-map X deny 5` + une liste qui contient `0.0.0.0/0`
+est la manière classique de REFUSER la route par défaut). Zéro écart du gel : aucune entrée ne contient de séquence
+`deny` ni de voisin à deux route-maps d'entrée.
+
+**Limite connue.** Aucune des deux règles ne simule l'ordre des séquences d'un route-map ni des entrées d'une
+prefix-list (premier correspondant) : un `permit` est signalé même précédé d'un `deny` plus large.
 
 ## Sécurité
 
@@ -615,7 +620,7 @@ vit dans les drivers :
 | `configdir.py` | 153 | `check --config-dir` |
 
 Ajouter un 4e constructeur ne touche donc plus `compliance.py` : un `<constructeur>_rules.py`, un
-`parse_config` et deux lignes de registre (l'import et l'entrée de `drivers/registry.py`). Les tests passent de **695 (v0.3.0) à 1664**.
+`parse_config` et deux lignes de registre (l'import et l'entrée de `drivers/registry.py`). Les tests passent de **695 (v0.3.0) à **.
 
 ## Reconnaissance du loopback (`is_loopback`)
 

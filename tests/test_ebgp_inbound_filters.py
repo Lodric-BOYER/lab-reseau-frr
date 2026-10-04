@@ -403,3 +403,89 @@ def test_lines_directly_under_router_bgp_are_ipv4_like_an_address_family_ipv4_bl
 def test_frr_a_prefix_list_entry_with_a_malformed_seq_is_not_read():
     # FRR refuse une telle ligne : elle ne peut pas figurer dans une vraie configuration.
     assert run("frr", frr_in("permit 0.0.0.0/0").replace("seq 30", "seq abc"), NODEF, "r3") == []
+
+
+# ------------------------------------------------------------------------------------------
+# 1 bis. FRR : toutes les route-maps d'entrée, par famille ; les séquences `deny` ne sont pas des fautes
+# ------------------------------------------------------------------------------------------
+
+def frr_with_sequence(action: str, family: str) -> str:
+    """r3 avec une séquence de route-map d'entrée (`permit` ou `deny`, séquence 5) qui nomme une liste
+    contenant la route par défaut. `deny` + une liste qui la contient est la manière classique de la
+    REFUSER."""
+    if family == "ip":
+        lists = "ip prefix-list PL-DEFAUT seq 10 permit 0.0.0.0/0\n"
+        route_map, match = "RM-EBGP-IN", "match ip address prefix-list PL-DEFAUT"
+    else:
+        lists = "ipv6 prefix-list PL6-DEFAUT seq 10 permit ::/0\n"
+        route_map, match = "RM6-EBGP-IN", "match ipv6 address prefix-list PL6-DEFAUT"
+    anchor = f"route-map {route_map} permit 10\n"
+    return once(FRR_R3, anchor, f"{lists}route-map {route_map} {action} 5\n {match}\nexit\n" + anchor)
+
+
+@pytest.mark.parametrize(("family", "neighbor"), [("ip", "172.16.34.2"), ("ipv6", "2001:db8:34::3")])
+def test_frr_a_deny_sequence_of_a_route_map_is_not_a_violation(family, neighbor):
+    assert run("frr", frr_with_sequence("deny", family), NODEF, "r3") == []
+    # La même séquence en `permit` laisse passer la route par défaut : signalée, sur le bon voisin.
+    assert subjects(run("frr", frr_with_sequence("permit", family), NODEF, "r3")) == [neighbor]
+
+
+def test_frr_a_deny_sequence_naming_our_own_prefix_is_not_a_reinjection():
+    anchor = "route-map RM-EBGP-IN permit 10\n"
+    deny = ("ip prefix-list PL-NOUS seq 10 permit 10.1.0.0/16\nroute-map RM-EBGP-IN deny 5\n"
+            " match ip address prefix-list PL-NOUS\nexit\n")
+    text = once(FRR_R3, anchor, deny + anchor)
+    assert run("frr", text, NOOWN, "r3") == []
+    assert subjects(run("frr", text.replace("deny 5", "permit 5"), NOOWN, "r3")) == ["172.16.34.2"]
+
+
+def frr_two_families() -> str:
+    """Un MÊME voisin actif dans deux familles, avec un route-map d'entrée par famille : celui de l'IPv4
+    est sain, celui de l'IPv6 laisse passer `::/0` et un de nos préfixes. (Syntaxe contrôlée par `vtysh
+    -C`.)"""
+    out = once(FRR_R3, "  neighbor 2001:db8:34::3 route-map RM6-EBGP-OUT out\n",
+               "  neighbor 2001:db8:34::3 route-map RM6-EBGP-OUT out\n  neighbor 172.16.34.2 activate\n"
+               "  neighbor 172.16.34.2 route-map RM6-DANGER in\n")
+    return out + ("ipv6 prefix-list PL6-DANGER seq 10 permit ::/0\n"
+                  "ipv6 prefix-list PL6-DANGER seq 20 permit 2001:db8:1::/48\n"
+                  "route-map RM6-DANGER permit 10\n match ipv6 address prefix-list PL6-DANGER\nexit\n")
+
+
+def test_frr_every_inbound_route_map_of_a_neighbor_is_read_not_only_the_first():
+    text = frr_two_families()
+    # La v0.3.0 et B3 ne lisaient que le premier (celui de l'IPv4, sain) : la politique dangereuse passait.
+    found = run("frr", text, NODEF, "r3")
+    assert [(v.subject, v.detail.endswith(DEFAULT_V6)) for v in found] == [("172.16.34.2", True)]
+    assert "prefix-list 'PL6-DANGER'" in found[0].detail
+    own = run("frr", text, NOOWN, "r3")
+    assert [(v.subject, "autorise 2001:db8:1::/48" in v.detail) for v in own] == [("172.16.34.2", True)]
+
+
+def frr_group_per_family() -> str:
+    """s1 (peer group PG-TEST, route-map d'entrée IPv4 sain) : le groupe a en plus un route-map d'entrée
+    IPv6 qui laisse passer `::/0`, et le membre 192.0.2.1 un route-map d'entrée IPv4 PROPRE. Le membre
+    garde celui de son groupe pour l'IPv6. (Syntaxe contrôlée par `vtysh -C`.)"""
+    text = read("peergroups", "frr_s1_group.txt")
+    last = "  neighbor 172.16.34.2 route-map RM-EBGP-OUT out\n"
+    text = once(text, last, last + "  neighbor 192.0.2.1 route-map RM-EBGP-IN in\n"
+                " exit-address-family\n !\n address-family ipv6 unicast\n  neighbor PG-TEST activate\n"
+                "  neighbor PG-TEST route-map RM6-DEFAUT in\n")
+    return text + ("ipv6 prefix-list PL6-DEFAUT seq 10 permit ::/0\nroute-map RM6-DEFAUT permit 10\n"
+                   " match ipv6 address prefix-list PL6-DEFAUT\nexit\n")
+
+
+def test_frr_a_member_policy_masks_its_group_only_in_its_own_family():
+    found = run("frr", frr_group_per_family(), NODEF, "r3")
+    assert sorted(subjects(found)) == ["192.0.2.1", "192.0.2.2"]
+    assert all(v.detail.endswith(DEFAULT_V6) and "(peer group PG-TEST)" in v.detail for v in found)
+
+
+def test_frr_a_member_policy_still_masks_the_group_policy_of_the_same_family():
+    # Le membre 192.0.2.2 reçoit un route-map IPv6 PROPRE et sain : il masque celui du groupe, qui laisse
+    # passer ::/0.
+    text = frr_group_per_family()
+    text = once(text, "  neighbor PG-TEST route-map RM6-DEFAUT in\n",
+                "  neighbor PG-TEST route-map RM6-DEFAUT in\n  neighbor 192.0.2.2 route-map RM6-SAIN in\n")
+    text += "ipv6 prefix-list PL6-SAIN seq 10 permit 2001:db8:2::/48\nroute-map RM6-SAIN permit 10\n" \
+            " match ipv6 address prefix-list PL6-SAIN\nexit\n"
+    assert subjects(run("frr", text, NODEF, "r3")) == ["192.0.2.1"]
