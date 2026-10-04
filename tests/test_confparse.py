@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from netcheck import confparse as cp
+from netcheck.drivers.srlinux import SrlinuxDriver
 
 REPO = Path(__file__).resolve().parent.parent
 FIXTURES = REPO / "tests" / "fixtures"
@@ -72,7 +73,7 @@ def test_real_srlinux_sections_parse_without_any_warning(dirname, name, prefix):
 def test_real_set_file_parses_without_any_warning():
     parsed = cp.parse_set(read(SET_FILE))
     assert parsed.warnings == []
-    assert parsed.counts["node"] == 31 and parsed.lines_total == 31
+    assert parsed.counts["node"] == 44 and parsed.lines_total == 44   # 31 lignes + 13 de double pile (B1)
     assert_every_line_counted(parsed)
 
 
@@ -130,9 +131,10 @@ def test_set_and_braces_give_the_same_paths_on_the_real_r5():
     """Le fichier de démarrage (`set /`) et la configuration relevée sur le lab (accolades) décrivent
     le même équipement : chaque ligne `set` doit se retrouver à l'identique dans la sortie à accolades,
     aux quatre exceptions près, TOUTES expliquées (aucune n'est un défaut de l'analyse)."""
-    running = set()
-    for name, prefix in SRL_SECTIONS.items():
-        running |= {f.path for f in srlinux("r5_hardened", name, prefix).flat}
+    # Relevé réel du r5 EN DOUBLE PILE (phase B1) : la sortie du driver, sections comprises.
+    live = SrlinuxDriver().parse_config(read(FIXTURES / "live_dualstack" / "srl_r5.txt"))
+    assert live.warnings == []
+    running = {f.path for f in live.flat}
     missing = [f for f in cp.parse_set(read(SET_FILE)).flat if f.path not in running]
     explained = [f for f in missing if f.path[:3] == ("network-instance", "default", "interface")]
     # (a) la branche « network-instance default interface » n'est pas collectée par le driver.

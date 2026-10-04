@@ -678,6 +678,62 @@ C'est le vrai test de l'architecture. Mesure honnête (`git diff`, lignes ajout�
 point faible reste `compliance.py` : tant que les évaluateurs de texte de configuration y vivent,
 chaque constructeur y ajoute son dialecte.
 
+## Double pile IPv6 et VRF de démonstration (v4, phase B1)
+
+Les trois labs tournent en double pile IPv4 / IPv6 (adressage de documentation `2001:db8::/32`, RFC 3849) et r2
+porte une VRF de démonstration. Les configurations existantes (FRR, EOS, SR Linux) sont **inchangées** : B1 n'y ajoute que des lignes (+247 lignes dans 11 fichiers ; une seule ligne existante change, `ospf6d=no` devient `ospf6d=yes`).
+
+| Objet | IPv4 existant | IPv6 |
+|---|---|---|
+| Loopbacks AS65001 / AS65002 | 10.1.255.1-3 / 10.2.255.4-5 | `2001:db8:1:ff::1-3` / `2001:db8:2:ff::4-5` (/128) |
+| Liens point à point (/127, RFC 6164) | 10.1.12.0, 10.1.13.0, 10.1.23.0, 172.16.34.0, 10.2.45.0 (/30) | `2001:db8:1:12::`, `1:13::`, `1:23::`, `2001:db8:34::`, `2001:db8:2:45::` : adresse IPv4 `.1` devient `::2`, `.2` devient `::3` |
+| LAN pc1 / pc2 | 192.168.1.0/24, 192.168.2.0/24 | `2001:db8:a1::/64`, `2001:db8:a2::/64` |
+| Agrégats eBGP (route de rejet `Null0`) | 10.1.0.0/16, 10.2.0.0/16 | `2001:db8:1::/48` (r3), `2001:db8:2::/48` (r4) |
+| VRF `DEMO` sur r2 | 10.99.2.0/24, route de rejet 10.99.9.0/24 | `2001:db8:99::/64`, route de rejet `2001:db8:99:9::/64` |
+
+- **IGP** : OSPFv3 (aire 0) sur tous les routeurs, `redistribute bgp` sur r3 et r4, comme en IPv4.
+- **BGP** : une session IPv6 **distincte** r3 ↔ r4 (`2001:db8:34::3` ↔ `::2`), avec le même durcissement que l'IPv4
+  (TCP-MD5, GTSM, limite de préfixes, route-maps entrante et sortante). Dans l'IPv4 AF, `no neighbor <v6> activate`.
+- **Authentification OSPFv3 : une dérogation constatée.** FRR utilise l'en-tête d'authentification de la RFC 7166
+  (`ipv6 ospf6 authentication key-id 1 hash-algo hmac-sha-256 key …`) sur les **trois liens FRR–FRR** de l'AS65001.
+  Le lien r4–r5 n'est **pas authentifié** : SR Linux 26.7.2 refuse (« Authentication keychain not supported on
+  ospf-v3 », constaté par `commit validate`), EOS 4.34.8M n'a que `ospfv3 authentication ipsec spi …` (6 formes essayées)
+  et FRR n'a pas d'IPsec : aucun mécanisme commun. Les fichiers `configs/r4` et `configs/r5` étant partagés entre les
+  labs, le lien est sans authentification dans les trois. La règle d'audit correspondante et son mécanisme de
+  dérogation sont prévus en phase B3.
+- **VRF `DEMO` (r2)** : un VRF Linux (table 100) avec une interface `dum-demo` (dummy) et deux routes de rejet, créés
+  par les `exec` de containerlab après le démarrage de FRR (vérifié : FRR passe le VRF de « inactive » à actif dès
+  sa création). r2 est un routeur de transit sans LAN ni eBGP et il est en FRR dans les trois labs : aucun chemin de
+  bout en bout n'est touché. Aucune session BGP n'est placée dans la VRF.
+
+**Contrôles** : `test_lab.sh` passe de 28 à **47** contrôles, `test_lab_multivendor.sh` de 15 à **28**,
+`test_lab_ceos.sh` de 26 à **44** (OSPFv3 Full, authentification RFC 7166, BGP IPv6, `ping6`, chemin IPv6, VRF,
+durcissement IPv6 des deux côtés, coupure de l'IPv6 seul sur le lab FRR). Les scripts d'intégration de netcheck
+(80, 27 et 38 contrôles) sont inchangés et verts. `automation/health.py` lit OSPFv3 et BGP IPv6 quand l'inventaire
+déclare `ospf6_neighbors` et `bgp6_peers`.
+
+**Mesures** (démarrage à froid, 3 essais par lab, convergence comptée depuis la fin du déploiement, sonde à 1 s) :
+
+| Lab | Référence IPv4 | Double pile : IPv4 / IPv6 | RAM des conteneurs |
+|---|---|---|---|
+| FRR | 16, 16, 15 s | 16, 16, 15 s / 17, 17, 16 s | 147 → 166 Mo (`ospf6d` ≈ 5 Mo par routeur) |
+| Mixte (SR Linux) | 11, 11, 11 s (déploiement 15-16 s) | 14, 15, 15 s (déploiement 23 s) / 5, 5, 5 s | WSL ≈ 3,12 Go, inchangée |
+| cEOS | 14, 18, 13 s (déploiement 22-23 s) | 13, 14, 13 s (déploiement 26-32 s) / 14, 17, 14 s | WSL ≈ 2,2 Go, inchangée |
+
+Sur le lab FRR, la double pile ne ralentit pas l'IPv4 et l'IPv6 converge une seconde après. Sur le lab mixte, le
+déploiement dure environ 7 s de plus et l'IPv4 converge 3 à 4 s plus tard (cause non cherchée) ; sur le lab cEOS, le
+déploiement dure 4 à 9 s de plus. La RAM utilisée par WSL ne bouge pas de façon mesurable.
+
+**Ce que netcheck ne voit pas encore (phases B2 et B3)** : son modèle ne contient ni IPv6 ni VRF. Les interfaces d'une
+VRF sont vues (nom et adresse IPv4) **sans leur VRF**, et leurs routes sont invisibles (`show ip route json` ne
+montre que la VRF par défaut ; sur FRR, `show interface json` liste toutes les VRF mais ajoute le périphérique VRF
+comme une pseudo-interface). Les règles voient le voisin BGP IPv6 (mot de passe, GTSM, limite, route-maps) mais sont
+**silencieuses** sur trois défauts IPv6 : authentification OSPFv3 retirée, `::/0` autorisé en entrée, préfixe local
+autorisé en entrée. Les labs en double pile sont donc audités « conformes » **sans que ces trois points soient
+vérifiés** tant que B3 n'est pas faite. Une seule adaptation de code a été nécessaire en B1 : le driver SR Linux ne
+compte que les instances OSPFv2 (`"version": "ospf-v2"`) dans ses voisins OSPF, sinon le voisin OSPFv3 de r5 était
+compté comme un second voisin OSPFv2.
+
 ## Audit de sécurité (v3)
 
 `netcheck/rules/security.yml` durcit les deux labs (authentification OSPF, TCP-MD5 + GTSM +

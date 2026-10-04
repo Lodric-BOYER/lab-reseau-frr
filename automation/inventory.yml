@@ -9,11 +9,13 @@ defaults:
 # pour le routage étudié. Clé lue uniquement par netcheck/, sans effet sur automation/*.py.
 management_interfaces: [eth0]
 
-# ospf_neighbors : nombre de voisins OSPF attendus en état Full
-# bgp_peers      : voisin BGP -> nombre minimal de préfixes reçus attendus
+# ospf_neighbors  : nombre de voisins OSPF attendus en état Full
+# bgp_peers       : voisin BGP -> nombre minimal de préfixes reçus attendus
+# ospf6_neighbors : (phase B, double pile) nombre de voisins OSPFv3 attendus en état Full
+# bgp6_peers      : (phase B) voisin BGP IPv6 -> nombre minimal de préfixes reçus attendus (adresse entre guillemets)
 routers:
-  r1: {host: 172.20.20.11, ospf_neighbors: 2}
-  r2: {host: 172.20.20.12, ospf_neighbors: 2}
-  r3: {host: 172.20.20.13, ospf_neighbors: 2, bgp_peers: {172.16.34.2: 2}}
-  r4: {host: 172.20.20.14, ospf_neighbors: 1, bgp_peers: {172.16.34.1: 2}}
-  r5: {host: 172.20.20.15, ospf_neighbors: 1}
+  r1: {host: 172.20.20.11, ospf_neighbors: 2, ospf6_neighbors: 2}
+  r2: {host: 172.20.20.12, ospf_neighbors: 2, ospf6_neighbors: 2}
+  r3: {host: 172.20.20.13, ospf_neighbors: 2, ospf6_neighbors: 2, bgp_peers: {172.16.34.2: 2}, bgp6_peers: {"2001:db8:34::3": 2}}
+  r4: {host: 172.20.20.14, ospf_neighbors: 1, ospf6_neighbors: 1, bgp_peers: {172.16.34.1: 2}, bgp6_peers: {"2001:db8:34::2": 2}}
+  r5: {host: 172.20.20.15, ospf_neighbors: 1, ospf6_neighbors: 1}

@@ -219,6 +219,11 @@ class SrlinuxDriver(Driver):
     def _parse_ospf(text: str) -> list[OspfNeighbor]:
         neighbors = []
         for instance in json.loads(text).get("instances", []):
+            # Double pile (phase B) : la même commande rend les instances OSPFv2 ET OSPFv3. Le modèle de
+            # voisins OSPF est celui d'OSPFv2 (les voisins OSPFv3 auront leur propre champ) : sans ce filtre,
+            # un voisin OSPFv3 serait compté comme un second voisin OSPFv2 (relevé en direct sur 26.7.2).
+            if instance.get("version", "ospf-v2") != "ospf-v2":
+                continue
             for n in instance.get("neighbors_brief", []):
                 # SR Linix renvoie l'état en minuscules ("full") ; OspfNeighbor.is_full teste
                 # state.startswith("Full") (convention FRR) : on normalise la casse ici pour

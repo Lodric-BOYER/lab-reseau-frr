@@ -2,12 +2,11 @@
 
 Le fichier de démarrage (écrit à la main : `configs/`, `configs-multivendor/`, `configs-ceos/`) et la
 configuration en cours d'exécution (formatée par l'équipement, relevée sur un lab démarré à froid :
-`tests/fixtures/live_hardened/`, `tests/fixtures/r5_hardened/`) n'ont pas la même forme. Les règles de
+`tests/fixtures/live_dualstack/`, relevés en double pile) n'ont pas la même forme. Les règles de
 configuration doivent pourtant répondre pareil, constat par constat, que le lab soit conforme ou dégradé.
 Les règles qui lisent le MODÈLE (interfaces) sont exclues de la comparaison : hors ligne, elles sont non
 évaluables (`test_config_dir.py`), et les fixtures n'ont de toute façon pas de modèle.
 """
-import json
 from pathlib import Path
 
 import pytest
@@ -16,11 +15,11 @@ from netcheck import compliance, configdir
 from netcheck.model import DeviceState
 
 REPO = Path(__file__).resolve().parent.parent
-LIVE = REPO / "tests" / "fixtures" / "live_hardened"
+LIVE = REPO / "tests" / "fixtures" / "live_dualstack"
 RULES = {name: compliance.load_rules(REPO / "netcheck" / "rules" / f"{name}.yml")
          for name in ("default", "security")}
 STATE_KINDS = {"ospf_passive_on_interfaces", "interface_description_required"}
-R5_LIVE = json.loads((REPO / "tests" / "fixtures" / "r5_hardened" / "state.json").read_text(encoding="utf-8"))
+R5_LIVE = (LIVE / "srl_r5.txt").read_text(encoding="utf-8")
 INVENTORIES = {
     "frr": ("inventory.yml", ["configs"], {}),
     "mixte": ("inventory-multivendor.yml", ["configs", "configs-multivendor"], {"r5": "srlinux"}),
@@ -36,7 +35,7 @@ def live_lab(lab: str) -> dict[str, DeviceState]:
     devices = {r: live_state(r, "frr", (LIVE / f"frr_{r}.txt").read_text(encoding="utf-8"))
                for r in ("r1", "r2", "r3", "r4", "r5")}
     if lab == "mixte":
-        devices["r5"] = live_state("r5", "srlinux", R5_LIVE["running_config"])
+        devices["r5"] = live_state("r5", "srlinux", R5_LIVE)
     if lab == "ceos":
         devices["r4"] = live_state("r4", "eos", (LIVE / "eos_r4.txt").read_text(encoding="utf-8"))
     return devices
@@ -85,10 +84,15 @@ DEGRADATIONS = [
     ("frr", "r3", "neighbor 172.16.34.2 password", "bgp_neighbor_password_required"),
     ("frr", "r3", "neighbor 172.16.34.2 ttl-security", "bgp_neighbor_ttl_security_required"),
     ("frr", "r3", "neighbor 172.16.34.2 maximum-prefix", "bgp_neighbor_maximum_prefix_required"),
+    ("frr", "r3", "neighbor 2001:db8:34::3 password", "bgp_neighbor_password_required"),
+    ("frr", "r3", "neighbor 2001:db8:34::3 ttl-security", "bgp_neighbor_ttl_security_required"),
+    ("frr", "r3", "neighbor 2001:db8:34::3 maximum-prefix", "bgp_neighbor_maximum_prefix_required"),
     ("frr", "r1", "ip ospf authentication", "ospf_authentication_required"),
     ("ceos", "r4", "neighbor 172.16.34.1 maximum-routes", "eos_bgp_neighbor_maximum_routes_required"),
     ("ceos", "r4", "neighbor 172.16.34.1 ttl maximum-hops", "eos_bgp_neighbor_ttl_security_required"),
     ("ceos", "r4", "neighbor 172.16.34.1 password", "eos_bgp_neighbor_password_required"),
+    ("ceos", "r4", "neighbor 2001:db8:34::2 password", "eos_bgp_neighbor_password_required"),
+    ("ceos", "r4", "neighbor 2001:db8:34::2 maximum-routes", "eos_bgp_neighbor_maximum_routes_required"),
     ("mixte", "r5", "login-banner", "srlinux_login_banner_present"),
 ]
 

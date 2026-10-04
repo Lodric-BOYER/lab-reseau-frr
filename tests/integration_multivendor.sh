@@ -30,7 +30,8 @@ title() { echo; echo "=== $1 ==="; }
 # Voisins OSPF Full sur r4 (FRR, vtysh) et r5 (SR Linux, sr_cli) : deux commandes différentes,
 # un seul critère de convergence -- comme wait_ospf() dans test_lab_multivendor.sh.
 ospf_full_r4() { docker exec "$LAB-r4" vtysh -c "show ip ospf neighbor" 2>/dev/null | grep -c Full; }
-ospf_full_r5() { docker exec "$LAB-r5" sr_cli -- "show network-instance default protocols ospf neighbor" 2>&1 | grep -ci full; }
+# Instance OSPFv2 `main` seulement : l'instance `v3` (OSPFv3, double pile) tombe aussi avec le lien.
+ospf_full_r5() { docker exec "$LAB-r5" sr_cli -- "show network-instance default protocols ospf instance main neighbor" 2>&1 | grep -ci full; }
 
 wait_converged() {
   for _ in $(seq 1 20); do

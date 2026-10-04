@@ -48,6 +48,11 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   des réglages de son groupe, et un constat la nomme (`192.0.2.64/26 (plage dynamique, peer group …)`).
   Avant, ces sessions n'étaient pas auditées du tout. Relevé en direct : FRR écrit la plage sans
   `remote-as` (celui du groupe s'applique), EOS exige le `remote-as` sur la ligne même.
+- **Phase B1, labs en double pile IPv4 / IPv6 et VRF de démonstration.** Les trois labs convergent en double
+  pile (`2001:db8::/32`, liens point à point en /127, OSPFv3 authentifié par RFC 7166 sur les liens FRR–FRR, session
+  BGP IPv6 distincte avec le durcissement de l'IPv4) et r2 porte la VRF `DEMO`. `test_lab.sh` passe de 28 à 47
+  contrôles, `test_lab_multivendor.sh` de 15 à 28, `test_lab_ceos.sh` de 26 à 44 ; les scénarios d'intégration
+  restent verts. Mesures de convergence et de RAM (3 démarrages à froid par lab) dans le README.
 - **`netcheck check --config-dir <dossier> [--driver …]`** : audit de fichiers de configuration, sans aucun
   équipement. Deux dispositions (`dossier/<équipement>.<ext>`, `dossier/<équipement>/<fichier>`), driver
   déduit de l'inventaire ou donné, option répétable (lab mixte : `configs` puis `configs-multivendor`).
@@ -145,6 +150,11 @@ Défauts communs à FRR et EOS, sur les peer groups (relevés sur r3 et r4, mesu
 - Un membre dont aucun `remote-as` (propre ou du groupe) n'est connu n'ouvre pas de session : il n'est
   pas évalué.
 
+- **OSPFv3 sans authentification sur le lien r4–r5** des trois labs (dérogation technique : SR Linux refuse
+  l'authentification OSPFv3 par keychain, EOS n'a que l'IPsec, FRR utilise la RFC 7166). Mécanisme de dérogation
+  et règle d'audit prévus en phase B3.
+- Double pile (B1) : netcheck ne voit pas encore IPv6 ni les VRF (phase B2) ; les règles sont silencieuses sur
+  l'authentification OSPFv3, `::/0` autorisé en entrée et un préfixe local autorisé en entrée (phase B3).
 - Une keychain SR Linux sans aucune clé n'est pas détectée (comportement de la v0.3.0, conservé) :
   amélioration prévue en phase E.
 

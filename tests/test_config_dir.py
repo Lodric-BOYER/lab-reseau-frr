@@ -420,10 +420,12 @@ def test_a_srlinux_set_file_with_a_little_prose_reports_each_prose_line_once_as_
 def real_configs():
     t = REPO / "tests"
     frr = [*sorted((t / "fixtures" / "live_hardened").glob("frr_*.txt")),
+           *sorted((t / "fixtures" / "live_dualstack").glob("frr_*.txt")),
            *[t / "fixtures" / r / "running_config.txt" for r in ("r1", "r3", "r4")],
            *sorted((t / "golden" / "inputs").glob("frr_*.conf")),
            *sorted((t / "fixtures" / "peergroups").glob("frr_*.txt"))]
-    eos = [t / "fixtures" / "live_hardened" / "eos_r4.txt", t / "golden" / "inputs" / "eos_r4.startup-config",
+    eos = [t / "fixtures" / "live_hardened" / "eos_r4.txt", t / "fixtures" / "live_dualstack" / "eos_r4.txt",
+           t / "golden" / "inputs" / "eos_r4.startup-config",
            *sorted((t / "fixtures" / "ceos").glob("*/running_config.txt")),
            *sorted((t / "fixtures" / "peergroups").glob("eos_*.txt"))]
     srlinux = [t / "fixtures" / "r5" / "running_config.txt",
@@ -443,9 +445,11 @@ def test_no_real_configuration_of_the_repository_is_rejected_or_flagged(driver, 
 def test_the_live_srlinux_state_is_recognized_too(tmp_path):
     path = REPO / "tests" / "fixtures" / "r5_hardened" / "state.json"
     state = json.loads(path.read_text(encoding="utf-8"))
-    write(tmp_path / "r5.txt", state["running_config"])
-    loaded = configdir.load([tmp_path], forced_driver="srlinux")
-    assert list(loaded.devices) == ["r5"] and loaded.warnings == []
+    dual = (REPO / "tests" / "fixtures" / "live_dualstack" / "srl_r5.txt").read_text(encoding="utf-8")
+    for text in (state["running_config"], dual):          # d'avant la double pile, puis en double pile
+        write(tmp_path / "r5.txt", text)
+        loaded = configdir.load([tmp_path], forced_driver="srlinux")
+        assert list(loaded.devices) == ["r5"] and loaded.warnings == []
 
 
 def test_a_file_replaced_by_a_later_folder_is_never_read(tmp_path):

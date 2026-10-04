@@ -63,6 +63,46 @@ wait_ospf() {
   return 1
 }
 
+# --- Double pile IPv6 (phase B) : mêmes principes que ci-dessus, pour OSPFv3 et BGP IPv6 ---
+# Nombre de voisins OSPFv3 en état Full sur un routeur
+ospf6_full() { vt "$1" "show ipv6 ospf6 neighbor json" | python3 -c '
+import json, sys
+d = json.load(sys.stdin).get("neighbors", [])
+print(sum(str(n.get("state", "")).startswith("Full") for n in d))'; }
+
+# Nombre de voisins OSPFv3 en état Full sur r4 (cEOS)
+ospf6_full_eos() { eos "show ospfv3 neighbor" | grep -c "state is Full"; }
+
+# "Etat préfixes_reçus" d'un voisin BGP IPv6, vu de r4 (cEOS)
+bgp_peer6_eos() { eos "show bgp ipv6 unicast summary | json" | python3 -c '
+import json, sys
+p = json.load(sys.stdin).get("vrfs", {}).get("default", {}).get("peers", {}).get(sys.argv[1], {})
+print(p.get("peerState", "absent"), p.get("prefixReceived", 0))' "$1"; }
+
+# "Etat préfixes_reçus" d'un voisin BGP IPv6, vu de r3 (FRR)
+bgp_peer6() { vt "$1" "show bgp ipv6 unicast summary json" | python3 -c '
+import json, sys
+p = json.load(sys.stdin).get("peers", {}).get(sys.argv[1], {})
+print(p.get("state", "absent"), p.get("pfxRcd", 0))' "$2"; }
+
+# Attend que les deux sessions eBGP IPv6 soient établies avec 2 préfixes (90 s max)
+wait_bgp6() {
+  for _ in $(seq 1 45); do
+    [[ "$(bgp_peer6 r3 2001:db8:34::3)" == "Established 2" && "$(bgp_peer6_eos 2001:db8:34::2)" == "Established 2" ]] && return 0
+    sleep 2
+  done
+  return 1
+}
+
+# Attend que chaque routeur ait tous ses voisins OSPFv3 en Full (60 s max)
+wait_ospf6() {
+  for _ in $(seq 1 30); do
+    [[ "$(ospf6_full r1)$(ospf6_full r2)$(ospf6_full r3)$(ospf6_full_eos)$(ospf6_full r5)" == "22211" ]] && return 0
+    sleep 2
+  done
+  return 1
+}
+
 # Traduit une adresse en nom d'équipement (un routeur a une adresse par interface)
 owner() {
   case "$1" in
@@ -80,6 +120,25 @@ owner() {
 route_path() {
   docker exec "$LAB-pc1" traceroute -n -w 1 -q 1 192.168.2.10 2>/dev/null \
     | awk 'NR>1{print $2}' | while read -r ip; do owner "$ip"; done | paste -sd' '
+}
+
+# Traduit une adresse IPv6 en nom d'équipement (adresse IPv4 .1 -> ::2, .2 -> ::3 dans chaque /127)
+owner6() {
+  case "$1" in
+    2001:db8:a1::1|2001:db8:1:12::2|2001:db8:1:13::2|2001:db8:1:ff::1)  echo r1 ;;
+    2001:db8:1:12::3|2001:db8:1:23::2|2001:db8:1:ff::2)                 echo r2 ;;
+    2001:db8:1:13::3|2001:db8:1:23::3|2001:db8:34::2|2001:db8:1:ff::3)  echo r3 ;;
+    2001:db8:34::3|2001:db8:2:45::2|2001:db8:2:ff::4)                   echo r4 ;;
+    2001:db8:2:45::3|2001:db8:a2::1|2001:db8:2:ff::5)                   echo r5 ;;
+    2001:db8:a2::10)                                                    echo pc2 ;;
+    *)                                                                  echo "?($1)" ;;
+  esac
+}
+
+# Suite des équipements traversés de pc1 vers pc2 en IPv6
+route_path6() {
+  docker exec "$LAB-pc1" traceroute -6 -n -w 1 -q 1 2001:db8:a2::10 2>/dev/null \
+    | awk 'NR>1{print $2}' | while read -r ip; do owner6 "$ip"; done | paste -sd' '
 }
 
 # ---------------------------------------------------------------- 1. Prérequis
@@ -120,6 +179,31 @@ for _ in 1 2 3; do
 done
 [[ "$path" == "r1 r3 r4 r5 pc2" ]] && ok "chemin r1 -> r3 -> r4 (cEOS) -> r5 -> pc2" || ko "chemin inattendu : $path"
 
+# ---------------------------------------------------------------- 3b. Double pile IPv6 et VRF
+title "3b. Double pile IPv6 et VRF (phase B, FRR <-> cEOS)"
+echo "  … attente de la convergence OSPFv3/BGP IPv6 (jusqu'à 90 s)"
+if wait_bgp6; then ok "eBGP IPv6 r3 (FRR) <-> r4 (cEOS) Established, 2 préfixes dans chaque sens"; else ko "eBGP IPv6 non établi : r3=[$(bgp_peer6 r3 2001:db8:34::3)] r4=[$(bgp_peer6_eos 2001:db8:34::2)]"; fi
+wait_ospf6 || true
+sleep 5   # laisse OSPFv3 recalculer et installer les routes après les dernières adjacences
+for spec in r1:2 r2:2 r3:2 r5:1; do
+  r=${spec%%:*}; want=${spec##*:}; got=$(ospf6_full "$r")
+  [[ "$got" == "$want" ]] && ok "OSPFv3 $r (FRR) : $got/$want voisins Full" || ko "OSPFv3 $r (FRR) : ${got:-0}/$want voisins Full"
+done
+got_eos6=$(ospf6_full_eos)
+[[ "$got_eos6" == "1" ]] && ok "OSPFv3 r4 (cEOS) : $got_eos6/1 voisin Full" || ko "OSPFv3 r4 (cEOS) : ${got_eos6:-0}/1 voisin Full"
+check "OSPFv3 r1 eth1 : authentification (RFC 7166) active"  bash -c "docker exec $LAB-r1 vtysh -c 'show ipv6 ospf6 interface eth1' | grep -q 'Authentication trailer is enabled'"
+check "OSPFv3 r5 eth1 (vers cEOS) : sans authentification (dérogation D1 : EOS n'a que l'IPsec, FRR la RFC 7166)"  bash -c "! docker exec $LAB-r5 vtysh -c 'show ipv6 ospf6 interface eth1' | grep -q 'Authentication trailer is enabled'"
+check "r1 connaît le LAN distant 2001:db8:a2::/64 (ospf6)"   bash -c "docker exec $LAB-r1 vtysh -c 'show ipv6 route 2001:db8:a2::/64' | grep -q ospf6"
+check "ping6 pc1 -> pc2 sans perte"                          docker exec "$LAB-pc1" ping -6 -c 3 -W 1 2001:db8:a2::10
+for _ in 1 2 3; do
+  path6=$(route_path6)
+  [[ "$path6" == "r1 r3 r4 r5 pc2" ]] && break
+  sleep 5
+done
+[[ "$path6" == "r1 r3 r4 r5 pc2" ]] && ok "chemin IPv6 r1 -> r3 -> r4 -> r5 -> pc2" || ko "chemin IPv6 inattendu : $path6"
+check "VRF DEMO (r2) : dum-demo est dans le VRF DEMO"  bash -c "docker exec $LAB-r2 vtysh -c 'show interface dum-demo json' | python3 -c 'import json, sys; sys.exit(json.load(sys.stdin)[\"dum-demo\"].get(\"vrfName\") != \"DEMO\")'"
+check "VRF DEMO (r2) : la route 10.99.9.0/24 est dans le VRF"  bash -c "docker exec $LAB-r2 vtysh -c 'show ip route vrf DEMO 10.99.9.0/24' | grep -q blackhole"
+
 # ---------------------------------------------------------------- 4. Durcissement en vigueur
 title "4. Durcissement en vigueur (preuve des deux côtés)"
 eos "show ip ospf interface Ethernet2" | grep -q "Message-digest authentication, using key id 1" \
@@ -138,6 +222,18 @@ echo "$frr_neigh" | grep -q "External BGP neighbor may be up to 1 hops away" \
   && ok "BGP r3 (FRR) : ttl-security actif" || ko "BGP r3 : ttl-security absent"
 echo "$frr_neigh" | grep -q "Maximum prefixes allowed 10" \
   && ok "BGP r3 (FRR) : maximum-prefix 10 actif" || ko "BGP r3 : maximum-prefix absent"
+neigh6=$(eos "show bgp neighbors 2001:db8:34::2")
+echo "$neigh6" | grep -q "MD5 authentication is enabled" \
+  && ok "BGP IPv6 r4 (cEOS) : TCP-MD5 actif" || ko "BGP IPv6 r4 : TCP-MD5 absent"
+echo "$neigh6" | grep -q "TTL is 255, BGP neighbor may be up to 1 hops away" \
+  && ok "BGP IPv6 r4 (cEOS) : GTSM actif (TTL 255, 1 saut)" || ko "BGP IPv6 r4 : GTSM absent"
+echo "$neigh6" | grep -q "Configured maximum total number of routes is 10" \
+  && ok "BGP IPv6 r4 (cEOS) : maximum-routes 10 actif" || ko "BGP IPv6 r4 : limite de routes absente"
+frr_neigh6=$(vt r3 "show bgp neighbors 2001:db8:34::3")
+echo "$frr_neigh6" | grep -q "External BGP neighbor may be up to 1 hops away" \
+  && ok "BGP IPv6 r3 (FRR) : ttl-security actif" || ko "BGP IPv6 r3 : ttl-security absent"
+echo "$frr_neigh6" | grep -q "Maximum prefixes allowed 10" \
+  && ok "BGP IPv6 r3 (FRR) : maximum-prefix 10 actif" || ko "BGP IPv6 r3 : maximum-prefix absent"
 [[ "$(docker exec "$LAB-r5" cat /sys/class/net/eth1/mtu)" == "1500" && "$(eos "show interfaces Ethernet2 | json" | python3 -c '
 import json, sys
 print(json.load(sys.stdin)["interfaces"]["Ethernet2"]["mtu"])')" == "1500" ]] \

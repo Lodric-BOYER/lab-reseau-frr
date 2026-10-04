@@ -29,3 +29,16 @@ set / system authentication keychain kc-ospf-r4r5 key 1 algorithm md5
 set / system authentication keychain kc-ospf-r4r5 key 1 authentication-key lab-ospf-r4r5
 set / network-instance default protocols ospf instance main area 0.0.0.0 interface ethernet-1/1.0 authentication keychain kc-ospf-r4r5
 set / system banner login-banner "Acces reserve - lab de demonstration - toute activite peut etre journalisee"
+set / interface ethernet-1/1 subinterface 0 ipv6 admin-state enable
+set / interface ethernet-1/1 subinterface 0 ipv6 address 2001:db8:2:45::3/127
+set / interface ethernet-1/2 subinterface 0 ipv6 admin-state enable
+set / interface ethernet-1/2 subinterface 0 ipv6 address 2001:db8:a2::1/64
+set / interface lo0 subinterface 0 ipv6 admin-state enable
+set / interface lo0 subinterface 0 ipv6 address 2001:db8:2:ff::5/128
+set / network-instance default protocols ospf instance v3 admin-state enable
+set / network-instance default protocols ospf instance v3 version ospf-v3
+set / network-instance default protocols ospf instance v3 router-id 10.2.255.5
+set / network-instance default protocols ospf instance v3 address-family ipv6-unicast
+set / network-instance default protocols ospf instance v3 area 0.0.0.0 interface ethernet-1/1.0 interface-type point-to-point
+set / network-instance default protocols ospf instance v3 area 0.0.0.0 interface ethernet-1/2.0 passive true
+set / network-instance default protocols ospf instance v3 area 0.0.0.0 interface lo0.0 passive true

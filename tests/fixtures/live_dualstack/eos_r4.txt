@@ -1,17 +1,5 @@
-! r4 : Arista cEOS (Phase F, O6) -- remplace le r4 FRR de configs/r4/frr.conf, MEME logique :
-!   - OSPF area 0 vers r5, authentification message-digest (MD5), lien point-a-point ;
-!   - eBGP AS65002 <-> r3 (AS65001) : TCP-MD5, GTSM (ttl maximum-hops 1), maximum-routes 10,
-!     filtrage entrant et sortant par prefix-list + route-map ;
-!   - agregat 10.2.0.0/16 porte par une route de rejet Null0 ; redistribution BGP -> OSPF.
-! Les secrets sont ceux du lab FRR (lab uniquement, C11) ; EOS les stocke ensuite en « type 7 »
-! dans la running-config (reversible : traite comme un secret par netcheck/secrets.py).
-! Syntaxe verifiee EN DIRECT sur cEOS 4.34.8M (aucune commande devinee) ; les lignes de plate-forme
-! (aaa, utilisateur admin par defaut de l'image, multi-agent) reprennent la configuration par
-! defaut generee par containerlab. Differences voulues avec cette configuration par defaut :
-!   - AUCUNE API de gestion (eAPI, gNMI, NETCONF) : seul SSH est utilise, et un lab de securite
-!     n'expose pas d'API inutiles (la regle de conformite eos-api-gestion-exposee le verifie) ;
-!   - pas de route par defaut via Management0 : elle n'a pas de role ici et polluerait la table
-!     de routage de r4.
+! Command: show running-config
+! device: r4 (cEOSLab, EOS-4.34.8M-49719955.4348M.1 (engineering build))
 !
 no aaa root
 !
@@ -37,8 +25,8 @@ interface Ethernet1
    ip address 172.16.34.2/30
    ipv6 address 2001:db8:34::3/127
    ip ospf area 0.0.0.0
+   ospfv3 passive-interface
    ospfv3 ipv6 area 0.0.0.0
-   ospfv3 passive
 !
 interface Ethernet2
    description vers-r5
@@ -47,41 +35,41 @@ interface Ethernet2
    ipv6 address 2001:db8:2:45::2/127
    ip ospf network point-to-point
    ip ospf authentication message-digest
-   ip ospf message-digest-key 1 md5 lab-ospf-r4r5
    ip ospf area 0.0.0.0
-   ospfv3 ipv6 area 0.0.0.0
+   ip ospf message-digest-key 1 md5 7 Xa3hY/loCKnuF1M4pSYh4fkunbQLFopl
    ospfv3 network point-to-point
+   ospfv3 ipv6 area 0.0.0.0
 !
 interface Loopback0
    ip address 10.2.255.4/32
    ipv6 address 2001:db8:2:ff::4/128
    ip ospf area 0.0.0.0
+   ospfv3 passive-interface
    ospfv3 ipv6 area 0.0.0.0
-   ospfv3 passive
 !
 interface Management0
    ip address 172.20.22.14/24
 !
 ip routing
 !
-ipv6 unicast-routing
-!
-! Route de rejet pour l'agregat annonce en BGP (bonne pratique operateur)
-ip route 10.2.0.0/16 Null0
-ipv6 route 2001:db8:2::/48 Null0
-!
-ip prefix-list PL-EBGP-OUT seq 10 permit 10.2.0.0/16
-ip prefix-list PL-EBGP-OUT seq 20 permit 192.168.2.0/24
 ip prefix-list PL-EBGP-IN seq 10 permit 10.1.0.0/16
 ip prefix-list PL-EBGP-IN seq 20 permit 192.168.1.0/24
+ip prefix-list PL-EBGP-OUT seq 10 permit 10.2.0.0/16
+ip prefix-list PL-EBGP-OUT seq 20 permit 192.168.2.0/24
+!
+ipv6 prefix-list PL6-EBGP-IN
+   seq 10 permit 2001:db8:1::/48
+   seq 20 permit 2001:db8:a1::/64
 !
 ipv6 prefix-list PL6-EBGP-OUT
    seq 10 permit 2001:db8:2::/48
    seq 20 permit 2001:db8:a2::/64
 !
-ipv6 prefix-list PL6-EBGP-IN
-   seq 10 permit 2001:db8:1::/48
-   seq 20 permit 2001:db8:a1::/64
+ipv6 unicast-routing
+!
+ip route 10.2.0.0/16 Null0
+!
+ipv6 route 2001:db8:2::/48 Null0
 !
 route-map RM-EBGP-IN permit 10
    match ip address prefix-list PL-EBGP-IN
@@ -95,36 +83,25 @@ route-map RM6-EBGP-IN permit 10
 route-map RM6-EBGP-OUT permit 10
    match ipv6 address prefix-list PL6-EBGP-OUT
 !
-router ospf 1
-   router-id 10.2.255.4
-   passive-interface Ethernet1
-   passive-interface Loopback0
-   redistribute bgp
-!
-router ospfv3
-   router-id 10.2.255.4
-   address-family ipv6
-      redistribute bgp
-!
 router bgp 65002
    router-id 10.2.255.4
    neighbor 172.16.34.1 remote-as 65001
    neighbor 172.16.34.1 description r3-AS65001
-   neighbor 172.16.34.1 password lab-bgp-r3r4
    neighbor 172.16.34.1 ttl maximum-hops 1
-   neighbor 172.16.34.1 maximum-routes 10
    neighbor 172.16.34.1 route-map RM-EBGP-IN in
    neighbor 172.16.34.1 route-map RM-EBGP-OUT out
-   network 10.2.0.0/16
+   neighbor 172.16.34.1 password 7 tYPpD4pAb7WtlAdSelrqsg==
+   neighbor 172.16.34.1 maximum-routes 10
    neighbor 2001:db8:34::2 remote-as 65001
    neighbor 2001:db8:34::2 description r3-AS65001-v6
    neighbor 2001:db8:34::2 ttl maximum-hops 1
-   neighbor 2001:db8:34::2 password lab-bgp-v6r3r4
+   neighbor 2001:db8:34::2 password 7 mMDqN3bMXeF5X8whHdx9rOHay2y5HbGg
    neighbor 2001:db8:34::2 maximum-routes 10
-   network 192.168.2.0/24
    !
    address-family ipv4
       no neighbor 2001:db8:34::2 activate
+      network 10.2.0.0/16
+      network 192.168.2.0/24
    !
    address-family ipv6
       neighbor 2001:db8:34::2 activate
@@ -139,5 +116,18 @@ router multicast
    !
    ipv6
       software-forwarding kernel
+!
+router ospf 1
+   router-id 10.2.255.4
+   passive-interface Ethernet1
+   passive-interface Loopback0
+   redistribute bgp
+   max-lsa 12000
+!
+router ospfv3
+   router-id 10.2.255.4
+   !
+   address-family ipv6
+      redistribute bgp
 !
 end

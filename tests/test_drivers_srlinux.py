@@ -137,3 +137,29 @@ def test_parse_full_device_state_no_bgp():
     # puissent les distinguer d'une absence de collecte.
     assert "# --- system authentication ---" in state.running_config
     assert "# --- system banner ---" in state.running_config
+
+
+# Réponse RELEVÉE en direct sur r5 (SR Linux 26.7.2), lab mixte en double pile : une instance OSPFv2 (`main`)
+# et une instance OSPFv3 (`v3`) dans la même réponse, chacune avec son voisin r4.
+_NEIGHBOR = ('{"Interface-Name": "ethernet-1/1.0", "Rtr Id": "10.2.255.4", "State": "full", "Pri": 1, '
+             '"RetxQ": 0, "Time Before Dead": 32}')
+OSPF_DUAL_STACK = (
+    '{"instances": ['
+    f'{{"netinst": "default", "name": "main", "version": "ospf-v2", "neighbors_brief": [{_NEIGHBOR}]}}, '
+    f'{{"netinst": "default", "name": "v3", "version": "ospf-v3", "neighbors_brief": [{_NEIGHBOR}]}}'
+    "]}")
+
+
+def test_ospf_neighbors_keep_only_the_ospfv2_instances_in_dual_stack():
+    """Sans filtre, le voisin OSPFv3 de r4 était compté comme un second voisin OSPFv2 (les intents et le
+    monitor attendaient 1 voisin et en voyaient 2)."""
+    neighbors = SrlinuxDriver._parse_ospf(OSPF_DUAL_STACK)
+    assert [(n.router_id, n.state, n.interface) for n in neighbors] == [
+        ("10.2.255.4", "Full", "ethernet-1/1.0")]
+
+
+def test_an_instance_without_a_version_is_still_read_as_ospfv2():
+    """Compatibilité : les snapshots et réponses d'avant la double pile n'avaient pas toujours de version."""
+    text = ('{"instances": [{"name": "main", "neighbors_brief": '
+            '[{"Interface-Name": "e", "Rtr Id": "1.1.1.1", "State": "full"}]}]}')
+    assert len(SrlinuxDriver._parse_ospf(text)) == 1

@@ -1,52 +1,12 @@
+Building configuration...
+
+Current configuration:
+!
+frr version 10.2.1_git
 frr defaults traditional
 hostname r4
+domainname localdomain
 log syslog informational
-service integrated-vtysh-config
-!
-interface lo
- ip address 10.2.255.4/32
- ipv6 address 2001:db8:2:ff::4/128
- ip ospf area 0
- ip ospf passive
- ipv6 ospf6 area 0
- ipv6 ospf6 passive
-exit
-!
-interface eth1
- description eBGP-vers-r3-AS65001
- ip address 172.16.34.2/30
- ipv6 address 2001:db8:34::3/127
- ip ospf area 0
- ip ospf passive
- ipv6 ospf6 area 0
- ipv6 ospf6 passive
-exit
-!
-interface eth2
- description vers-r5
- ip address 10.2.45.1/30
- ipv6 address 2001:db8:2:45::2/127
- ip ospf area 0
- ip ospf authentication message-digest
- ip ospf message-digest-key 1 md5 lab-ospf-r4r5
- ip ospf network point-to-point
- ipv6 ospf6 area 0
- ipv6 ospf6 network point-to-point
-exit
-!
-router ospf
- ospf router-id 10.2.255.4
- redistribute bgp
-exit
-!
-router ospf6
- ospf6 router-id 10.2.255.4
- redistribute bgp
-exit
-!
-! Route de rejet pour l'agrégat annoncé en BGP (bonne pratique opérateur)
-ip route 10.2.0.0/16 Null0
-ipv6 route 2001:db8:2::/48 Null0
 !
 ip prefix-list PL-EBGP-OUT seq 10 permit 10.2.0.0/16
 ip prefix-list PL-EBGP-OUT seq 20 permit 192.168.2.0/24
@@ -58,20 +18,38 @@ ipv6 prefix-list PL6-EBGP-OUT seq 20 permit 2001:db8:a2::/64
 ipv6 prefix-list PL6-EBGP-IN seq 10 permit 2001:db8:1::/48
 ipv6 prefix-list PL6-EBGP-IN seq 20 permit 2001:db8:a1::/64
 !
-route-map RM-EBGP-IN permit 10
- match ip address prefix-list PL-EBGP-IN
+ip route 10.2.0.0/16 Null0
+ipv6 route 2001:db8:2::/48 Null0
+!
+interface eth1
+ description eBGP-vers-r3-AS65001
+ ip address 172.16.34.2/30
+ ip ospf area 0
+ ip ospf passive
+ ipv6 address 2001:db8:34::3/127
+ ipv6 ospf6 area 0
+ ipv6 ospf6 passive
 exit
 !
-route-map RM-EBGP-OUT permit 10
- match ip address prefix-list PL-EBGP-OUT
+interface eth2
+ description vers-r5
+ ip address 10.2.45.1/30
+ ip ospf area 0
+ ip ospf authentication message-digest
+ ip ospf message-digest-key 1 md5 lab-ospf-r4r5
+ ip ospf network point-to-point
+ ipv6 address 2001:db8:2:45::2/127
+ ipv6 ospf6 area 0
+ ipv6 ospf6 network point-to-point
 exit
 !
-route-map RM6-EBGP-IN permit 10
- match ipv6 address prefix-list PL6-EBGP-IN
-exit
-!
-route-map RM6-EBGP-OUT permit 10
- match ipv6 address prefix-list PL6-EBGP-OUT
+interface lo
+ ip address 10.2.255.4/32
+ ip ospf area 0
+ ip ospf passive
+ ipv6 address 2001:db8:2:ff::4/128
+ ipv6 ospf6 area 0
+ ipv6 ospf6 passive
 exit
 !
 router bgp 65002
@@ -88,10 +66,10 @@ router bgp 65002
  address-family ipv4 unicast
   network 10.2.0.0/16
   network 192.168.2.0/24
-  no neighbor 2001:db8:34::2 activate
   neighbor 172.16.34.1 maximum-prefix 10
   neighbor 172.16.34.1 route-map RM-EBGP-IN in
   neighbor 172.16.34.1 route-map RM-EBGP-OUT out
+  no neighbor 2001:db8:34::2 activate
  exit-address-family
  !
  address-family ipv6 unicast
@@ -102,6 +80,32 @@ router bgp 65002
   neighbor 2001:db8:34::2 route-map RM6-EBGP-IN in
   neighbor 2001:db8:34::2 route-map RM6-EBGP-OUT out
  exit-address-family
+exit
+!
+router ospf
+ ospf router-id 10.2.255.4
+ redistribute bgp
+exit
+!
+router ospf6
+ ospf6 router-id 10.2.255.4
+ redistribute bgp
+exit
+!
+route-map RM-EBGP-IN permit 10
+ match ip address prefix-list PL-EBGP-IN
+exit
+!
+route-map RM-EBGP-OUT permit 10
+ match ip address prefix-list PL-EBGP-OUT
+exit
+!
+route-map RM6-EBGP-IN permit 10
+ match ipv6 address prefix-list PL6-EBGP-IN
+exit
+!
+route-map RM6-EBGP-OUT permit 10
+ match ipv6 address prefix-list PL6-EBGP-OUT
 exit
 !
 end
