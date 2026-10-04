@@ -6,7 +6,7 @@ import copy
 
 import dualstack_support as ds
 
-from netcheck import diff
+from netcheck import diff, guard, monitor
 from netcheck.diff import Severity
 from netcheck.model import SECTIONS, BgpPeer, DeviceState, Route
 
@@ -174,12 +174,52 @@ def test_a_section_collected_on_one_side_only_is_never_compared_as_no_change():
     assert diff.verdict(fs) == ("OK", 0)
 
 
-def test_the_reverse_direction_is_just_as_silent_about_what_it_cannot_compare():
+def test_a_section_seen_before_and_lost_after_is_attention_per_section_and_per_device():
     before, after = lab(), lab()
-    after["r2"].collected = None
+    after["r2"].collected = None            # relevé « après » réduit aux sections de la v0.3.0
+    after["r2"].section_errors = {}
     fs = findings(before, after)
-    assert [(f.severity.name, f.category) for f in fs] == [("INFO", "section")]
+    assert [(f.severity.name, f.category, f.device) for f in fs] == [("ATTENTION", "section", "r2")] * 4
+    assert [f.message.split()[1] for f in fs] == ["routes_v6", "ospf_v3", "bgp_v6", "vrf"]
     assert not any(f.severity == Severity.CRITIQUE for f in fs)      # pas de « préfixe injoignable » fantôme
+    assert diff.verdict(fs) == ("ATTENTION", 1)
+
+
+def test_a_failed_collection_during_an_intervention_is_never_ok_in_diff_guard_and_monitor():
+    # Cas réel d'une intervention : la commande BGP IPv6 de r3 n'a pas pu être exécutée APRÈS le changement.
+    before, after = lab(), lab()
+    after["r3"] = _without("frr", "r3", "show bgp ipv6 unicast json")
+    fs = findings(before, after)
+    assert [(f.severity.name, f.category, f.device) for f in fs] == [("ATTENTION", "section", "r3")]
+    assert "section bgp_v6 perdue : relevée avant, non relevée après" in fs[0].message
+    assert "commande non exécutée" in fs[0].message
+    label, code = diff.verdict(fs)
+    assert (label, code) == ("ATTENTION", 1)
+    # guard : jamais SUCCESS ; avec --rollback-on attention, le retour arrière se déclenche.
+    assert guard.outcome(code, False, False, False) == ("ATTENTION", 1)
+    assert guard.rollback_reasons(code, guard.ScriptResult(0), "attention")
+    assert not guard.rollback_reasons(code, guard.ScriptResult(0), "echec")
+    # monitor : statut ATTENTION, avec la perte de section dans l'alerte.
+    status, contributions = monitor.diff_outcome(fs)
+    assert status == monitor.ATTENTION and [c.category for c in contributions] == ["section"]
+    results = {name: (True, state) for name, state in after.items()}
+    evaluation = monitor.evaluate(results, before, {"eth0"}, None, None)
+    assert evaluation.status == monitor.ATTENTION
+    assert any(c.category == "section" and c.device == "r3" for c in evaluation.contributions)
+
+
+def test_several_lost_sections_on_several_devices_give_one_finding_each():
+    before, after = lab(), lab()
+    after["r3"] = _without("frr", "r3", "show bgp ipv6 unicast json")
+    after["r1"] = _without("frr", "r1", "show ipv6 ospf neighbor json")
+    fs = findings(before, after)
+    assert sorted((f.device, f.message.split()[1]) for f in fs) == [("r1", "ospf_v3"), ("r3", "bgp_v6")]
+
+
+def _without(lab_name, router, command):
+    raw = ds.load_raw(lab_name, router)
+    del raw["commands"][command]
+    return ds.parse(raw, router)
 
 
 def test_a_v030_snapshot_against_a_new_one_compares_ipv4_and_says_what_it_skipped():
@@ -212,8 +252,8 @@ def test_the_vrf_section_gates_non_default_vrf_routes_and_interfaces():
     # Le driver n'a lu que la VRF default.
     after["r2"].routes = [r for r in after["r2"].routes if r.vrf == "default"]
     fs = findings(before, after)
-    assert [(f.severity.name, f.category) for f in fs] == [("INFO", "section")]
-    assert "vrf" in fs[0].message
+    assert [(f.severity.name, f.category) for f in fs] == [("ATTENTION", "section")]
+    assert "section vrf perdue" in fs[0].message
 
 
 def test_management_vrf_changes_are_ignored_when_declared_and_seen_otherwise():

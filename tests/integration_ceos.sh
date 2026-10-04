@@ -16,6 +16,7 @@ cd "$(dirname "$0")/.." || exit 1
 
 LAB=clab-frr-lab-ceos
 NC="netcheck/.venv/bin/python -m netcheck"
+NC_PY="netcheck/.venv/bin/python"
 INV=(-i automation/inventory-ceos.yml)  # doit venir APRÈS la sous-commande (argparse)
 JSON_DIR=/tmp/netcheck_integration_ceos
 mkdir -p "$JSON_DIR"
@@ -200,6 +201,80 @@ PY
 out=$($NC check --rules netcheck/rules/security.yml "${INV[@]}" 2>&1); code=$?
 [[ "$code" == "0" ]] && echo "$out" | grep -q "Conformité : CONFORME" \
   && ok "retour à la normale : conforme de nouveau (API retirées)" || { ko "toujours non conforme après le retrait des API"; echo "$out"; }
+
+# ---------------------------------------------------------------- N3 : session eBGP IPv6 coupée côté EOS (phase B2)
+title "N3 : neighbor 2001:db8:34::2 shutdown sur r4 (cEOS, IPv6 seul) -> vu des DEUX côtés par diff et assert, l'IPv4 reste OK"
+bgp6_state() {   # $1 = r3 (FRR) ou r4 (cEOS) : la session IPv6 est-elle Established ? (sorties JSON : le texte de FRR n'écrit pas l'état)
+  if [[ "$1" == "r3" ]]; then docker exec "$LAB-r3" vtysh -c "show bgp ipv6 unicast summary json" 2>/dev/null | grep -q '"state":"Established"'
+  else docker exec "$LAB-r4" Cli -p 15 -c "show ipv6 bgp summary | json" 2>/dev/null | grep -q '"peerState": "Established"'; fi
+}
+wait_bgp6() {   # $1 = up | down, des deux côtés
+  for _ in $(seq 1 40); do
+    if [[ "$1" == "up" ]]; then bgp6_state r3 && bgp6_state r4 && return 0
+    else ! bgp6_state r3 && ! bgp6_state r4 && return 0; fi
+    sleep 3
+  done
+  return 1
+}
+wait_identical() {   # preuve de retour : l'état est IDENTIQUE à l'état d'avant (zéro constat de toute gravité)
+  for _ in $(seq 1 20); do
+    sleep 4
+    $NC snapshot "$1_maintenant" --force "${INV[@]}" >/dev/null 2>&1
+    out=$($NC diff "$1_avant" "$1_maintenant" "${INV[@]}" 2>&1) && echo "$out" | grep -q "Aucun constat" && return 0
+  done
+  echo "$out"
+  return 1
+}
+wait_bgp6 up && ok "état nominal : session eBGP IPv6 Established des deux côtés" || ko "session IPv6 non établie avant N3"
+$NC snapshot n3_avant --force "${INV[@]}" >/dev/null
+eosconf <<'EOF'
+configure
+router bgp 65002
+   neighbor 2001:db8:34::2 shutdown
+end
+EOF
+wait_bgp6 down && ok "session eBGP IPv6 tombée des deux côtés (r3 FRR et r4 cEOS, poll actif)" \
+  || ko "session IPv6 encore établie d'un côté après 120 s"
+sleep 5
+$NC snapshot n3_apres --force "${INV[@]}" >/dev/null
+out=$($NC diff n3_avant n3_apres --json "$JSON_DIR/n3_diff.json" "${INV[@]}" 2>&1); code=$?
+out_a=$($NC assert --intent intents/lab-ceos.yml --snapshot n3_apres --json "$JSON_DIR/n3.json" "${INV[@]}" 2>&1); code_a=$?
+eosconf <<'EOF'
+configure
+router bgp 65002
+   no neighbor 2001:db8:34::2 shutdown
+end
+EOF
+wait_bgp6 up && ok "retour à la normale : session eBGP IPv6 Established des deux côtés" \
+  || ko "session IPv6 non rétablie après restauration"
+
+[[ "$code" == "2" ]] && ok "diff : code retour = 2" || { ko "diff : code retour = $code (attendu 2)"; echo "$out"; }
+$NC_PY - "$JSON_DIR/n3_diff.json" <<'PY' && ok "diff : session IPv6 perdue vue des DEUX côtés (r3 FRR et r4 cEOS)" || ko "diff : constat manquant d'un côté"
+import json, sys
+findings = json.load(open(sys.argv[1]))["findings"]
+seen = {f["device"] for f in findings if f["category"] == "bgp_session" and "session BGP 2001:db8:34::" in f["message"]}
+sys.exit(0 if {"r3", "r4"} <= seen else 1)
+PY
+grep -q 'session BGP 172.16.34' "$JSON_DIR/n3_diff.json" \
+  && ko "diff : la session IPv4 est signalée alors que seule l'IPv6 est coupée" \
+  || ok "diff : aucun constat sur la session IPv4 (la panne est propre à l'IPv6)"
+[[ "$code_a" == "2" ]] && ok "assert : code retour = 2" || { ko "assert : code retour = $code_a (attendu 2)"; echo "$out_a"; }
+for id in bgp6-r3-vers-r4 bgp6-r4-vers-r3; do
+  $NC_PY - "$JSON_DIR/n3.json" "$id" ÉCHEC <<'PY' && ok "assert IPv6 '$id' (r3 FRR / r4 cEOS) en ÉCHEC" || ko "assert IPv6 '$id' pas en ÉCHEC"
+import json, sys
+results = {r["id"]: r["status"] for r in json.load(open(sys.argv[1]))["results"]}
+sys.exit(0 if results.get(sys.argv[2]) == sys.argv[3] else 1)
+PY
+done
+for id in bgp-r3-vers-r4 bgp-r4-vers-r3 ospf-r4-voisin-frr; do
+  $NC_PY - "$JSON_DIR/n3.json" "$id" OK <<'PY' && ok "assert '$id' toujours OK (IPv4 et OSPF intacts)" || ko "assert '$id' pas OK"
+import json, sys
+results = {r["id"]: r["status"] for r in json.load(open(sys.argv[1]))["results"]}
+sys.exit(0 if results.get(sys.argv[2]) == sys.argv[3] else 1)
+PY
+done
+wait_identical n3 && ok "preuve de retour : l'état actuel est identique à l'état d'avant (aucun constat)" \
+  || ko "l'état actuel diffère de l'état d'avant la coupure"
 
 # ---------------------------------------------------------------- G1 : guard + rollback sur cEOS
 title "G1 : guard encadre une coupure d'interface cEOS (shutdown Ethernet2) + rollback valide -> code 4, retour prouvé"

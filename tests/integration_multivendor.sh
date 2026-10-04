@@ -18,6 +18,7 @@ cd "$(dirname "$0")/.." || exit 1
 
 LAB=clab-frr-lab-multivendor
 NC="netcheck/.venv/bin/python -m netcheck"
+NC_PY="netcheck/.venv/bin/python"
 INV=(-i automation/inventory-multivendor.yml)  # doit venir APRÈS la sous-commande (argparse)
 JSON_DIR=/tmp/netcheck_integration_multivendor
 mkdir -p "$JSON_DIR"
@@ -136,6 +137,60 @@ grep -q '"id": "chemin-r1-vers-lan-r5"' "$JSON_DIR/a2.json" && grep -q "trou noi
   || { ko "constat 'path' attendu manquant"; cat "$JSON_DIR/a2.json"; }
 grep -q '"id": "ospf-r5-voisin-srlinux"' "$JSON_DIR/a2.json" && ok "assertion OSPF côté SR Linux présente dans le rapport" \
   || ko "assertion OSPF côté SR Linux absente du rapport"
+
+# ---------------------------------------------------------------- A3 : coupure r4<->r5 vue en IPv6 (phase B2)
+title "A3 : ip link set eth2 down sur r4 -> OSPFv3 perdu des DEUX côtés (FRR et SR Linux), préfixe IPv6 de pc2 perdu"
+# OSPFv3 Full de chaque côté : deux commandes différentes (instance `v3` de SR Linux), un seul critère.
+ospf6_full_r4() { docker exec "$LAB-r4" vtysh -c "show ipv6 ospf6 neighbor" 2>/dev/null | grep -c Full; }
+ospf6_full_r5() { docker exec "$LAB-r5" sr_cli -- "show network-instance default protocols ospf instance v3 neighbor" 2>&1 | grep -ci full; }
+wait_ospf6() {   # $1 = nombre attendu des deux côtés
+  for _ in $(seq 1 30); do
+    [[ "$(ospf6_full_r4)" == "$1" && "$(ospf6_full_r5)" == "$1" ]] && return 0
+    sleep 3
+  done
+  return 1
+}
+wait_identical() {   # preuve de retour : l'état est IDENTIQUE à l'état d'avant (zéro constat de toute gravité)
+  for _ in $(seq 1 20); do
+    sleep 4
+    $NC snapshot "$1_maintenant" --force "${INV[@]}" >/dev/null 2>&1
+    out=$($NC diff "$1_avant" "$1_maintenant" "${INV[@]}" 2>&1) && echo "$out" | grep -q "Aucun constat" && return 0
+  done
+  echo "$out"
+  return 1
+}
+wait_converged && wait_ospf6 1 && ok "état nominal : OSPFv2 et OSPFv3 Full des deux côtés" || ko "lab non convergé avant A3"
+$NC snapshot a3_avant --force "${INV[@]}" >/dev/null
+docker exec "$LAB-r4" ip link set eth2 down
+wait_ospf6 0 && ok "voisin OSPFv3 perdu des deux côtés (r4 FRR et r5 SR Linux, poll actif)" \
+  || ko "voisin OSPFv3 encore présent d'au moins un côté après 90 s"
+sleep 5
+$NC snapshot a3_apres --force "${INV[@]}" >/dev/null
+out=$($NC diff a3_avant a3_apres --json "$JSON_DIR/a3_diff.json" "${INV[@]}" 2>&1); code=$?
+out_a=$($NC assert --intent intents/lab-multivendor.yml --snapshot a3_apres --json "$JSON_DIR/a3.json" "${INV[@]}" 2>&1); code_a=$?
+docker exec "$LAB-r4" ip link set eth2 up
+wait_converged && wait_ospf6 1 && ok "retour à la normale : OSPFv2 et OSPFv3 Full des deux côtés" \
+  || ko "OSPF non reconvergé après restauration du lien"
+
+[[ "$code" == "2" ]] && ok "diff : code retour = 2" || { ko "diff : code retour = $code (attendu 2)"; echo "$out"; }
+$NC_PY - "$JSON_DIR/a3_diff.json" <<'PY' && ok "diff : voisin OSPFv3 perdu vu des DEUX côtés (r4 FRR et r5 SR Linux)" || ko "diff : voisin OSPFv3 perdu manquant d'un côté"
+import json, sys
+findings = json.load(open(sys.argv[1]))["findings"]
+seen = {f["device"] for f in findings if f["category"] == "ospf6_neighbor" and "voisin OSPFv3 perdu" in f["message"]}
+sys.exit(0 if {"r4", "r5"} <= seen else 1)
+PY
+grep -q 'préfixe injoignable : 2001:db8:a2::/64' "$JSON_DIR/a3_diff.json" \
+  && ok "diff : le préfixe IPv6 du LAN de pc2 (2001:db8:a2::/64) est perdu" || ko "diff : perte de 2001:db8:a2::/64 non signalée"
+[[ "$code_a" == "2" ]] && ok "assert : code retour = 2" || { ko "assert : code retour = $code_a (attendu 2)"; echo "$out_a"; }
+for id in ospf6-r5-voisin-srlinux route6-r5-vers-as65001 chemin6-r1-vers-lan-r5 chemin6-r5-vers-lan-r1; do
+  $NC_PY - "$JSON_DIR/a3.json" "$id" <<'PY' && ok "assert IPv6 '$id' en ÉCHEC" || ko "assert IPv6 '$id' pas en ÉCHEC"
+import json, sys
+results = {r["id"]: r["status"] for r in json.load(open(sys.argv[1]))["results"]}
+sys.exit(0 if results.get(sys.argv[2]) == "ÉCHEC" else 1)
+PY
+done
+wait_identical a3 && ok "preuve de retour : l'état actuel est identique à l'état d'avant (aucun constat)" \
+  || ko "l'état actuel diffère de l'état d'avant la coupure"
 
 # ---------------------------------------------------------------- M1 : monitor sur les deux drivers
 title "M1 : monitor sur le lab mixte (FRR + SR Linux) -> OK, aucune alerte (lecture seule)"

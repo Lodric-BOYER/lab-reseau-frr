@@ -10,10 +10,12 @@ Douze types de constats, exactement ceux du tableau du cahier des charges :
 Phase B2 (v4) : les mêmes constats en IPv6 (routes, voisins OSPFv3, BGP `ipv6 unicast`) et par VRF. Une
 route est identifiée par (vrf, préfixe) : le même préfixe dans deux VRF = deux routes ; une session BGP par
 (vrf, famille, voisin). Un constat dans une VRF autre que `default` le dit (« VRF DEMO »). Une section
-relevée d'un seul côté (un snapshot d'avant la phase B2 contre un snapshot récent) n'est PAS comparée : le
-diff le dit en information, il ne déclare jamais « aucun changement » sur une section qu'il n'a pas pu
-comparer. Les routes de lien local (fe80::/10) ne sont pas comparées : FRR n'en installe qu'une entrée parmi
-celles des interfaces, au gré de leur ordre.
+relevée d'un seul côté n'est PAS comparée : le diff le dit, il ne déclare jamais « aucun changement » sur
+une section qu'il n'a pas pu comparer. Section relevée AVANT et non relevée APRÈS : perte de visibilité,
+constat ATTENTION par section et par équipement (une collecte échouée pendant une intervention ne doit jamais
+donner OK) ; relevée seulement APRÈS (ancien snapshot) : information. Les routes de lien local
+(fe80::/10) ne sont pas comparées : FRR n'en installe qu'une entrée parmi celles des interfaces, au gré
+de leur ordre.
 """
 from __future__ import annotations
 
@@ -88,11 +90,21 @@ def compare(
             continue
 
         b, a = management.filtered(b, mgmt, mgmt_vrfs), management.filtered(a, mgmt, mgmt_vrfs)
-        comparable, one_sided = _comparable_sections(b, a)
-        if one_sided:
+        comparable, lost, gained = _comparable_sections(b, a)
+        # Une section relevée AVANT et plus APRÈS est une perte de visibilité (souvent une collecte qui a
+        # échoué pendant l'intervention) : ATTENTION au moins, par section et par équipement, jamais un OK.
+        findings += [
+            Finding(Severity.ATTENTION, "section", name,
+                    f"section {s} perdue : relevée avant, non relevée après "
+                    f"({a.why_missing(s).split(' : ', 1)[-1]})")
+            for s in lost
+        ]
+        # L'inverse (un snapshot d'avant la phase B2 contre un récent) est une information : ce qui est
+        # nouveau n'a pas de « avant » à comparer.
+        if gained:
             findings.append(Finding(Severity.INFO, "section", name,
-                "sections non comparées (relevées d'un seul côté, snapshot d'avant la phase B2 ou driver "
-                f"différent) : {', '.join(one_sided)}"))
+                "sections non comparées (relevées seulement après : snapshot d'avant la phase B2 ou driver "
+                f"différent) : {', '.join(gained)}"))
         in_scope = _scope_to_comparable(b, a, comparable)
         b, a = in_scope
         if "ospf_v2" in comparable:
@@ -113,13 +125,14 @@ def compare(
 _COMPARED = ("interfaces", "routes_v4", "routes_v6", "ospf_v2", "ospf_v3", "bgp_v4", "bgp_v6", "vrf")
 
 
-def _comparable_sections(b: DeviceState, a: DeviceState) -> tuple[set[str], list[str]]:
-    """(sections relevées des DEUX côtés, sections relevées d'un seul côté). Une section relevée d'aucun
-    côté n'est pas un changement : elle n'est ni comparée ni signalée (le driver ne la relève simplement
-    pas)."""
+def _comparable_sections(b: DeviceState, a: DeviceState) -> tuple[set[str], list[str], list[str]]:
+    """(relevées des DEUX côtés, relevées avant mais plus après, relevées seulement après). Une section
+    relevée d'aucun côté n'est pas un changement : elle n'est ni comparée ni signalée (le driver ne la
+    relève simplement pas)."""
     both = {s for s in _COMPARED if b.has_section(s) and a.has_section(s)}
-    one_sided = [s for s in _COMPARED if b.has_section(s) != a.has_section(s)]
-    return both, one_sided
+    lost = [s for s in _COMPARED if b.has_section(s) and not a.has_section(s)]
+    gained = [s for s in _COMPARED if a.has_section(s) and not b.has_section(s)]
+    return both, lost, gained
 
 
 def _scope_to_comparable(b: DeviceState, a: DeviceState,

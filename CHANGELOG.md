@@ -89,6 +89,9 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
 
 ### Modifié
 
+- **`diff` : une section perdue est un constat ATTENTION.** Relevée avant et non relevée après (collecte échouée
+  pendant l'intervention), elle donne un constat ATTENTION par section et par équipement : `guard` ne rend plus
+  SUCCESS, `monitor` passe en ATTENTION. Relevée seulement après (ancien snapshot) : information.
 - **Phase B2 : trois traductions élargies à toutes les VRF** (routes IPv4 de FRR, d'EOS et de SR Linux) ; l'ancienne
   chaîne EOS `show ip route | json` n'est plus autorisée. Le BGP de SR Linux, jamais relevé, est maintenant une
   section absente : une assertion `bgp_session` sur r5 est NON ÉVALUABLE (elle disait « aucune session »).

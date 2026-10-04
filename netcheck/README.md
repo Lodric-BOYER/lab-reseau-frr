@@ -223,11 +223,15 @@ aucune session BGP (`bgp_v4`, `bgp_v6` absentes) : `bgp_session` sur r5 est NON 
 
 **Compatibilité.** Un snapshot de la v0.3.0 (sans `collected` ni `vrf`) se charge : il est lu comme un relevé de la VRF
 `default` avec les sections de la v0.3.0 de son driver (test sur un vrai snapshot du lab mixte, de netcheck 0.3.0).
-Comparé à un snapshot récent, `diff` compare ce qui est comparable et dit en **un** constat d'information ce qu'il n'a
-pas pu comparer (IPv6, OSPFv3, VRF) : jamais « aucun changement » sur ce qu'il n'a pas vu.
+Comparé à un snapshot récent, `diff` compare ce qui est comparable et ne dit jamais « aucun changement » sur ce qu'il
+n'a pas vu. Section relevée **avant** et non relevée **après** : perte de visibilité (souvent une collecte échouée
+pendant l'intervention), constat **ATTENTION** par section et par équipement, donc `guard` ne rend jamais SUCCESS et
+`monitor` passe en ATTENTION ; avec `--rollback-on attention`, le retour arrière se déclenche. Section relevée
+seulement **après** (ancien snapshot contre un récent) : un constat d'information par équipement.
 
 **`assert` et `diff`.** Paramètres `family` (`ipv4` | `ipv6` : OSPFv2 ou OSPFv3, famille de la table BGP ; déduite du
-préfixe pour les routes et `path`) et `vrf` (défaut `default`) ; voir le tableau du format d'intent. `path` reste dans
+préfixe pour les routes et `path`, et de l'adresse du voisin pour une session BGP, **sans être contrôlée contre elle** :
+un voisin IPv6 peut porter la famille IPv4, RFC 8950 qui remplace la RFC 5549) et `vrf` (défaut `default`) ; voir le tableau du format d'intent. `path` reste dans
 la VRF de départ. Un next-hop IPv6 de **lien local** (`fe80::`) est résolu par la **paire (adresse, interface de
 sortie)** : l'équipement dont une interface porte cette adresse **et** est sur le même lien (une adresse de l'une dans
 un réseau de l'autre) ; l'adresse seule ne suffit jamais, la même `fe80::` pouvant exister sur plusieurs liens.

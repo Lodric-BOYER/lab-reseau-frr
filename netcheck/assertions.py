@@ -132,7 +132,7 @@ def _validate_params(raw: dict, label: str, path: Path) -> None:
         raise ValueError(f"{path} : {label} : vrf doit être un nom de VRF non vide (reçu : {raw['vrf']!r})")
     # Une famille qui contredit le PRÉFIXE serait une assertion qui ne peut jamais dire vrai : refusée au
     # chargement. Pour une session BGP, la famille n'est pas celle de l'adresse du voisin (un voisin IPv6 peut
-    # porter la famille IPv4, RFC 5549) : elle n'est pas contrôlée, et sert de défaut quand elle est absente.
+    # porter la famille IPv4, RFC 8950) : elle n'est pas contrôlée, et sert de défaut quand elle est absente.
     value = raw.get("prefix")
     if "family" in raw and isinstance(value, str):
         try:

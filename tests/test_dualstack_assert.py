@@ -354,7 +354,7 @@ def _load(tmp_path: Path, body: str):
 
 
 def test_a_bgp_family_is_not_checked_against_the_neighbor_address(tmp_path):
-    # Un voisin IPv6 peut porter la famille IPv4 (RFC 5549) : `family: ipv4` y reste valide.
+    # Un voisin IPv6 peut porter la famille IPv4 (RFC 8950) : `family: ipv4` y reste valide.
     loaded = _load(tmp_path, """
   - {id: a, description: d, device: r3, type: bgp_session, neighbor: "2001:db8:34::3", family: ipv4}
 """)
@@ -362,7 +362,7 @@ def test_a_bgp_family_is_not_checked_against_the_neighbor_address(tmp_path):
 
 
 def test_the_family_of_a_bgp_session_selects_the_session_for_a_neighbor_in_both_families():
-    # Modification d'un relevé réel : le voisin IPv6 de r3 est aussi activé dans la famille IPv4 (RFC 5549),
+    # Modification d'un relevé réel : le voisin IPv6 de r3 est aussi activé dans la famille IPv4 (RFC 8950),
     # en état différent (Idle) : la famille demandée choisit la session.
     lab = ds.load_lab(FRR)
     v6 = next(p for p in lab["r3"].bgp_peers if p.address_family == "ipv6")
