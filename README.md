@@ -1053,8 +1053,10 @@ porte une VRF de démonstration. Les configurations existantes (FRR, EOS, SR Lin
 **Contrôles** : `test_lab.sh` passe de 28 à **47** contrôles, `test_lab_multivendor.sh` de 15 à **28**,
 `test_lab_ceos.sh` de 26 à **44** (OSPFv3 Full, authentification RFC 7166, BGP IPv6, `ping6`, chemin IPv6, VRF,
 durcissement IPv6 des deux côtés, coupure de l'IPv6 seul sur le lab FRR). Les scripts d'intégration de netcheck
-(80, 27 et 38 contrôles en B1 ; 117, 47 et 72 en B4 ; 128, 59 et 83 depuis la phase C1, qui ajoute le scénario H1 des clés d'hôte ; **178, 96 et 120 depuis la phase C4**, qui ajoute le bastion) sont verts, rejoués à froid. `automation/health.py` lit OSPFv3 et BGP IPv6 quand l'inventaire
+(80, 27 et 38 contrôles en B1 ; 117, 47 et 72 en B4 ; 128, 59 et 83 depuis la phase C1, qui ajoute le scénario H1 des clés d'hôte ; **179, 97 et 121 depuis la phase C4**, qui ajoute le bastion et la barrière « lab prêt » ; `test_lab*.sh` : 48, 29 et 45) sont verts, rejoués à froid. `automation/health.py` lit OSPFv3 et BGP IPv6 quand l'inventaire
 déclare `ospf6_neighbors` et `bgp6_peers`.
+
+**Barrière « lab prêt » et diagnostic automatique** (`tests/lib_lab.sh`). Avant le premier scénario, chaque script attend que r1 à r5 et le bastion répondent (port 22 joignable **et** bannière SSH reçue, 240 s au plus). Un échec s'annonce « lab non prêt : rX » et sort en **code 20**, distinct d'un échec de netcheck (code 1). Quand un script échoue, le lab encore en place est capturé avant toute destruction dans `reports/diagnostics/<script>-echec-<date>.txt` (droits 0600, ignoré par git) : état, code de sortie, OOM, santé, journal, processus et ports à l'écoute de chaque conteneur, droits et taille des clés d'hôte (jamais leur contenu), `docker stats`, mémoire et charge de l'hôte. Aucun secret n'y figure.
 
 **Mesures** (démarrage à froid, 3 essais par lab, convergence comptée depuis la fin du déploiement, sonde à 1 s) :
 
