@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import yaml
@@ -16,6 +16,7 @@ from netcheck import (
     collector,
     compliance,
     configdir,
+    derogations,
     diff,
     expect,
     guard,
@@ -86,12 +87,25 @@ def cmd_diff(args: argparse.Namespace) -> int:
     return code
 
 
+def _today(value: str | None) -> date:
+    """La date du jour pour les dérogations : `--today AAAA-MM-JJ` (audit « à la date du », reproductible) ou
+    l'horloge. C'est le SEUL endroit qui appelle l'horloge ; le moteur reçoit la date en paramètre."""
+    return date.fromisoformat(value) if value else date.today()
+
+
 def cmd_check(args: argparse.Namespace) -> int:
-    rules_path = Path(args.rules) if args.rules else DEFAULT_RULES_PATH
+    rule_files = [args.rules] if isinstance(args.rules, str) else (args.rules or [DEFAULT_RULES_PATH])
+    rules_path = ", ".join(str(p) for p in rule_files)
     try:
-        rules = compliance.load_rules(rules_path)
+        rules = compliance.load_rule_files(rule_files)
+        today = _today(getattr(args, "today", None))
+        derogation_file = getattr(args, "derogations", None)
+        derogation_set = derogations.load(derogation_file, rules, today) if derogation_file else None
     except ValueError as e:
         print(f"Erreur : {e}", file=sys.stderr)
+        return 3
+    if getattr(args, "today", None) and not derogation_file:
+        print("Erreur : --today n'a de sens qu'avec --derogations", file=sys.stderr)
         return 3
 
     if args.config_dir and args.snapshot:
@@ -146,21 +160,23 @@ def cmd_check(args: argparse.Namespace) -> int:
 
     result = compliance.evaluate_config(
         rules, devices, management_interfaces=set(inv.management_interfaces), offline=bool(args.config_dir),
-        management_vrfs=set(inv.management_vrfs))
+        management_vrfs=set(inv.management_vrfs), derogations=derogation_set, today=today)
+    derogation_info = report.derogation_data(result)
     # Une ligne de configuration non lue (ou un fichier non audité) donne au minimum le code 1 : jamais
     # « conforme » sur une configuration que l'audit n'a pas entièrement lue.
     warnings = result.config_warnings + file_warnings
     compliant, code = compliance.verdict(result.violations, warnings)
 
     report.print_compliance_terminal(result.violations, compliant, result.not_applicable,
-                                     config_warnings=warnings, source=source)
+                                     config_warnings=warnings, source=source, derogations=derogation_info)
     if args.json:
         report.write_compliance_json(result.violations, compliant, args.json, result.not_applicable,
-                                     warnings, source=source)
+                                     warnings, source=source, derogations=derogation_info)
         print(f"Constats écrits (JSON) : {args.json}")
     if args.html:
         report.write_compliance_html(result.violations, compliant, rules_path, args.html,
-                                     result.not_applicable, warnings, source=source)
+                                     result.not_applicable, warnings, source=source,
+                                     derogations=derogation_info)
         print(f"Rapport HTML écrit : {args.html}")
     return code
 
@@ -320,7 +336,12 @@ def cmd_monitor(args: argparse.Namespace) -> int:
         url = webhook.from_environment()   # ne cite jamais l'URL dans ses erreurs
         baseline = snapshot.load(args.baseline)
         intent = assertions.load_intent(args.intent) if args.intent else None
-        rules = compliance.load_rules(Path(args.rules)) if args.rules else None
+        rules = compliance.load_rule_files(args.rules) if args.rules else None
+        derogation_set = None
+        if args.derogations:
+            if rules is None:
+                raise ValueError("--derogations n'a de sens qu'avec --rules")
+            derogation_set = derogations.load(args.derogations, rules, date.today())
         inv = inventory.load(path=args.inventory)
     except Exception as e:  # noqa: BLE001 -- toute erreur de chargement est un refus, code 3
         print(f"Erreur : {webhook.redact(str(e), url)}", file=sys.stderr)
@@ -334,7 +355,8 @@ def cmd_monitor(args: argparse.Namespace) -> int:
         baseline_name=args.baseline, baseline=baseline, inventory=inv,
         state_file=Path(args.state_file) if args.state_file else REPORTS_DIR / monitor.STATE_FILENAME,
         reports_dir=REPORTS_DIR, intent=intent, intent_path=args.intent, rules=rules,
-        rules_path=args.rules, webhook_url=url, webhook_format=webhook_format,
+        rules_path=", ".join(args.rules) if args.rules else None, derogations=derogation_set,
+        webhook_url=url, webhook_format=webhook_format,
         confirm=args.confirm, dry_run=args.dry_run, repo_root=inventory.REPO_ROOT,
     )
     io = monitor.MonitorIO(
@@ -414,7 +436,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_check.add_argument(
         "--driver",
         help="avec --config-dir : driver de TOUS les fichiers (défaut : celui de l'inventaire, -i)")
-    p_check.add_argument("--rules", help=f"fichier de règles YAML (défaut : {DEFAULT_RULES_PATH.name})")
+    p_check.add_argument("--rules", action="append",
+                         help=f"fichier de règles YAML (défaut : {DEFAULT_RULES_PATH.name}) ; répétable : "
+                              "les règles de tous les fichiers s'appliquent (un identifiant en double "
+                              "est refusé)")
+    p_check.add_argument("--derogations", metavar="FICHIER",
+                         help="fichier de dérogations YAML (voir netcheck/derogations.py) : les violations "
+                              "qu'une dérogation en cours couvre gardent le statut DÉROGATION, sans effet "
+                              "sur le code retour ; le rapport indique le chemin et l'empreinte SHA-256 "
+                              "du fichier")
+    p_check.add_argument("--today", metavar="AAAA-MM-JJ",
+                         help="avec --derogations : date du jour à utiliser (audit à une date donnée, "
+                              "reproductible) ; défaut : l'horloge")
     p_check.add_argument("--json", help="écrire les non-conformités au format JSON dans ce fichier")
     p_check.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
     _add_inventory_arg(p_check)
@@ -467,7 +500,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--baseline", required=True,
         help="snapshot de référence : l'état nominal, à refaire après un changement légitime")
     p_monitor.add_argument("--intent", help="fichier d'intent YAML (assertions) ; absent : non exécuté")
-    p_monitor.add_argument("--rules", help="fichier de règles de conformité YAML ; absent : non exécuté")
+    p_monitor.add_argument("--rules", action="append",
+                           help="fichier de règles de conformité YAML (répétable) ; absent : non exécuté")
+    p_monitor.add_argument("--derogations", metavar="FICHIER",
+                           help="fichier de dérogations YAML : les violations couvertes ne comptent pas dans "
+                                "le statut (voir `check --derogations`)")
     p_monitor.add_argument("--state-file", help="fichier d'état (défaut : reports/monitor_state.json)")
     p_monitor.add_argument(
         "--webhook-format", choices=webhook.FORMATS, default=None,

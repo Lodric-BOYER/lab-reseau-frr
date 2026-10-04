@@ -1,0 +1,30 @@
+# derogations/lab-ceos.yml — dérogations du lab FRR + Arista cEOS (Phase B3), à utiliser avec :
+#   netcheck check -i automation/inventory-ceos.yml \
+#                  --rules netcheck/rules/security.yml --rules netcheck/rules/security-ipv6.yml \
+#                  --derogations derogations/lab-ceos.yml
+# Les deux extrémités du lien r4-r5 sont couvertes : r4 est EOS (Ethernet2), r5 est FRR (eth1). Voir
+# derogations/lab.yml. À renouveler (ou à retirer) avant le 2027-01-04.
+
+version: 1
+derogations:
+  - id: DER-LAB-CEOS-001
+    rule: eos-ospf6-authentification-ipsec
+    targets:
+      - {device: r4, object: Ethernet2}
+    justification: "Extrémité EOS (r4) du lien r4-r5 en OSPFv3 sans authentification : EOS 4.34.8M n'authentifie l'OSPFv3 que par IPsec (`ospfv3 authentication ipsec spi ...`), que FRR (r5) n'a pas. Aucun mécanisme commun à ce lien."
+    validated_by: "Lodric BOYER (à confirmer à la relecture de la phase B3)"
+    validated_on: 2026-10-04
+    expires: 2027-01-04
+    references:
+      - "https://www.rfc-editor.org/rfc/rfc4552.html"
+
+  - id: DER-LAB-CEOS-002
+    rule: ospf6-authentification
+    targets:
+      - {device: r5, object: eth1}
+    justification: "Extrémité FRR (r5) du lien r4-r5 en OSPFv3 sans authentification : EOS (r4) n'authentifie l'OSPFv3 que par IPsec et FRR 10.2.1 n'a pas d'IPsec (`ipv6 ospf6 authentication ipsec` est refusé par vtysh)."
+    validated_by: "Lodric BOYER (à confirmer à la relecture de la phase B3)"
+    validated_on: 2026-10-04
+    expires: 2027-01-04
+    references:
+      - "https://www.rfc-editor.org/rfc/rfc7166.html"

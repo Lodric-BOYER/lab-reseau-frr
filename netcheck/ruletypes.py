@@ -44,6 +44,11 @@ class Violation:
     rule: Rule
     device: str
     detail: str
+    # Phase B3 : l'OBJET du constat (interface, voisin BGP, API de gestion...), sous une forme exacte et
+    # stable que les dérogations visent (`targets: [{device, object}]`). None = pas d'objet identifiable :
+    # une dérogation ne peut pas couvrir cette violation. Jamais un texte libre : le nom de l'interface,
+    # l'IP du voisin.
+    subject: str | None = None
 
 
 # Pourquoi une règle est « non applicable » à un équipement. Les deux causes ne sont JAMAIS

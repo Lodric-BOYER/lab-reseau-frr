@@ -1,0 +1,54 @@
+# rules/security-ipv6.yml — durcissement IPv6 (Phase B3, SPEC_v4 §5, objectif O2).
+#
+# S'utilise EN PLUS de security.yml : `check --rules netcheck/rules/security.yml --rules
+# netcheck/rules/security-ipv6.yml` (l'option est répétable ; un identifiant de règle en double entre deux
+# fichiers est refusé). Les règles d'IPv6 qui étendent une règle existante n'ont pas de fichier à part : la règle
+# `ebgp-pas-de-route-par-defaut` lit aussi `::/0` et `ebgp-pas-de-reinjection-de-prefixes-locaux` aussi les
+# préfixes IPv6 (voir security.yml). Ce fichier-ci ne contient que ce qui n'existait pas : l'authentification de
+# l'OSPFv3. Il est séparé pour que les fichiers de la v0.3.0 (default.yml, security.yml) restent exactement ceux
+# que le gel de référence compare.
+#
+# L'authentification OSPFv3 n'a AUCUN mécanisme commun aux trois constructeurs du lab (constaté, pas supposé) :
+#   FRR 10.2.1   en-tête d'authentification de la RFC 7166 (`ipv6 ospf6 authentication key-id N hash-algo A key K`
+#                ou `keychain`) ; `null` et `ipsec` sont refusés par `vtysh -C`.
+#   EOS 4.34.8M  IPsec seulement (`ospfv3 authentication ipsec spi N sha1|md5 clé`) ; `disabled`, `null` et
+#                `encryption ipsec` refusés. FRR n'a pas d'IPsec : aucune adjacence FRR <-> EOS authentifiée.
+#   SR Linux     26.7.2 : le schéma n'offre que `authentication keychain`, que la plateforme refuse pour une
+#                instance ospf-v3 (« Authentication keychain not supported on ospf-v3 »).
+# Une règle par constructeur évalue donc la même exigence (« toute adjacence OSPFv3 active est authentifiée »)
+# dans sa syntaxe. Sur le lien r4-r5 des labs, ce défaut est connu et documenté : il est couvert par une dérogation
+# datée (derogations/*.yml, `check --derogations`), jamais en retirant la règle.
+
+rules:
+  - id: ospf6-authentification
+    description: "Chaque interface OSPFv3 active (non passive) doit être authentifiée (RFC 7166 : en-tête d'authentification avec clé, ou keychain)."
+    severity: haute
+    applies_to: all
+    drivers: [frr]
+    category: ospf
+    kind: ospf6_authentication_required
+    references:
+      - title: "RFC 7166 — Supporting Authentication Trailer for OSPFv3"
+        url: "https://www.rfc-editor.org/rfc/rfc7166.html"
+
+  - id: eos-ospf6-authentification-ipsec
+    description: "Chaque interface OSPFv3 EOS active (non passive) doit être authentifiée par IPsec (ospfv3 authentication ipsec spi N sha1|md5 clé) : c'est le seul mécanisme d'EOS pour OSPFv3, et FRR n'a pas d'IPsec."
+    severity: haute
+    applies_to: all
+    drivers: [eos]
+    category: ospf
+    kind: eos_ospf6_authentication_required
+    references:
+      - title: "RFC 4552 — Authentication/Confidentiality for OSPFv3"
+        url: "https://www.rfc-editor.org/rfc/rfc4552.html"
+
+  - id: srlinux-ospf6-authentification-keychain
+    description: "Chaque interface d'une instance OSPFv3 SR Linux active (non passive) doit référencer une keychain d'authentification. SR Linux 26.7.2 refuse l'authentification par keychain pour ospf-v3 : cette règle signale donc toute adjacence OSPFv3 de cette version."
+    severity: haute
+    applies_to: all
+    drivers: [srlinux]
+    category: ospf
+    kind: srlinux_ospf6_authentication_required
+    references:
+      - title: "RFC 7166 — Supporting Authentication Trailer for OSPFv3"
+        url: "https://www.rfc-editor.org/rfc/rfc7166.html"

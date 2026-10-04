@@ -192,6 +192,34 @@ done
 wait_identical a3 && ok "preuve de retour : l'état actuel est identique à l'état d'avant (aucun constat)" \
   || ko "l'état actuel diffère de l'état d'avant la coupure"
 
+# Les deux fichiers de règles et la dérogation du lab, à une date FIXE (--today) : le scénario ne dépend pas du
+# calendrier (la dérogation du lab expire le 2027-01-04).
+SEC=(--rules netcheck/rules/security.yml --rules netcheck/rules/security-ipv6.yml)
+DER=derogations/lab-multivendor.yml
+
+# ---------------------------------------------------------------- C3 : dérogations (phase B3)
+title "C3 : check (règles IPv6 + dérogation du lab) -> conforme, le lien r4-r5 en DÉROGATION des DEUX côtés"
+out=$($NC check "${INV[@]}" "${SEC[@]}" --derogations "$DER" --today 2026-10-05 --json "$JSON_DIR/c3.json" 2>&1); code=$?
+[[ "$code" == "0" ]] && ok "code retour = 0" || { ko "code retour = $code (attendu 0)"; echo "$out"; }
+echo "$out" | grep -q "Conformité : CONFORME" && ok "conformité = CONFORME" || { ko "conformité inattendue"; echo "$out"; }
+$NC_PY - "$JSON_DIR/c3.json" "$DER" <<'PY' && ok "JSON : r4 ET r5 en DÉROGATION, 0 violation active, empreinte SHA-256 du fichier" || ko "JSON des dérogations inattendu"
+import hashlib, json, sys
+data = json.load(open(sys.argv[1]))
+d = data["derogations"]
+sha = hashlib.sha256(open(sys.argv[2], "rb").read()).hexdigest()
+ok = (data["violations"] == [] and data["summary"]["derogated"] == 2 and d["file"]["sha256"] == sha
+      and sorted(x["device"] for x in d["derogated"]) == ["r4", "r5"])
+sys.exit(0 if ok else 1)
+PY
+out=$($NC check "${INV[@]}" "${SEC[@]}" --derogations "$DER" --today 2027-01-05 2>&1); code=$?
+[[ "$code" == "2" ]] && echo "$out" | grep -q "expirée le 2027-01-04" \
+  && ok "après la date d'expiration (--today 2027-01-05) : de nouveau code 2, « expirée le 2027-01-04 » dit" \
+  || { ko "dérogation expirée mal gérée (code $code)"; echo "$out"; }
+out=$($NC check "${INV[@]}" "${SEC[@]}" 2>&1); code=$?
+[[ "$code" == "2" ]] && echo "$out" | grep -q "ospf6" && ok "sans dérogation : le défaut OSPFv3 réel du lien r4-r5 est signalé (code 2)" \
+  || { ko "défaut OSPFv3 non signalé sans dérogation (code $code)"; echo "$out"; }
+
+
 # ---------------------------------------------------------------- M1 : monitor sur les deux drivers
 title "M1 : monitor sur le lab mixte (FRR + SR Linux) -> OK, aucune alerte (lecture seule)"
 M_STATE="$JSON_DIR/m1_state.json"

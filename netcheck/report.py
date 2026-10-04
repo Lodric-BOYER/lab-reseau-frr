@@ -65,6 +65,47 @@ def _masked_warnings(warnings: list[ConfigWarning] | None) -> list[ConfigWarning
             for w in (warnings or [])]
 
 
+def derogation_data(result) -> dict | None:
+    """Les dérogations d'un audit (`compliance.ComplianceResult`), en données simples, secrets masqués : le
+    chemin et l'empreinte SHA-256 du fichier, les violations COUVERTES (statut DÉROGATION, avec justification,
+    validateur et expiration), celles que l'expiration a réactivées, et les notes (orpheline, expirée, expire
+    bientôt). None si aucun fichier de dérogations n'a servi : les rapports restent alors ceux d'avant."""
+    if result.derogation_file is None:
+        return None
+    path, sha256 = result.derogation_file
+
+    def covered(d) -> dict:
+        v, g = d.violation, d.derogation
+        return {
+            "status": "DÉROGATION", "rule_id": v.rule.id, "severity": v.rule.severity,
+            "category": v.rule.category, "device": v.device, "object": mask_secrets(v.subject or ""),
+            "detail": mask_secrets(v.detail), "derogation_id": g.id,
+            "justification": mask_secrets(g.justification), "validated_by": mask_secrets(g.validated_by),
+            "validated_on": g.validated_on.isoformat(), "expires": g.expires.isoformat(),
+            "references": [mask_secrets(r) for r in g.references],
+        }
+
+    return {
+        "file": {"path": path, "sha256": sha256},
+        "derogated": [covered(d) for d in result.derogated],
+        "reactivated": [
+            {"rule_id": d.violation.rule.id, "device": d.violation.device,
+             "object": mask_secrets(d.violation.subject or ""), "derogation_id": d.derogation.id,
+             "expired_on": d.derogation.expires.isoformat()}
+            for d in result.reactivated
+        ],
+        "notes": [{"kind": n.kind, "derogation": n.derogation, "text": mask_secrets(n.text)}
+                  for n in result.derogation_notes],
+    }
+
+
+def _reactivation(derogations: dict | None) -> dict[tuple[str, str, str], str]:
+    """{(règle, équipement, objet): texte} des violations que l'expiration d'une dérogation a réactivées."""
+    return {(r["rule_id"], r["device"], r["object"]):
+            f"dérogation {r['derogation_id']} expirée le {r['expired_on']} : violation de nouveau active"
+            for r in (derogations or {}).get("reactivated", [])}
+
+
 def _summary_counts(
     violations: list[Violation], not_applicable: list[NotApplicable], warnings: list[ConfigWarning],
 ) -> dict[str, int]:
@@ -261,6 +302,7 @@ def print_compliance_terminal(
     console: Console | None = None,
     config_warnings: list[ConfigWarning] | None = None,
     source: dict | None = None,
+    derogations: dict | None = None,
 ) -> None:
     console = console or Console()
     violations = _masked_violations(violations)
@@ -285,13 +327,39 @@ def print_compliance_terminal(
         table.add_column("Catégorie")
         table.add_column("Règle")
         table.add_column("Détail", overflow="fold")
+        reactivated = _reactivation(derogations)
         for v in sorted(violations, key=lambda v: -_COMPLIANCE_ORDER[v.rule.severity]):
             style = _COMPLIANCE_STYLE[v.rule.severity]
+            detail = v.detail
+            note = reactivated.get((v.rule.id, v.device, mask_secrets(v.subject or "")))
+            if note:
+                detail += " " + escape(f"[{note}]")     # les crochets seraient lus comme un style Rich
             table.add_row(f"[{style}]{v.rule.severity.upper()}[/]", v.device,
-                          v.rule.category or "—", v.rule.id, v.detail)
+                          v.rule.category or "—", v.rule.id, detail)
         console.print(table)
     else:
         console.print("Aucune non-conformité.")
+
+    # Phase B3 : dérogations. Le fichier utilisé est toujours nommé (chemin + empreinte), même sans violation
+    # couverte ; les violations couvertes gardent leur statut DÉROGATION, comptées à part, sans effet sur
+    # le code.
+    if derogations:
+        console.print(f"\n[bold]Dérogations[/bold] : fichier {escape(derogations['file']['path'])} "
+                      f"(sha256 {derogations['file']['sha256']})")
+        if derogations["derogated"]:
+            dtable = Table(show_lines=False,
+                           title="Dérogations (statut DÉROGATION, sans effet sur le code retour)")
+            for column in ("Statut", "Gravité", "Équipement", "Objet", "Règle", "Justification",
+                           "Validée par", "Expire le"):
+                dtable.add_column(column, overflow="fold")
+            for d in derogations["derogated"]:
+                dtable.add_row("[bold cyan]DÉROGATION[/]", d["severity"].upper(), d["device"],
+                               escape(d["object"]), d["rule_id"],
+                               escape(f"{d['derogation_id']} : {d['justification']}"),
+                               escape(f"{d['validated_by']} ({d['validated_on']})"), d["expires"])
+            console.print(dtable)
+        for n in derogations["notes"]:
+            console.print(f"  [cyan]information ({n['kind']})[/] : {escape(n['text'])}")
 
     # Analyse de la configuration (Phase A3) : une ligne NON lue empêche de conclure « conforme » ;
     # une ligne lue mais ambiguë n'est qu'une information.
@@ -333,6 +401,8 @@ def print_compliance_terminal(
     counts = _summary_counts(violations, not_applicable, warnings)
     label = _status(violations, compliant, warnings)
     parts = [f"{counts['violations']} non-conformité(s)"]
+    if derogations and derogations["derogated"]:
+        parts.append(f"{len(derogations['derogated'])} dérogation(s)")
     if counts["config_lines_unread"]:
         parts.append(f"{counts['config_lines_unread']} ligne(s) de configuration non lue(s) ou incertaine(s)")
     if counts["config_files_not_audited"]:
@@ -353,6 +423,7 @@ def print_compliance_terminal(
 def compliance_to_dict(
     violations: list[Violation], compliant: bool, not_applicable: list[NotApplicable] | None = None,
     config_warnings: list[ConfigWarning] | None = None, source: dict | None = None,
+    derogations: dict | None = None,
 ) -> dict:
     violations = _masked_violations(violations)
     not_applicable = _masked_not_applicable(not_applicable or [])
@@ -365,6 +436,7 @@ def compliance_to_dict(
             {
                 "severity": v.rule.severity, "rule_id": v.rule.id, "device": v.device, "detail": v.detail,
                 "category": v.rule.category, "references": v.rule.references,
+                "object": mask_secrets(v.subject) if v.subject is not None else None,
             }
             for v in violations
         ],
@@ -387,6 +459,12 @@ def compliance_to_dict(
     if source:
         # Présent seulement hors ligne (check --config-dir) : d'où vient chaque équipement.
         data["source"] = source
+    if derogations:
+        # Présent seulement avec `check --derogations` : fichier (chemin, SHA-256), violations couvertes
+        # (statut DÉROGATION), dérogations réactivées par leur expiration, notes. Comptées à part.
+        data["derogations"] = derogations
+        data["summary"]["derogated"] = len(derogations["derogated"])
+        data["summary"]["derogation_notes"] = len(derogations["notes"])
     return data
 
 
@@ -394,9 +472,11 @@ def write_compliance_json(
     violations: list[Violation], compliant: bool, path: str,
     not_applicable: list[NotApplicable] | None = None,
     config_warnings: list[ConfigWarning] | None = None, source: dict | None = None,
+    derogations: dict | None = None,
 ) -> None:
     Path(path).write_text(
-        json.dumps(compliance_to_dict(violations, compliant, not_applicable, config_warnings, source),
+        json.dumps(compliance_to_dict(violations, compliant, not_applicable, config_warnings, source,
+                                      derogations),
                    indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
@@ -407,6 +487,7 @@ def render_compliance_html(
     not_applicable: list[NotApplicable] | None = None,
     config_warnings: list[ConfigWarning] | None = None,
     source: dict | None = None,
+    derogations: dict | None = None,
 ) -> str:
     """Rend le rapport HTML de conformité, autonome (aucune ressource externe)."""
     template = _ENV.get_template("compliance.html.j2")
@@ -427,6 +508,8 @@ def render_compliance_html(
         not_implemented=CAUSE_NOT_IMPLEMENTED,
         no_model=CAUSE_NO_MODEL,
         source=source,
+        derogations=derogations,
+        reactivated=_reactivation(derogations),
         config_warnings=sorted(warnings, key=lambda w: (not w.blocks_verdict, w.device, w.warning.line)),
         warning_status=_warning_status,
         summary=_summary_counts(violations, not_applicable, warnings),
@@ -443,9 +526,11 @@ def write_compliance_html(
     violations: list[Violation], compliant: bool, rules_path: str, path: str,
     not_applicable: list[NotApplicable] | None = None,
     config_warnings: list[ConfigWarning] | None = None, source: dict | None = None,
+    derogations: dict | None = None,
 ) -> None:
     Path(path).write_text(
-        render_compliance_html(violations, compliant, rules_path, not_applicable, config_warnings, source),
+        render_compliance_html(violations, compliant, rules_path, not_applicable, config_warnings, source,
+                               derogations),
         encoding="utf-8",
     )
 

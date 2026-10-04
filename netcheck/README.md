@@ -246,7 +246,92 @@ interfaces, ses routes et ses sessions BGP, dans `diff`, `assert` et `check`. Su
 **Limites connues.** OSPF (v2 et v3) n'est relevé que pour la VRF `default`. Une interface SR Linux dont les
 sous-interfaces sont dans des VRF différentes est relevée une fois par VRF (même nom, VRF différente) ; une interface
 passe d'une VRF à l'autre en « VRF modifiée », pas en « disparue ». Les règles de conformité restent sur la
-configuration : aucune règle IPv6 avant la phase B3.
+configuration ; leur couverture IPv6 est décrite plus bas (Phase B3).
+
+## Règles IPv6, objet des violations et dérogations (Phase B3, v4)
+
+**Les trois silences IPv6 sont fermés** (avant B3, les règles ne disaient rien de : l'authentification OSPFv3
+retirée, `::/0` autorisé en entrée, un préfixe IPv6 local autorisé en entrée). Chacun est testé par des mutations de
+VRAIES configurations relevées sur les labs en double pile (`tests/test_ipv6_rules.py`), et le code des règles par
+35 mutations, toutes détectées.
+
+| Silence | Règle | Ce qui a changé |
+|---|---|---|
+| Authentification OSPFv3 | `ospf6-authentification` (FRR), `eos-ospf6-authentification-ipsec` (EOS), `srlinux-ospf6-authentification-keychain` (SR Linux), dans `netcheck/rules/security-ipv6.yml` | Toute interface OSPFv3 active (`ipv6 ospf6 area`, pas passive) doit être authentifiée. |
+| `::/0` en entrée | `ebgp-pas-de-route-par-defaut` (inchangée) | Lit aussi `match ipv6 address prefix-list` et les `ipv6 prefix-list` : une entrée `permit` dont le réseau est `::/0` (`le`/`ge` compris, écriture libre). |
+| Préfixe local en entrée | `ebgp-pas-de-reinjection-de-prefixes-locaux` (inchangée) | Compare aussi les préfixes IPv6 des `network` de l'`address-family ipv6 unicast`. |
+
+Il n'existe **aucun mécanisme d'authentification OSPFv3 commun** aux trois constructeurs (constaté, pas supposé) :
+FRR 10.2.1 n'a que l'en-tête d'authentification de la RFC 7166 (`key-id … key …` ou `keychain` ; `null` et `ipsec`
+sont refusés par `vtysh -C`), EOS 4.34.8M n'a que l'IPsec (`ospfv3 authentication ipsec spi N sha1|md5 …`, `disabled`,
+`null` et `encryption ipsec` refusés), et le schéma de SR Linux 26.7.2 n'offre que `authentication keychain`, que la
+plateforme refuse pour une instance `ospf-v3`. Chaque règle évalue la même exigence dans la syntaxe de son driver ; le
+lien r4–r5 des labs est donc un défaut connu, **couvert par une dérogation datée et jamais en retirant la règle**.
+
+`security-ipv6.yml` est un fichier à part, à utiliser EN PLUS de `security.yml` : `check --rules security.yml --rules
+security-ipv6.yml` (`--rules` est répétable pour `check` et `monitor` ; un identifiant en double entre deux fichiers
+est refusé). Les fichiers de la v0.3.0 gardent ainsi exactement les règles que le gel de référence compare.
+
+**SR Linux : une instance OSPF est jugée selon sa version.** Les règles OSPFv2 (authentification, point-à-point) ne lisent
+plus les interfaces d'une instance `version ospf-v3` : avant B3, les interfaces de toutes les instances étaient
+fusionnées par leur nom, et une keychain posée sur l'interface de l'instance OSPFv3 aurait masqué son absence dans
+l'instance OSPFv2. Une instance sans ligne `version` est lue comme OSPFv2 (la v0.3.0 ne connaissait pas l'OSPFv3).
+
+**Objet d'une violation (`Violation.subject`).** Chaque règle dit sur QUEL objet porte sa violation, sous une forme
+exacte et stable (jamais un texte libre) : c'est ce que les dérogations visent. Un test par kind de règle
+(`tests/test_violation_subjects.py`), et un garde-fou qui échoue si un kind est ajouté sans test d'objet. Le champ
+`object` est dans le JSON de `check`.
+
+| Kinds | Objet |
+|---|---|
+| OSPF (FRR, EOS, SR Linux, v2 et v3), `ospf_passive_on_interfaces`, `srlinux_interface_mtu_margin`, `interface_description_required` | le nom de l'interface (`eth2`, `Ethernet2`, `ethernet-1/1.0`) |
+| BGP (mot de passe, GTSM, limite, politiques d'entrée et de sortie, `::/0`, réinjection) | l'IP du voisin (ou le réseau d'une plage dynamique) |
+| `eos_management_api_disabled` | l'API (`http-commands`, `gnmi`, `netconf`) |
+| `srlinux_login_banner_present` | `login-banner` |
+| `line_present` | le motif de la règle |
+| `line_absent` | la ligne trouvée, **secrets masqués** (jamais la valeur du secret) |
+
+**Dérogations** (`netcheck/derogations.py`, `check --derogations FICHIER`, `monitor --derogations FICHIER`). Une
+dérogation dit « cette violation précise est connue, voici pourquoi, qui l'a validée et jusqu'à quand » ; elle ne retire
+jamais une règle.
+
+```yaml
+version: 1
+derogations:
+  - id: DER-LAB-FRR-001
+    rule: ospf6-authentification        # identifiant exact d'une règle chargée
+    targets:                            # paires (équipement, objet), correspondance EXACTE, sans regex
+      - {device: r4, object: eth2}
+      - {device: r5, object: eth1}
+    justification: "..."                # obligatoire
+    validated_by: "..."                 # obligatoire, texte libre
+    validated_on: 2026-10-04            # date ISO, pas dans le futur
+    expires: 2027-01-04                 # obligatoire, au plus 365 jours après validated_on
+    references: ["https://..."]         # facultatif
+```
+
+- **Correspondance** : une violation est couverte quand sa règle, son équipement et son objet sont ceux d'une paire.
+  Une violation sans objet ne peut pas être couverte. Le nom d'un objet diffère selon le constructeur : **un fichier
+  par lab** (`derogations/lab.yml`, `lab-multivendor.yml`, `lab-ceos.yml`), avec les bonnes paires.
+- **Sortie** : statut **DÉROGATION** dans les trois sorties (terminal, JSON, HTML), avec justification, validateur et
+  expiration ; compté à part dans la synthèse (`summary.derogated`), **sans effet sur le code retour**. Chaque rapport
+  indique le **chemin et l'empreinte SHA-256** du fichier utilisé.
+- **Expirée** : elle ne couvre plus rien, la violation redevient active et le dit (« dérogation DER-… expirée le … : violation
+  de nouveau active »). **Expire dans moins de 30 jours** : information, sans effet sur le code, pour que le
+  renouvellement soit un acte conscient. **Orpheline** (aucune violation réelle sur une de ses paires, sur un équipement
+  audité) : information.
+- **Refus au chargement (code 3)** : règle inconnue, règle de gravité « critique » (jamais dérogeable), expiration absente
+  ou à plus de 365 jours, validation dans le futur, paire (règle, équipement, objet) en double, `id` en double, clé inconnue,
+  champ vide, YAML refusé par `safe_load`.
+- **Horloge** : le moteur reçoit « aujourd'hui » en paramètre et n'appelle jamais l'horloge (un test le vérifie) ;
+  `check --today AAAA-MM-JJ` audite « à une date donnée », de façon reproductible (les scénarios d'intégration l'utilisent :
+  ils ne dépendent pas du calendrier). Sans `--today`, la date du jour.
+- **Limite connue** : `validated_by` est du texte libre, que netcheck ne peut pas vérifier. Une signature du fichier est
+  prévue en phase J.
+
+Connus : la règle IPv4 `ebgp-pas-de-route-par-defaut` lit toute entrée (`permit` ET `deny`) dont le réseau est
+`0.0.0.0/0` (comportement de la v0.3.0, conservé : le gel le compare) ; la version IPv6 ne compte que les `permit`.
+EOS n'a ni règle de route par défaut ni règle de réinjection (même en IPv4). `monitor --derogations` lit la date du jour.
 
 ## Sécurité
 
@@ -480,7 +565,7 @@ vit dans les drivers :
 | `configdir.py` | 153 | `check --config-dir` |
 
 Ajouter un 4e constructeur ne touche donc plus `compliance.py` : un `<constructeur>_rules.py`, un
-`parse_config` et deux lignes de registre (l'import et l'entrée de `drivers/registry.py`). Les tests passent de **695 (v0.3.0) à 1326**.
+`parse_config` et deux lignes de registre (l'import et l'entrée de `drivers/registry.py`). Les tests passent de **695 (v0.3.0) à 1510**.
 
 ## Reconnaissance du loopback (`is_loopback`)
 

@@ -37,6 +37,11 @@
   <strong>{{ status }}</strong>
 </p>
 
+{% if derogations %}
+<p class="meta"><strong>Dérogations</strong> : fichier <code>{{ derogations.file.path }}</code>, empreinte
+SHA-256 <code>{{ derogations.file.sha256 }}</code>.</p>
+{% endif %}
+
 {% if source %}
 <p class="meta"><strong>Mode hors ligne</strong> (<code>check --config-dir</code>) : {{ source.devices|length }}
 équipement(s) lu(s) depuis des fichiers, aucun équipement interrogé. Les règles qui lisent l'état collecté
@@ -58,6 +63,9 @@ cause « ÉTAT REQUIS (hors ligne) ».</p>
   {% for sev in ["critique", "haute", "moyenne", "basse"] %}
   <span class="badge badge-{{ sev }}">{{ counts[sev] }} {{ sev }}</span>
   {% endfor %}
+  {% if derogations and derogations.derogated %}
+  <span class="badge badge-info">{{ derogations.derogated|length }} dérogation(s)</span>
+  {% endif %}
   {% if summary.config_lines_unread %}
   <span class="badge badge-unread">{{ summary.config_lines_unread }} ligne(s) de configuration non lue(s) ou incertaine(s)</span>
   {% endif %}
@@ -120,7 +128,10 @@ cause « ÉTAT REQUIS (hors ligne) ».</p>
         </small>
         {% endif %}
       </td>
-      <td>{{ v.detail }}</td>
+      <td>{{ v.detail }}
+        {% set note = reactivated.get((v.rule.id, v.device, v.subject or '')) %}
+        {% if note %}<br><small class="cause-gap">{{ note }}</small>{% endif %}
+      </td>
     </tr>
     {% endfor %}
   </tbody>
@@ -129,6 +140,45 @@ cause « ÉTAT REQUIS (hors ligne) ».</p>
 <p id="no-match" hidden>Aucune non-conformité ne correspond aux filtres sélectionnés.</p>
 {% if not violations %}
 <p>Aucune non-conformité.</p>
+{% endif %}
+
+{% if derogations %}
+<h2>Dérogations</h2>
+<p class="meta">Fichier <code>{{ derogations.file.path }}</code> (SHA-256 <code>{{ derogations.file.sha256 }}</code>).
+Une violation couverte par une dérogation en cours garde son statut <strong>DÉROGATION</strong> : elle reste
+visible, avec sa justification, son validateur et sa date d'expiration, comptée à part et sans effet sur le
+code retour. Une dérogation expirée ne couvre plus rien. Les textes sont masqués.</p>
+{% if derogations.derogated %}
+<table id="derogations">
+  <thead>
+    <tr><th>Statut</th><th>Gravité</th><th>Équipement</th><th>Objet</th><th>Règle</th><th>Justification</th>
+        <th>Validée par</th><th>Expire le</th></tr>
+  </thead>
+  <tbody>
+    {% for d in derogations.derogated %}
+    <tr>
+      <td><span class="badge badge-info">DÉROGATION</span></td>
+      <td>{{ d.severity }}</td>
+      <td>{{ d.device }}</td>
+      <td><code>{{ d.object }}</code></td>
+      <td>{{ d.rule_id }}<br><small>{{ d.detail }}</small></td>
+      <td>{{ d.derogation_id }} : {{ d.justification }}</td>
+      <td>{{ d.validated_by }} ({{ d.validated_on }})</td>
+      <td>{{ d.expires }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>Aucune violation n'est couverte par une dérogation.</p>
+{% endif %}
+{% if derogations.notes %}
+<ul id="derogation-notes">
+  {% for n in derogations.notes %}
+  <li><span class="badge badge-info">{{ n.kind }}</span> {{ n.text }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
 {% endif %}
 
 {% if config_warnings %}

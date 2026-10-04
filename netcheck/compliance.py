@@ -26,11 +26,13 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from netcheck import derogations as derog
 from netcheck import management
 from netcheck.confparse import ParsedConfig
 from netcheck.drivers.registry import DRIVER_REGISTRY
@@ -45,6 +47,7 @@ from netcheck.ruletypes import (
     Rule,
     Violation,
 )
+from netcheck.secrets import mask_secrets
 
 KNOWN_SEVERITIES = {"critique", "haute", "moyenne", "basse"}
 KNOWN_DRIVERS = set(DRIVER_REGISTRY)  # Phase D2 : validation du champ optionnel "drivers"
@@ -84,6 +87,13 @@ class ComplianceResult:
     violations: list[Violation] = field(default_factory=list)
     not_applicable: list[NotApplicable] = field(default_factory=list)
     config_warnings: list[ConfigWarning] = field(default_factory=list)
+    # Phase B3 : `violations` ne contient que les violations ACTIVES. Celles que couvre une dérogation en
+    # cours sont à part (`derogated`), sans effet sur le verdict ; une dérogation expirée ne couvre plus
+    # rien (la violation reste dans `violations`, et `reactivated` dit pourquoi).
+    derogated: list[derog.Derogated] = field(default_factory=list)
+    reactivated: list[derog.Derogated] = field(default_factory=list)
+    derogation_notes: list[derog.DerogationNote] = field(default_factory=list)
+    derogation_file: tuple[str, str] | None = None     # (chemin, SHA-256) du fichier utilisé
 
     @property
     def unread_lines(self) -> list[ConfigWarning]:
@@ -99,6 +109,21 @@ class ComplianceResult:
 # ------------------------------------------------------------------------------------------
 # Chargement et validation des règles
 # ------------------------------------------------------------------------------------------
+
+def load_rule_files(paths: list[str | Path]) -> list[Rule]:
+    """Charge plusieurs fichiers de règles (`check --rules a.yml --rules b.yml`) : un identifiant en double
+    entre deux fichiers est refusé, comme dans un même fichier."""
+    rules: list[Rule] = []
+    origin: dict[str, Path] = {}
+    for path in paths:
+        for rule in load_rules(path):
+            if rule.id in origin:
+                raise ValueError(f"{path} : id de règle en double : '{rule.id}' "
+                                 f"(déjà défini dans {origin[rule.id]})")
+            origin[rule.id] = Path(path)
+            rules.append(rule)
+    return rules
+
 
 def load_rules(path: str | Path) -> list[Rule]:
     """Charge et valide rules/default.yml (ou un autre fichier de règles)."""
@@ -214,6 +239,8 @@ def evaluate_config(
     management_interfaces: set[str] | None = None,
     offline: bool = False,
     management_vrfs: set[str] | None = None,
+    derogations: derog.DerogationSet | None = None,
+    today: date | None = None,
 ) -> ComplianceResult:
     """Applique chaque règle à chaque équipement concerné (rule.applies_to).
 
@@ -223,7 +250,13 @@ def evaluate_config(
     hors sujet), ou -- hors ligne seulement (`offline=True`, `check --config-dir`) -- la règle lit le
     MODÈLE collecté (`Check.needs` contient « interfaces ») alors que seule la configuration existe
     (cause « no_model » : un manque de données). La configuration de chaque équipement audité est
-    analysée une fois ; toute ligne douteuse devient un `ConfigWarning` (voir `verdict()`)."""
+    analysée une fois ; toute ligne douteuse devient un `ConfigWarning` (voir `verdict()`).
+
+    Phase B3 : avec `derogations`, les violations couvertes par une dérogation en cours passent dans
+    `derogated` (statut DÉROGATION, sans effet sur le verdict). `today` est OBLIGATOIRE dans ce cas : le
+    moteur n'appelle jamais l'horloge (les tests passent une date fixe)."""
+    if derogations is not None and today is None:
+        raise ValueError("`today` est obligatoire avec des dérogations : le moteur n'appelle pas l'horloge")
     mgmt = set(management_interfaces or ())
     mgmt_vrfs = set(management_vrfs or ())
     result = ComplianceResult()
@@ -261,6 +294,13 @@ def evaluate_config(
             config = config_of(name, state)
             if config is not None:
                 result.config_warnings += [ConfigWarning(name, w) for w in config.warnings]
+    if derogations is not None:
+        audited = {name for name, state in devices.items() if state.reachable}
+        outcome = derog.apply(result.violations, derogations, today, audited)
+        result.violations = outcome.active
+        result.derogated, result.reactivated = outcome.derogated, outcome.reactivated
+        result.derogation_notes = outcome.notes
+        result.derogation_file = (derogations.path, derogations.sha256)
     return result
 
 
@@ -331,7 +371,7 @@ def _check_line_present(rule: Rule, device: DeviceState) -> list[Violation]:
         raise ValueError(f"règle '{rule.id}' (line_present) : paramètre 'pattern' manquant")
     if re.search(pattern, device.running_config, re.MULTILINE):
         return []
-    return [Violation(rule, device.name, f"aucune ligne ne correspond à /{pattern}/")]
+    return [Violation(rule, device.name, f"aucune ligne ne correspond à /{pattern}/", pattern)]
 
 
 def _check_line_absent(rule: Rule, device: DeviceState) -> list[Violation]:
@@ -347,7 +387,8 @@ def _check_line_absent(rule: Rule, device: DeviceState) -> list[Violation]:
     line_start = text.rfind("\n", 0, match.start()) + 1
     line_end = text.find("\n", match.end())
     line = text[line_start: line_end if line_end != -1 else len(text)].strip()
-    return [Violation(rule, device.name, f"ligne interdite trouvée : '{line}'")]
+    # L'objet est la ligne trouvée, secrets masqués : une dérogation ne contient jamais une valeur secrète.
+    return [Violation(rule, device.name, f"ligne interdite trouvée : '{line}'", mask_secrets(line))]
 
 
 def _is_loopback(iface) -> bool:
@@ -378,7 +419,7 @@ def _check_interface_description_required(rule: Rule, device: DeviceState) -> li
             continue
         if not iface.description:
             violations.append(Violation(rule, device.name,
-                f"interface {iface.name} ({', '.join(iface.addresses)}) sans description"))
+                f"interface {iface.name} ({', '.join(iface.addresses)}) sans description", iface.name))
     return violations
 
 

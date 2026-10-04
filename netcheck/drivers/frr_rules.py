@@ -24,6 +24,7 @@ indentée serait lue au premier niveau et son interface paraîtrait sans authent
 """
 from __future__ import annotations
 
+import ipaddress
 import re
 
 from netcheck.confparse import ConfigNode, ParsedConfig
@@ -59,13 +60,15 @@ def _has_prefix(node: ConfigNode, *pattern: str) -> bool:
 # commande valide à la racine, alors `bgp` seul ne figure pas ici (mais `bgp router-id` oui).
 _BLOCK_SUBCOMMANDS: tuple[tuple[tuple[str, ...], str], ...] = (
     (("ip", "address"), "interface"), (("ipv6", "address"), "interface"), (("ip", "ospf"), "interface"),
+    (("ipv6", "ospf6"), "interface"),
     (("description",), "interface"), (("shutdown",), "interface"), (("mtu",), "interface"),
     (("bandwidth",), "interface"), (("link-detect",), "interface"),
     (("neighbor",), "router bgp"), (("address-family",), "router bgp"),
     (("exit-address-family",), "router bgp"), (("bgp", "router-id"), "router bgp"),
     (("bgp", "log-neighbor-changes"), "router bgp"), (("no", "bgp", "ebgp-requires-policy"), "router bgp"),
     (("maximum-paths",), "router bgp"),
-    (("ospf", "router-id"), "router ospf"), (("passive-interface",), "router ospf"),
+    (("ospf", "router-id"), "router ospf"), (("ospf6", "router-id"), "router ospf6"),
+    (("passive-interface",), "router ospf"),
     (("area",), "router ospf"), (("default-information", "originate"), "router ospf"),
     (("log-adjacency-changes",), "router ospf"),
     (("network",), "router bgp ou router ospf"), (("redistribute",), "router bgp ou router ospf"),
@@ -109,7 +112,8 @@ def _check_bgp_policy(rule: Rule, device: DeviceState, cfg, direction: str) -> l
     if bgp is None:
         return []  # pas de BGP configuré sur cet équipement : rien à vérifier
     mot = "entrée" if direction == "in" else "sortie"
-    return [Violation(rule, device.name, f"voisin eBGP {bgp.label(ip)} sans route-map/prefix-list en {mot}")
+    return [Violation(rule, device.name,
+                      f"voisin eBGP {bgp.label(ip)} sans route-map/prefix-list en {mot}", ip)
             for ip in bgp.ebgp if not _has_policy(bgp, ip, direction)]
 
 
@@ -139,7 +143,7 @@ def _check_ospf_passive_on_interfaces(rule: Rule, device: DeviceState, cfg) -> l
         if block is None or not _has(block, "ip", "ospf", "passive"):
             violations.append(Violation(rule, device.name,
                 f"interface {iface.name} (description '{iface.description}') "
-                f"n'est pas en ip ospf passive"))
+                f"n'est pas en ip ospf passive", iface.name))
     return violations
 
 
@@ -157,7 +161,30 @@ def _check_ospf_authentication_required(rule: Rule, device: DeviceState, cfg) ->
         if not _has_prefix(block, "ip", "ospf", "authentication", "message-digest"):
             violations.append(Violation(rule, device.name,
                 f"interface {name} : adjacence OSPF active sans authentification "
-                f"message-digest"))
+                f"message-digest", name))
+    return violations
+
+
+def _check_ospf6_authentication_required(rule: Rule, device: DeviceState, cfg) -> list[Violation]:
+    """Toute interface OSPFv3 active (non passive) doit porter une authentification (Phase B3, O2). FRR 10.2.1
+    n'a que l'en-tête d'authentification de la RFC 7166 : `ipv6 ospf6 authentication key-id N hash-algo A
+    key K` ou `ipv6 ospf6 authentication keychain NOM`. Vérifié par `vtysh -C` : `authentication null` et
+    la forme `ipsec spi ...` sont REFUSÉES par cette version, elles ne peuvent donc pas figurer dans une
+    configuration. Seules la présence de la clé (ou la référence de la keychain) compte, jamais sa valeur.
+    Une interface est active quand elle a `ipv6 ospf6 area N` et pas `ipv6 ospf6 passive`."""
+    violations = []
+    for name, block in _interfaces(_config(cfg)).items():
+        if not _has_prefix(block, "ipv6", "ospf6", "area") or _has(block, "ipv6", "ospf6", "passive"):
+            continue  # pas d'OSPFv3 actif sur cette interface : pas d'adjacence, rien à protéger
+        authenticated = any(
+            c.words[:3] == ("ipv6", "ospf6", "authentication") and (
+                (len(c.words) >= 4 and c.words[3] == "key-id" and "key" in c.words[4:-1])
+                or (len(c.words) == 5 and c.words[3] == "keychain"))
+            for c in block.children)
+        if not authenticated:
+            violations.append(Violation(rule, device.name,
+                f"interface {name} : adjacence OSPFv3 active sans authentification "
+                f"(ipv6 ospf6 authentication)", name))
     return violations
 
 
@@ -175,7 +202,7 @@ def _check_bgp_neighbor_password_required(rule: Rule, device: DeviceState, cfg) 
     if bgp is None:
         return []
     return [Violation(rule, device.name,
-                      f"voisin eBGP {bgp.label(ip)} sans authentification TCP-MD5 (mot de passe)")
+                      f"voisin eBGP {bgp.label(ip)} sans authentification TCP-MD5 (mot de passe)", ip)
             for ip in bgp.ebgp
             if not any(len(n.words) == 4 for n in bgp.lines(ip, lambda rest: rest[:1] == ("password",)))]
 
@@ -190,7 +217,7 @@ def _check_bgp_neighbor_maximum_prefix_required(rule: Rule, device: DeviceState,
     bgp = _bgp(_config(cfg))
     if bgp is None:
         return []
-    return [Violation(rule, device.name, f"voisin eBGP {bgp.label(ip)} sans limite maximum-prefix")
+    return [Violation(rule, device.name, f"voisin eBGP {bgp.label(ip)} sans limite maximum-prefix", ip)
             for ip in bgp.ebgp
             if not any(len(n.words) == 4 and n.words[3].isdigit()
                        for n in bgp.lines(ip, lambda rest: rest[:1] == ("maximum-prefix",)))]
@@ -206,7 +233,7 @@ def _check_bgp_neighbor_ttl_security_required(rule: Rule, device: DeviceState, c
     bgp = _bgp(_config(cfg))
     if bgp is None:
         return []
-    return [Violation(rule, device.name, f"voisin eBGP {bgp.label(ip)} sans GTSM (ttl-security hops)")
+    return [Violation(rule, device.name, f"voisin eBGP {bgp.label(ip)} sans GTSM (ttl-security hops)", ip)
             for ip in bgp.ebgp
             if not any(len(n.words) == 5 and n.words[4].isdigit()
                        for n in bgp.lines(ip, lambda rest: rest[:2] == ("ttl-security", "hops")))]
@@ -225,31 +252,50 @@ def _route_map_in_name(bgp: BgpView, neighbor: str) -> str | None:
     return lines[0].words[3] if lines else None
 
 
-def _route_map_prefix_lists(cfg: ParsedConfig, route_map: str) -> list[str]:
-    """Noms des prefix-lists référencées par 'match ip address prefix-list' dans un route-map
-    (toutes ses séquences, pas seulement la première)."""
-    names = []
+def _route_map_prefix_lists(cfg: ParsedConfig, route_map: str) -> list[tuple[str, str]]:
+    """(famille, nom) des prefix-lists référencées par 'match ip address prefix-list' (famille « ip ») et
+    'match ipv6 address prefix-list' (famille « ipv6 », Phase B3) dans un route-map (toutes ses séquences, pas
+    seulement la première)."""
+    found = []
     for block in cfg.top("route-map", route_map):
         for line in block.children:
-            if len(line.words) >= 5 and line.words[:4] == ("match", "ip", "address", "prefix-list"):
-                names.append(line.words[4])
-    return names
+            if len(line.words) >= 5 and line.words[0] == "match" and line.words[1] in ("ip", "ipv6") \
+                    and line.words[2:4] == ("address", "prefix-list"):
+                found.append((line.words[1], line.words[4]))
+    return found
 
 
-def _prefix_list_networks(cfg: ParsedConfig, name: str) -> list[str]:
-    """Réseau (sans le 'le'/'ge' éventuel) de chaque entrée 'permit'/'deny' d'une prefix-list."""
-    return [n.words[6] for n in cfg.top("ip", "prefix-list", name)
-            if len(n.words) >= 7 and n.words[3] == "seq" and n.words[4].isdigit()
-            and n.words[5] in ("permit", "deny")]
+def _prefix_list_networks(cfg: ParsedConfig, name: str, family: str = "ip") -> list[str]:
+    """Réseau (sans le 'le'/'ge' éventuel) de chaque entrée d'une prefix-list. IPv4 (`ip prefix-list`) : toute
+    entrée 'permit' ou 'deny', comme la v0.3.0 (comportement conservé : gel). IPv6 (`ipv6 prefix-list`) : les
+    seules entrées 'permit', qui sont celles qui AUTORISENT un préfixe."""
+    verbs = ("permit", "deny") if family == "ip" else ("permit",)
+    return [n.words[6] for n in cfg.top(family, "prefix-list", name)
+            if len(n.words) >= 7 and n.words[3] == "seq" and n.words[4].isdigit() and n.words[5] in verbs]
+
+
+def _same_network(family: str, a: str, b: str) -> bool:
+    """IPv4 : comparaison de texte, comme la v0.3.0. IPv6 : comparaison des réseaux (la compression de
+    l'écriture ne compte pas : `2001:db8:1:0::/48` est `2001:db8:1::/48`)."""
+    if family == "ip":
+        return a == b
+    try:
+        return ipaddress.ip_network(a, strict=False) == ipaddress.ip_network(b, strict=False)
+    except ValueError:
+        return a == b
+
+
+_DEFAULT_ROUTE = {"ip": "0.0.0.0/0", "ipv6": "::/0"}
 
 
 def _check_bgp_neighbor_no_default_route_policy(rule: Rule, device: DeviceState, cfg) -> list[Violation]:
-    """La prefix-list appliquée en entrée à chaque voisin eBGP ne doit autoriser 0.0.0.0/0 sous
-    aucune forme (Phase A, O1 -- politique déclarée, pas la table de routage : un voisin qui
-    n'annonce pas encore de route par défaut aujourd'hui ne prouve rien sur le filtrage lui-
-    même). Toute entrée dont le réseau de base est 0.0.0.0/0 couvre la route par défaut exacte,
-    qu'elle porte ou non une clause `le`/`ge` -- 'permit 0.0.0.0/0' et 'permit 0.0.0.0/0 le 32'
-    sont donc tous deux détectés par la même vérification sur le réseau de base."""
+    """La prefix-list appliquée en entrée à chaque voisin eBGP ne doit autoriser la route par défaut
+    (0.0.0.0/0, et ::/0 depuis la phase B3) sous aucune forme (Phase A, O1 -- politique déclarée, pas la
+    table de routage : un voisin qui n'annonce pas encore de route par défaut aujourd'hui ne prouve rien
+    sur le filtrage lui-même). Toute entrée dont le réseau de base est la route par défaut la couvre,
+    qu'elle porte ou non une clause `le`/`ge` -- 'permit 0.0.0.0/0' et 'permit 0.0.0.0/0 le 32' sont donc
+    tous deux détectés par la même vérification sur le réseau de base. Les prefix-lists IPv4 et IPv6 d'un
+    route-map sont lues chacune pour sa famille (`match ip address` et `match ipv6 address`)."""
     config = _config(cfg)
     bgp = _bgp(config)
     if bgp is None:
@@ -259,38 +305,40 @@ def _check_bgp_neighbor_no_default_route_policy(rule: Rule, device: DeviceState,
         route_map = _route_map_in_name(bgp, ip)
         if route_map is None:
             continue
-        for pl in _route_map_prefix_lists(config, route_map):
-            for network in _prefix_list_networks(config, pl):
-                if network == "0.0.0.0/0":
+        for family, pl in _route_map_prefix_lists(config, route_map):
+            default = _DEFAULT_ROUTE[family]
+            for network in _prefix_list_networks(config, pl, family):
+                if _same_network(family, network, default):
                     violations.append(Violation(rule, device.name,
                         f"prefix-list '{pl}' (politique d'entrée du voisin eBGP {bgp.label(ip)}) "
-                        f"autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur"))
+                        f"autorise {default} : route par défaut acceptable depuis l'extérieur", ip))
     return violations
 
 
 def _check_bgp_neighbor_no_own_prefixes_policy(rule: Rule, device: DeviceState, cfg) -> list[Violation]:
     """La prefix-list appliquée en entrée à chaque voisin eBGP ne doit pas autoriser un préfixe
-    que ce routeur annonce lui-même (Phase A, O1 -- politique déclarée) : sans ce filtre, un
-    voisin pourrait réannoncer nos propres préfixes, créant une boucle ou un détournement de
-    trafic. Vérifié sur la config réelle : r3 annonce 10.1.0.0/16 et 192.168.1.0/24, sa
-    PL-EBGP-IN n'autorise que 10.2.0.0/16 et 192.168.2.0/24 -- déjà conforme aujourd'hui."""
+    que ce routeur annonce lui-même (Phase A, O1 -- politique déclarée ; IPv6 depuis la phase B3, où les
+    `network` se déclarent sous `address-family ipv6 unicast`) : sans ce filtre, un voisin pourrait réannoncer
+    nos propres préfixes, créant une boucle ou un détournement de trafic. Vérifié sur la config réelle : r3
+    annonce 10.1.0.0/16 et 192.168.1.0/24, sa PL-EBGP-IN n'autorise que 10.2.0.0/16 et 192.168.2.0/24 -- déjà
+    conforme aujourd'hui."""
     config = _config(cfg)
     bgp = _bgp(config)
     if bgp is None:
         return []
-    own_networks = {n.words[1] for n in bgp.below if len(n.words) >= 2 and n.words[0] == "network"}
+    own_networks = [n.words[1] for n in bgp.below if len(n.words) >= 2 and n.words[0] == "network"]
     violations = []
     for ip in bgp.ebgp:
         route_map = _route_map_in_name(bgp, ip)
         if route_map is None:
             continue
-        for pl in _route_map_prefix_lists(config, route_map):
-            for network in _prefix_list_networks(config, pl):
-                if network in own_networks:
+        for family, pl in _route_map_prefix_lists(config, route_map):
+            for network in _prefix_list_networks(config, pl, family):
+                if any(_same_network(family, network, own) for own in own_networks):
                     violations.append(Violation(rule, device.name,
                         f"prefix-list '{pl}' (politique d'entrée du voisin eBGP {bgp.label(ip)}) "
                         f"autorise {network}, que ce routeur annonce déjà lui-même : "
-                        f"risque de réinjection"))
+                        f"risque de réinjection", ip))
     return violations
 
 
@@ -301,6 +349,7 @@ CHECKS: dict[str, Check] = {
     "ospf_passive_on_interfaces":
         Check(_check_ospf_passive_on_interfaces, frozenset({"config", "interfaces"})),
     "ospf_authentication_required": Check(_check_ospf_authentication_required),
+    "ospf6_authentication_required": Check(_check_ospf6_authentication_required),
     "bgp_neighbor_password_required": Check(_check_bgp_neighbor_password_required),
     "bgp_neighbor_maximum_prefix_required": Check(_check_bgp_neighbor_maximum_prefix_required),
     "bgp_neighbor_ttl_security_required": Check(_check_bgp_neighbor_ttl_security_required),

@@ -1,0 +1,29 @@
+# derogations/lab-multivendor.yml — dérogations du lab mixte FRR + Nokia SR Linux (Phase B3), à utiliser avec :
+#   netcheck check -i automation/inventory-multivendor.yml \
+#                  --rules netcheck/rules/security.yml --rules netcheck/rules/security-ipv6.yml \
+#                  --derogations derogations/lab-multivendor.yml
+# Les deux extrémités du lien r4-r5 sont couvertes (chaque routeur est audité séparément, par la règle de son
+# driver) : r4 est FRR (eth2), r5 est SR Linux (sous-interface ethernet-1/1.0). Voir derogations/lab.yml.
+# À renouveler (ou à retirer) avant le 2027-01-04.
+
+version: 1
+derogations:
+  - id: DER-LAB-MIXTE-001
+    rule: ospf6-authentification
+    targets:
+      - {device: r4, object: eth2}
+    justification: "Extrémité FRR (r4) du lien r4-r5 en OSPFv3 sans authentification : SR Linux 26.7.2, de l'autre côté du lien, refuse l'authentification OSPFv3 (« Authentication keychain not supported on ospf-v3 »), et FRR n'a pas d'IPsec. Aucun mécanisme commun."
+    validated_by: "Lodric BOYER (à confirmer à la relecture de la phase B3)"
+    validated_on: 2026-10-04
+    expires: 2027-01-04
+    references:
+      - "https://www.rfc-editor.org/rfc/rfc7166.html"
+
+  - id: DER-LAB-MIXTE-002
+    rule: srlinux-ospf6-authentification-keychain
+    targets:
+      - {device: r5, object: ethernet-1/1.0}
+    justification: "Extrémité SR Linux (r5) du lien r4-r5 en OSPFv3 sans authentification : le schéma de SR Linux 26.7.2 n'offre que `authentication keychain` pour une interface OSPF, et la plateforme le refuse pour une instance ospf-v3 (« Authentication keychain not supported on ospf-v3 », constaté par `commit validate`)."
+    validated_by: "Lodric BOYER (à confirmer à la relecture de la phase B3)"
+    validated_on: 2026-10-04
+    expires: 2027-01-04

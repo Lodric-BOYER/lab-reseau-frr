@@ -97,6 +97,7 @@ class Evaluation:
     compliant: bool | None = None
     not_applicable: list[compliance.NotApplicable] | None = None
     config_warnings: list[compliance.ConfigWarning] | None = None
+    derogations: dict | None = None     # report.derogation_data(...) : None sans fichier de dérogations
 
 
 def diff_outcome(findings: list[diff.Finding]) -> tuple[str, list[Contribution]]:
@@ -167,6 +168,7 @@ def evaluate(
     results: dict, baseline: dict[str, DeviceState], mgmt: set[str],
     intent: list[assertions.Assertion] | None, rules: list[compliance.Rule] | None,
     mgmt_vrfs: set[str] | None = None,
+    derogations=None, today=None,
 ) -> Evaluation:
     everything, reachable, unreachable = devices_from_collection(results)
 
@@ -194,8 +196,9 @@ def evaluate(
         contributions += extra
     if rules is not None:
         audit = compliance.evaluate_config(rules, reachable, management_interfaces=mgmt,
-                                            management_vrfs=mgmt_vrfs)
+                                            management_vrfs=mgmt_vrfs, derogations=derogations, today=today)
         ev.violations, ev.not_applicable = audit.violations, audit.not_applicable
+        ev.derogations = report.derogation_data(audit)
         ev.config_warnings = audit.config_warnings
         ev.compliant = compliance.verdict(ev.violations, ev.config_warnings)[0]
         components["check"], extra = check_outcome(ev.violations, ev.config_warnings)
@@ -609,10 +612,10 @@ def write_reports(directory: Path, evaluation: Evaluation, baseline_name: str,
     if evaluation.violations is not None:
         report.write_compliance_json(evaluation.violations, evaluation.compliant,
                                      str(directory / "check.json"), evaluation.not_applicable,
-                                     evaluation.config_warnings)
+                                     evaluation.config_warnings, derogations=evaluation.derogations)
         report.write_compliance_html(evaluation.violations, evaluation.compliant, rules_path or "",
                                      str(directory / "check.html"), evaluation.not_applicable,
-                                     evaluation.config_warnings)
+                                     evaluation.config_warnings, derogations=evaluation.derogations)
     summary = {
         "timestamp": now, "status": evaluation.status, "baseline": baseline_name,
         "components": evaluation.components,
@@ -642,6 +645,7 @@ class MonitorConfig:
     intent_path: str | None = None
     rules: list[compliance.Rule] | None = None
     rules_path: str | None = None
+    derogations: object | None = None   # derogations.DerogationSet
     webhook_url: str | None = None
     webhook_format: str = "generic"
     confirm: int = 1
@@ -691,7 +695,8 @@ def _run_locked(cfg: MonitorConfig, io: MonitorIO) -> int:
         print(f"Attention : {warning}")
 
     evaluation = evaluate(io.collect(), cfg.baseline, set(cfg.inventory.management_interfaces),
-                          cfg.intent, cfg.rules, set(cfg.inventory.management_vrfs))
+                          cfg.intent, cfg.rules, set(cfg.inventory.management_vrfs),
+                          cfg.derogations, now.date())
     decision = decide(state, evaluation.status, now_iso, cfg.confirm)
 
     print(f"[{now_iso}] netcheck monitor : {LABELS[evaluation.status]} "

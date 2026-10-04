@@ -89,6 +89,21 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
 
 ### Modifié
 
+- **Phase B3, règles IPv6 : les trois silences sont fermés.** L'authentification OSPFv3 (trois règles, une par
+  driver, dans `netcheck/rules/security-ipv6.yml`), `::/0` autorisé en entrée et un préfixe IPv6 local autorisé en
+  entrée (les deux règles existantes lisent maintenant l'IPv6). Mutations de vraies configurations des labs en double
+  pile ; 35 mutations du code des règles et des dérogations, toutes détectées. `check` et `monitor` acceptent plusieurs
+  `--rules`.
+- **Objet des violations (`Violation.subject`)** : chaque règle dit sur quel objet (interface, voisin, API) porte sa
+  violation, un test par kind de règle ; le champ `object` est dans le JSON.
+- **Dérogations** (`check|monitor --derogations`, `netcheck/derogations.py`) : un défaut connu, documenté et daté. Paires
+  (équipement, objet) en correspondance exacte, statut DÉROGATION dans les trois sorties (justification, validateur,
+  expiration), compté à part, sans effet sur le code retour ; expirée : la violation redevient active et le dit ;
+  moins de 30 jours : information ; orpheline : information ; règle critique, expiration absente ou à plus de 365 jours,
+  doublon : refusés. L'horloge est un paramètre (`--today`), jamais appelée par le moteur. Chaque rapport indique le
+  chemin et l'empreinte SHA-256 du fichier. Une dérogation par lab (`derogations/*.yml`) couvre le lien r4–r5.
+- **Scénarios d'intégration IPv6 négatifs** : authentification OSPFv3 retirée, `::/0` et préfixe local autorisés en
+  entrée (lab FRR, C3 à C5), dérogation en cours et expirée (les trois labs), retour prouvé par un diff à zéro constat.
 - **`diff` : une section perdue est un constat ATTENTION.** Relevée avant et non relevée après (collecte échouée
   pendant l'intervention), elle donne un constat ATTENTION par section et par équipement : `guard` ne rend plus
   SUCCESS, `monitor` passe en ATTENTION. Relevée seulement après (ancien snapshot) : information.
@@ -96,6 +111,11 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   chaîne EOS `show ip route | json` n'est plus autorisée. Le BGP de SR Linux, jamais relevé, est maintenant une
   section absente : une assertion `bgp_session` sur r5 est NON ÉVALUABLE (elle disait « aucune session »).
   Le périphérique d'une VRF FRR n'est plus une interface du modèle.
+- **Phase B3 : SR Linux, une instance OSPF est jugée selon sa version.** Les règles OSPFv2 ne lisent plus les
+  interfaces d'une instance `ospf-v3` (elles étaient fusionnées par nom : une keychain posée côté OSPFv3 aurait masqué
+  son absence côté OSPFv2). FRR : `ipv6 ospf6 …` et `ospf6 router-id` non indentés sont signalés comme les autres
+  sous-commandes de bloc (refusés à la racine par `vtysh -C`). EOS : `ospfv3 passive` (démarrage) et `ospfv3
+  passive-interface` (running-config) sont tous deux « passif ».
 - **Refus au chargement** d'une règle dont `drivers:` cite un driver qui n'implémente pas son `kind`
   (elle ne vérifierait rien sur cet équipement). Les règles de la v0.3.0 se chargent sans modification.
 - **Verdict et structure incertaine.** Un avertissement d'analyse peut bloquer le verdict sans retirer
@@ -173,13 +193,14 @@ Défauts communs à FRR et EOS, sur les peer groups (relevés sur r3 et r4, mesu
 - Un membre dont aucun `remote-as` (propre ou du groupe) n'est connu n'ouvre pas de session : il n'est
   pas évalué.
 
-- **OSPFv3 sans authentification sur le lien r4–r5** des trois labs (dérogation technique : SR Linux refuse
-  l'authentification OSPFv3 par keychain, EOS n'a que l'IPsec, FRR utilise la RFC 7166). Mécanisme de dérogation
-  et règle d'audit prévus en phase B3.
-- Double pile : les règles de conformité sont silencieuses sur l'authentification OSPFv3, `::/0` autorisé en
-  entrée et un préfixe local autorisé en entrée (phase B3). Le BGP des VRF n'est relevé par aucun driver (section
-  `bgp_vrf`) ; OSPF n'est relevé que pour la VRF `default` ; les routes de lien local ne sont pas comparées par
-  `diff`.
+- **OSPFv3 sans authentification sur le lien r4–r5** des trois labs : défaut connu (SR Linux refuse l'authentification
+  OSPFv3 par keychain, EOS n'a que l'IPsec, FRR utilise la RFC 7166), signalé par la règle d'audit et couvert par une
+  dérogation datée par lab (`derogations/*.yml`, expire le 2027-01-04, à renouveler ou à retirer).
+- Le BGP des VRF n'est relevé par aucun driver (section `bgp_vrf`) ; OSPF n'est relevé que pour la VRF `default` ; les
+  routes de lien local ne sont pas comparées par `diff`.
+- `ebgp-pas-de-route-par-defaut` lit en IPv4 toute entrée dont le réseau est `0.0.0.0/0`, `deny` compris (comportement
+  de la v0.3.0, conservé : le gel le compare) ; en IPv6 seules les entrées `permit` comptent. EOS n'a ni règle de route
+  par défaut ni règle de réinjection. `validated_by` d'une dérogation est un texte libre non vérifiable (signature en phase J).
 - Une keychain SR Linux sans aucune clé n'est pas détectée (comportement de la v0.3.0, conservé) :
   amélioration prévue en phase E.
 

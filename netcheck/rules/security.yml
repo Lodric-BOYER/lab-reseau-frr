@@ -114,7 +114,7 @@ rules:
         url: "https://www.rfc-editor.org/rfc/rfc7454.html"
 
   - id: ebgp-pas-de-route-par-defaut
-    description: "La prefix-list appliquée en entrée à un voisin eBGP ne doit pas autoriser 0.0.0.0/0, sous aucune forme (avec ou sans le/ge)."
+    description: "La prefix-list appliquée en entrée à un voisin eBGP ne doit pas autoriser la route par défaut, 0.0.0.0/0 (IPv4) ni ::/0 (IPv6), sous aucune forme (avec ou sans le/ge)."
     severity: haute
     applies_to: [r3, r4]
     drivers: [frr]
@@ -125,7 +125,7 @@ rules:
         url: "https://www.rfc-editor.org/rfc/rfc7454.html"
 
   - id: ebgp-pas-de-reinjection-de-prefixes-locaux
-    description: "La prefix-list appliquée en entrée à un voisin eBGP ne doit pas autoriser un préfixe que ce routeur annonce déjà lui-même."
+    description: "La prefix-list appliquée en entrée à un voisin eBGP ne doit pas autoriser un préfixe (IPv4 ou IPv6) que ce routeur annonce déjà lui-même."
     severity: haute
     applies_to: [r3, r4]
     drivers: [frr]

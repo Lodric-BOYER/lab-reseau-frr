@@ -139,6 +139,74 @@ grep -q "ebgp-politique-entrante" "$JSON_DIR/c2.json" && ok "règle 'ebgp-politi
 grep -q '"device": "r3"' "$JSON_DIR/c2.json" && ok "non-conformité localisée sur r3" \
   || ko "équipement r3 absent du rapport"
 
+# Les deux fichiers de règles et la dérogation du lab, à une date FIXE (--today) : le scénario ne dépend pas du
+# calendrier (la dérogation du lab expire le 2027-01-04).
+SEC=(--rules netcheck/rules/security.yml --rules netcheck/rules/security-ipv6.yml)
+DER=derogations/lab.yml
+
+# ---------------------------------------------------------------- C3 : dérogations (phase B3)
+title "C3 : check (règles IPv6 + dérogation du lab) -> conforme, le lien r4-r5 en DÉROGATION"
+out=$($NC check "${SEC[@]}" --derogations "$DER" --today 2026-10-05 --json "$JSON_DIR/c3.json" 2>&1); code=$?
+[[ "$code" == "0" ]] && ok "code retour = 0" || { ko "code retour = $code (attendu 0)"; echo "$out"; }
+echo "$out" | grep -q "Conformité : CONFORME" && ok "conformité = CONFORME" || { ko "conformité inattendue"; echo "$out"; }
+$NC_PY - "$JSON_DIR/c3.json" "$DER" <<'PY' && ok "JSON : 2 violations en DÉROGATION (r4 eth2, r5 eth1), 0 active, empreinte SHA-256 du fichier" || ko "JSON des dérogations inattendu"
+import hashlib, json, sys
+data = json.load(open(sys.argv[1]))
+d = data["derogations"]
+covered = sorted((x["device"], x["object"], x["status"]) for x in d["derogated"])
+sha = hashlib.sha256(open(sys.argv[2], "rb").read()).hexdigest()
+ok = (data["violations"] == [] and data["summary"]["derogated"] == 2 and d["file"]["sha256"] == sha
+      and covered == [("r4", "eth2", "DÉROGATION"), ("r5", "eth1", "DÉROGATION")])
+sys.exit(0 if ok else 1)
+PY
+out=$($NC check "${SEC[@]}" --derogations "$DER" --today 2027-01-05 2>&1); code=$?
+[[ "$code" == "2" ]] && echo "$out" | grep -q "expirée le 2027-01-04" \
+  && ok "après la date d'expiration (--today 2027-01-05) : de nouveau code 2, « expirée le 2027-01-04 » dit" \
+  || { ko "dérogation expirée mal gérée (code $code)"; echo "$out"; }
+
+# ---------------------------------------------------------------- C4 : authentification OSPFv3 retirée (phase B3)
+title "C4 : suppression de l'authentification OSPFv3 de r1 eth1 -> NON CONFORME (r1 eth1, hors dérogation), puis retour prouvé"
+$NC snapshot c4_avant --force >/dev/null
+vtconf r1 "conf t" "interface eth1" "no ipv6 ospf6 authentication key-id 1 hash-algo hmac-sha-256 key lab-ospf-v3r1r2"
+out=$($NC check "${SEC[@]}" --derogations "$DER" --today 2026-10-05 --json "$JSON_DIR/c4.json" 2>&1); code=$?
+vtconf r1 "conf t" "interface eth1" "ipv6 ospf6 authentication key-id 1 hash-algo hmac-sha-256 key lab-ospf-v3r1r2"
+wait_healthy && ok "retour à la normale (health.py)" || ko "health.py toujours KO après restauration"
+[[ "$code" == "2" ]] && ok "code retour = 2" || { ko "code retour = $code (attendu 2)"; echo "$out"; }
+$NC_PY - "$JSON_DIR/c4.json" <<'PY' && ok "violation ospf6-authentification sur r1 eth1, les 2 dérogations du lab intactes" || ko "violation attendue absente ou dérogations altérées"
+import json, sys
+data = json.load(open(sys.argv[1]))
+v = [(x["rule_id"], x["device"], x["object"]) for x in data["violations"]]
+sys.exit(0 if v == [("ospf6-authentification", "r1", "eth1")] and data["summary"]["derogated"] == 2 else 1)
+PY
+sleep 10
+$NC snapshot c4_maintenant --force >/dev/null
+out=$($NC diff c4_avant c4_maintenant 2>&1); code=$?
+[[ "$code" == "0" ]] && echo "$out" | grep -q "Aucun constat" \
+  && ok "preuve de retour : l'état actuel est identique à l'état d'avant (aucun constat)" \
+  || { ko "l'état actuel diffère de l'état d'avant (code $code)"; echo "$out"; }
+out=$($NC check "${SEC[@]}" --derogations "$DER" --today 2026-10-05 2>&1); code=$?
+[[ "$code" == "0" ]] && ok "check de nouveau conforme après le retour" || { ko "check non conforme après le retour"; echo "$out"; }
+
+# ---------------------------------------------------------------- C5 : ::/0 et préfixe local autorisés en entrée (phase B3)
+title "C5 : ::/0 puis 2001:db8:1::/48 ajoutés à PL6-EBGP-IN sur r3 -> NON CONFORME des deux règles IPv6, puis retour"
+for item in "default:permit ::/0:ebgp-pas-de-route-par-defaut" "own:permit 2001:db8:1::/48:ebgp-pas-de-reinjection-de-prefixes-locaux"; do
+  name=${item%%:*}; rest=${item#*:}; entry=${rest%:*}; rule_id=${rest##*:}
+  vtconf r3 "conf t" "ipv6 prefix-list PL6-EBGP-IN seq 30 $entry"
+  out=$($NC check "${SEC[@]}" --derogations "$DER" --today 2026-10-05 --json "$JSON_DIR/c5_$name.json" 2>&1); code=$?
+  vtconf r3 "conf t" "no ipv6 prefix-list PL6-EBGP-IN seq 30 $entry"
+  [[ "$code" == "2" ]] && ok "$name : code retour = 2" || { ko "$name : code retour = $code (attendu 2)"; echo "$out"; }
+  $NC_PY - "$JSON_DIR/c5_$name.json" "$rule_id" <<'PY' && ok "$name : violation $rule_id sur r3, voisin 2001:db8:34::3" || ko "$name : violation $rule_id manquante"
+import json, sys
+data = json.load(open(sys.argv[1]))
+v = [(x["rule_id"], x["device"], x["object"]) for x in data["violations"]]
+sys.exit(0 if v == [(sys.argv[2], "r3", "2001:db8:34::3")] else 1)
+PY
+done
+wait_healthy && ok "retour à la normale (health.py)" || ko "health.py toujours KO après restauration"
+out=$($NC check "${SEC[@]}" --derogations "$DER" --today 2026-10-05 2>&1); code=$?
+[[ "$code" == "0" ]] && ok "check de nouveau conforme après le retour" || { ko "check non conforme après le retour"; echo "$out"; }
+
+
 # ---------------------------------------------------------------- A1 : état attendu, nominal
 title "A1 : état attendu (assert) -> OK, en direct et hors ligne"
 out=$($NC assert --intent intents/lab.yml --json "$JSON_DIR/a1_direct.json" 2>&1); code=$?

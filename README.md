@@ -699,8 +699,9 @@ porte une VRF de démonstration. Les configurations existantes (FRR, EOS, SR Lin
   Le lien r4–r5 n'est **pas authentifié** : SR Linux 26.7.2 refuse (« Authentication keychain not supported on
   ospf-v3 », constaté par `commit validate`), EOS 4.34.8M n'a que `ospfv3 authentication ipsec spi …` (6 formes essayées)
   et FRR n'a pas d'IPsec : aucun mécanisme commun. Les fichiers `configs/r4` et `configs/r5` étant partagés entre les
-  labs, le lien est sans authentification dans les trois. La règle d'audit correspondante et son mécanisme de
-  dérogation sont prévus en phase B3.
+  labs, le lien est sans authentification dans les trois. La règle d'audit correspondante
+  (`netcheck/rules/security-ipv6.yml`) le signale, et la dérogation datée de chaque lab (`derogations/*.yml`, expire le
+  2027-01-04) le couvre : voir `netcheck/README.md`, « Règles IPv6, objet des violations et dérogations ».
 - **VRF `DEMO` (r2)** : un VRF Linux (table 100) avec une interface `dum-demo` (dummy) et deux routes de rejet, créés
   par les `exec` de containerlab après le démarrage de FRR (vérifié : FRR passe le VRF de « inactive » à actif dès
   sa création). r2 est un routeur de transit sans LAN ni eBGP et il est en FRR dans les trois labs : aucun chemin de
@@ -726,10 +727,10 @@ déploiement dure 4 à 9 s de plus. La RAM utilisée par WSL ne bouge pas de fa�
 
 **Ce que netcheck voit depuis la phase B2** : le modèle contient l'IPv6 (adresses, routes, voisins OSPFv3, BGP
 `ipv6 unicast`) et la VRF de chaque interface, route et session ; `diff`, `assert` (dont `path` en IPv6) et leurs
-sections collectées sont décrits dans `netcheck/README.md`. **Ce que netcheck ne vérifie pas encore (phase B3)** : les
-règles voient le voisin BGP IPv6 (mot de passe, GTSM, limite, route-maps) mais sont **silencieuses** sur trois défauts
-IPv6 : authentification OSPFv3 retirée, `::/0` autorisé en entrée, préfixe local autorisé en entrée. Les labs en double
-pile sont donc audités « conformes » **sans que ces trois points soient vérifiés** tant que B3 n'est pas faite. Une seule adaptation de code a été nécessaire en B1 : le driver SR Linux ne
+sections collectées sont décrits dans `netcheck/README.md`. **Depuis la phase B3**, les règles vérifient aussi les trois
+points IPv6 qu'elles ignoraient (authentification OSPFv3, `::/0` autorisé en entrée, préfixe local autorisé en entrée) :
+un lab double pile n'est plus « conforme » sans qu'ils aient été vérifiés. Le seul défaut restant, le lien r4–r5 en
+OSPFv3 sans authentification, est une dérogation datée (voir ci-dessus). Une seule adaptation de code a été nécessaire en B1 : le driver SR Linux ne
 compte que les instances OSPFv2 (`"version": "ospf-v2"`) dans ses voisins OSPF, sinon le voisin OSPFv3 de r5 était
 compté comme un second voisin OSPFv2.
 

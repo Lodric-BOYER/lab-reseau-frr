@@ -80,11 +80,34 @@ def _check_eos_ospf_authentication_required(rule: Rule, device: DeviceState, cfg
             continue   # pas d'adjacence sur une interface passive : rien à authentifier
         if not _has(block, "ip", "ospf", "authentication", "message-digest"):
             violations.append(Violation(rule, device.name,
-                f"interface {name} : adjacence OSPF active sans authentification message-digest"))
+                f"interface {name} : adjacence OSPF active sans authentification message-digest", name))
         elif not any(len(c.words) >= 6 and c.words[:3] == ("ip", "ospf", "message-digest-key")
                      and c.words[3].isdigit() and c.words[4] == "md5" for c in block.children):
             violations.append(Violation(rule, device.name,
-                f"interface {name} : message-digest activé mais aucune clé md5 configurée"))
+                f"interface {name} : message-digest activé mais aucune clé md5 configurée", name))
+    return violations
+
+
+def _check_eos_ospf6_authentication_required(rule: Rule, device: DeviceState, cfg) -> list[Violation]:
+    """Toute interface OSPFv3 EOS active doit porter une authentification (Phase B3, O2). Sur cEOS 4.34.8M, la
+    seule forme acceptée est IPsec : `ospfv3 authentication ipsec spi N (sha1|md5) [passphrase] <clé>` (EOS
+    écrit la clé en « type 7 » dans la configuration). Vérifié dans des sessions de configuration
+    abandonnées : `ospfv3 authentication disabled`, `null` et la forme `encryption ipsec` essayée sont
+    refusées (« Invalid input »). Seule la présence compte, jamais la valeur de la clé. Une interface est
+    active quand elle a `ospfv3 ipv6 area N` et pas `ospfv3 passive` (ou `passive-interface`)."""
+    violations = []
+    for name, block in {" ".join(n.words[1:]): n for n in _config(cfg).top("interface", "*")}.items():
+        if not any(c.words[:3] == ("ospfv3", "ipv6", "area") for c in block.children):
+            continue
+        # EOS écrit `ospfv3 passive` dans un fichier de démarrage et `ospfv3 passive-interface` dans la
+        # running-config (relevé sur cEOS 4.34.8M) : les deux désignent une interface passive.
+        if _has(block, "ospfv3", "passive") or _has(block, "ospfv3", "passive-interface"):
+            continue   # pas d'adjacence sur une interface passive : rien à authentifier
+        if not any(len(c.words) >= 7 and c.words[:4] == ("ospfv3", "authentication", "ipsec", "spi")
+                   and c.words[4].isdigit() and c.words[5] in ("sha1", "md5") for c in block.children):
+            violations.append(Violation(rule, device.name,
+                f"interface {name} : adjacence OSPFv3 active sans authentification "
+                f"(ospfv3 authentication ipsec)", name))
     return violations
 
 
@@ -105,7 +128,7 @@ def _check_eos_bgp_neighbor_password_required(rule: Rule, device: DeviceState, c
         return False
 
     return [Violation(rule, device.name,
-                      f"voisin eBGP {bgp.label(ip)} sans authentification TCP-MD5 (mot de passe)")
+                      f"voisin eBGP {bgp.label(ip)} sans authentification TCP-MD5 (mot de passe)", ip)
             for ip in bgp.ebgp if not has_password(ip)]
 
 
@@ -116,7 +139,7 @@ def _check_eos_bgp_neighbor_ttl_security_required(rule: Rule, device: DeviceStat
     bgp = _bgp(_config(cfg))
     if bgp is None:
         return []
-    return [Violation(rule, device.name, f"voisin eBGP {bgp.label(ip)} sans GTSM (ttl maximum-hops)")
+    return [Violation(rule, device.name, f"voisin eBGP {bgp.label(ip)} sans GTSM (ttl maximum-hops)", ip)
             for ip in bgp.ebgp
             if not any(len(n.words) == 5 and n.words[4].isdigit()
                        for n in bgp.lines(ip, lambda rest: rest[:2] == ("ttl", "maximum-hops")))]
@@ -136,10 +159,10 @@ def _check_eos_bgp_neighbor_maximum_routes_required(rule: Rule, device: DeviceSt
                       if len(n.words) >= 4 and (m := re.match(r"\d+\b", n.words[3]))), None)
         if limit is None:
             violations.append(Violation(rule, device.name,
-                f"voisin eBGP {bgp.label(ip)} sans limite maximum-routes"))
+                f"voisin eBGP {bgp.label(ip)} sans limite maximum-routes", ip))
         elif limit == 0:
             violations.append(Violation(rule, device.name,
-                f"voisin eBGP {bgp.label(ip)} : maximum-routes 0 (illimité) n'est pas une limite"))
+                f"voisin eBGP {bgp.label(ip)} : maximum-routes 0 (illimité) n'est pas une limite", ip))
     return violations
 
 
@@ -156,12 +179,12 @@ def _check_eos_management_api_disabled(rule: Rule, device: DeviceState, cfg) -> 
     http = blocks.get("http-commands")
     if http is not None and any(n.words == ("no", "shutdown") for n in _below(http)):
         violations.append(Violation(rule, device.name,
-            "API de gestion eAPI (management api http-commands) active (no shutdown)"))
+            "API de gestion eAPI (management api http-commands) active (no shutdown)", "http-commands"))
     for api, label in (("gnmi", "gNMI"), ("netconf", "NETCONF")):
         block = blocks.get(api)
         if block is not None and any(n.words[0] == "transport" and len(n.words) >= 2 for n in _below(block)):
             violations.append(Violation(rule, device.name,
-                f"API de gestion {label} (management api {api}) active (transport configuré)"))
+                f"API de gestion {label} (management api {api}) active (transport configuré)", api))
     return violations
 
 
@@ -195,6 +218,7 @@ def flag_misplaced_subcommands(cfg: ParsedConfig) -> None:
 
 CHECKS: dict[str, Check] = {
     "eos_ospf_authentication_required": Check(_check_eos_ospf_authentication_required),
+    "eos_ospf6_authentication_required": Check(_check_eos_ospf6_authentication_required),
     "eos_bgp_neighbor_password_required": Check(_check_eos_bgp_neighbor_password_required),
     "eos_bgp_neighbor_ttl_security_required": Check(_check_eos_bgp_neighbor_ttl_security_required),
     "eos_bgp_neighbor_maximum_routes_required": Check(_check_eos_bgp_neighbor_maximum_routes_required),
