@@ -1200,6 +1200,10 @@ n'apparaît dans aucune sortie ; les exemples du dépôt n'utilisent que des val
 - **`maximum-routes` (EOS) ≠ `maximum-prefix` (FRR)** : EOS compte les routes reçues *avant* la
   politique d'entrée, FRR les préfixes *acceptés* après filtre (sauf `force`) : même protection,
   seuil différent.
+- **Ordre des séquences non simulé** : les règles de politique d'entrée (`ebgp-pas-de-route-par-defaut`,
+  `ebgp-pas-de-reinjection-de-prefixes-locaux`, FRR et EOS) ne simulent ni l'ordre des séquences d'un route-map ni celui
+  des entrées d'une prefix-list. Un `permit` précédé d'un `deny` plus large est donc signalé à tort (faux positif ; pas
+  de faux négatif connu). Ouverture prévue en phase E : la première entrée ou séquence qui correspond décide.
 - **`monitor`** : de nouveaux constats pendant un ÉCHEC déjà annoncé n'envoient rien ; livraison
   « au moins une fois » ; délai du webhook appliqué à chaque opération réseau, pas au total ;
   Slack et Teams documentés, **non implémentés**.
@@ -1218,6 +1222,8 @@ n'apparaît dans aucune sortie ; les exemples du dépôt n'utilisent que des val
 3. **TCP-AO** dès que le noyau et FRR le supportent ; IPv6 ; VRF multiples ; adresses secondaires.
 4. `monitor` : alertes Slack et Teams, anti-rebond par composant, délai total du webhook.
 5. Intégration continue du lab (runner avec Docker et containerlab) pour rejouer les scénarios.
+6. Phase E : simuler l'ordre des séquences (route-maps et prefix-lists, première correspondance) pour supprimer le faux
+   positif « permit précédé d'un deny plus large ».
 
 ## Licence
 

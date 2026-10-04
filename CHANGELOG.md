@@ -232,7 +232,9 @@ Phase B4 :
 - `validated_by` d'une dérogation est un texte libre non vérifiable (signature en phase J). `monitor --derogations`
   lit la date du jour (pas de `--today`).
 - Règles de politique d'entrée : aucune des deux règles (FRR, EOS) ne simule l'ordre des séquences d'un route-map ni
-  des entrées d'une prefix-list : un `permit` est signalé même précédé d'un `deny` plus large.
+  des entrées d'une prefix-list : un `permit` est signalé même précédé d'un `deny` plus large (faux positif). Ouverture
+  prévue en phase E : simuler l'ordre (la première entrée ou séquence qui correspond décide), pour les prefix-lists et
+  les route-maps, FRR et EOS.
 - Une keychain SR Linux sans aucune clé n'est pas détectée (comportement de la v0.3.0, conservé) :
   amélioration prévue en phase E.
 
