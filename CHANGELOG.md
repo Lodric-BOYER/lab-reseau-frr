@@ -203,6 +203,23 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
 - Rapports : JSON enrichi de `status`, `summary`, `config_analysis` et de `cause` par règle non
   applicable (champs ajoutés, aucun retiré). Le registre des drivers vit dans `drivers/registry.py`
   (`collector.DRIVER_REGISTRY` reste le même objet).
+- **Code 70 (EX_SOFTWARE) : défaut interne de netcheck, pour toutes les commandes.** Une exception Python non gérée
+  sortait en code 1 (lu comme ATTENTION ou injoignable) ; elle sort en **70**, avec la trace expurgée des secrets connus.
+  70 est distinct de 3 (erreur d'usage, que l'opérateur corrige), de 0 à 2 (statut), de 4 à 6 (`guard`) et de 4
+  (verrou de `monitor`). **Changement de comportement pour `monitor`** : son erreur interne (« monitor n'a pas pu
+  conclure ») sortait en **3** ; elle sort maintenant en **70**. Un planificateur qui testait `== 3` pour « refusé ou
+  erreur interne » doit distinguer 3 (refus d'usage) et 70 (défaut interne). Tableau des codes retour du README mis à jour.
+
+### Sécurité
+
+- **Traversée de chemin évitée à l'écriture d'un snapshot.** `snapshot ../x --force` (ou un nom contenant `/`) écrivait
+  des fichiers hors de `snapshots/`. Le nom est désormais limité aux lettres, chiffres, `.`, `-` et `_` (100 caractères,
+  commençant par une lettre ou un chiffre) et refusé en code 3 avant toute collecte. La lecture d'un snapshot par chemin
+  reste permise (elle n'écrase rien).
+- **Fuite d'un extrait de fichier par un message d'erreur YAML.** PyYAML recopie dans son message la ligne fautive ; sur
+  un inventaire, cette ligne peut être un mot de passe, que `netcheck` affichait donc sur stderr. Les messages ne donnent
+  plus que la ligne, la colonne et le type du problème, jamais un extrait (test qui met un mot de passe dans la ligne
+  fautive et le cherche dans la sortie).
 
 ### Corrigé
 
@@ -262,13 +279,7 @@ Erreurs d'usage hors argparse (après la phase C2) :
   changement pour `guard`, qui le découvrait à la fin) ; `known_hosts` dossier ou modifiable par d'autres ; `guard`
   sans `--yes` et sans entrée standard (EOFError). `tests/test_cli_usage_errors.py` : un test paramétré par cas (141
   tests), plus le processus réel ; 67 mutations, toutes détectées.
-- **Un message d'erreur YAML ne cite plus le fichier** : PyYAML recopie la ligne fautive, qui peut être un mot de passe
-  d'inventaire. Seules la ligne, la colonne et le type du problème sont affichés.
-- **Défaut interne : code 70** (avec la trace, expurgée des secrets connus), plus le code 1 de Python ni le 3 de
-  `monitor`. **Comportement modifié pour `monitor`** : son erreur interne sortait en 3, elle sort en 70 (3 reste le refus
-  d'usage). Avec le catalogue de codes de `guard` (0 à 6) et le verrou de `monitor` (4), 70 ne collisionne avec rien.
-- **Nom de snapshot** : lettres, chiffres, `.`, `-`, `_` à l'écriture. `snapshot ../x --force` écrivait hors de
-  `snapshots/`. La lecture d'un snapshot par chemin reste permise.
+- **Une exception Python non gérée sortait en code 1** (lu comme ATTENTION) : voir « Modifié » (code 70).
 - **Refus d'un audit qui ne lit rien** : fichier de règles ou d'intent vide (zéro règle, zéro assertion) sort en code 3 au
   lieu d'un « conforme » sur rien, comme `--config-dir` sans configuration lisible l'était déjà.
 

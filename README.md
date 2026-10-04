@@ -550,13 +550,19 @@ après 5 minutes ; le mode développement n'est ni persistant ni scellé : un vr
 
 ### Codes retour
 
-| Commande | 0 | 1 | 2 | 3 |
-|---|---|---|---|---|
-| `diff` / `guard` | OK | ATTENTION | ÉCHEC (≥ 1 CRITIQUE) | erreur d'utilisation / snapshot manquant |
-| `check` | conforme | non-conformité(s) moyenne/basse | non-conformité critique/haute | règles ou équipement introuvable |
-| `snapshot` | tout OK | au moins un équipement injoignable | — | snapshot existant sans `--force` |
-| `assert` | tout OK | — | au moins un ÉCHEC | intent invalide |
-| `monitor` | statut OK | statut ATTENTION | statut ÉCHEC | refusé (4 : verrou tenu) |
+| Commande | 0 | 1 | 2 | 3 | 70 |
+|---|---|---|---|---|---|
+| `diff` / `guard` | OK | ATTENTION | ÉCHEC (≥ 1 CRITIQUE) | erreur d'utilisation / snapshot manquant | défaut interne |
+| `check` | conforme | non-conformité(s) moyenne/basse | non-conformité critique/haute | règles ou équipement introuvable | défaut interne |
+| `snapshot` | tout OK | au moins un équipement injoignable | — | snapshot existant sans `--force` | défaut interne |
+| `assert` | tout OK | — | au moins un ÉCHEC | intent invalide | défaut interne |
+| `monitor` | statut OK | statut ATTENTION | statut ÉCHEC | refusé (4 : verrou tenu) | défaut interne (**était 3** avant la phase C) |
+
+**70 = défaut interne de netcheck (EX_SOFTWARE), pour toutes les commandes.** Ce n'est ni une erreur d'usage (3), ni
+un statut (0 à 2), ni un code de `guard` (4 à 6) ou de verrou (4). **Changement de comportement pour `monitor`** : son
+erreur interne (« monitor n'a pas pu conclure ») sortait en 3 jusqu'à la phase C ; elle sort en 70 (voir le CHANGELOG,
+« Modifié »). Un planificateur qui testait `== 3` doit distinguer le refus d'usage (3, que l'opérateur corrige) du
+défaut interne (70, à signaler).
 
 **Une option invalide ou un argument manquant sort en code 3 pour toutes les commandes** (jamais le 2 d'argparse :
 ici, 2 veut dire ÉCHEC, et un pipeline ou `monitor.sh` prendrait une faute de frappe pour une panne).
