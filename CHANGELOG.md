@@ -145,9 +145,29 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   `tests/integration_vault.sh` : 76 contrôles, dont les réglages relus sur le serveur, jeton et `secret_id` à usage
   unique, liaison CIDR prouvée, rôle de sonde à usages illimités pour que les refus 403 viennent de la politique.
   Ressources (C24) : Vault ≈ 34-35 Mo de RAM et image de 744 Mo ; OpenBao ≈ 22 Mo et 275 Mo.
+- **Phase C4, authentification par clé SSH et bastion** (`netcheck/sshkeys.py`, `netcheck/bastion.py`). Clé privée par
+  `NETCHECK_<DRIVER>_KEY_FILE`, `NETCHECK_KEY_FILE` ou `key_file` de l'inventaire ; fichier soumis aux règles de C2
+  (régulier, pas de lien symbolique, à l'utilisateur, 0600/0400, taille bornée) ; phrase secrète en `SecretStr` (fichier
+  0600 ou variable, jamais en argument) ; source affichée « clé : chemin », jamais le contenu. Une clé configurée est le
+  seul mode d'authentification de l'équipement : pas de mot de passe en repli. La clé est chargée par netcheck et
+  présentée seule (`pkey`) : ni agent, ni `~/.ssh`. Bloc `bastion:` de l'inventaire (host, port, username, key_file ;
+  jamais de mot de passe) : toutes les connexions passent par un canal `direct-tcpip` du bastion (`sock=` de Netmiko),
+  clé d'hôte du bastion vérifiée en strict dans le même `known_hosts` (avant la clé de netcheck), premier contact
+  `accept-new` des routeurs par le bastion, **jamais de repli direct**, ni session, ni agent, ni X11. Lab : nœud
+  `bastion` (`netcheck-bastion:1`, `docker/bastion/`, compte sans shell, `restrict`, `permitopen` aux 5 routeurs port
+  22) ajouté aux trois `.clab.yml` sans toucher aux configurations des routeurs ni au gel ;
+  `lab-access/bastion_lab.sh` ; `pin_hostkeys.sh` épingle aussi le bastion ; scénarios `tests/lib_bastion.sh` (sshd -T,
+  adresse source vue sur le routeur, bastion à clé changée, sonde des refus, règles de clé, et sur FRR clé des
+  routeurs et connexion directe coupée avec retour prouvé). 55 mutations du code, toutes détectées.
+  Ressources (C24) : image du bastion 14,2 Mo, RAM ≈ 2,5 Mo.
 
 ### Modifié
 
+- **Phase C4 : les trois labs ont un conteneur de plus, le bastion** (8 conteneurs au lieu de 7 : 5 routeurs, 2 PC, le
+  bastion `clab-<lab>-bastion`, adresse `<réseau>.2`). `test_lab*.sh` construisent l'image `netcheck-bastion:1` et
+  attendent 8 conteneurs en état running. Aucune configuration de routeur n'est modifiée. `pin_hostkeys.sh` épingle aussi
+  la clé du bastion s'il est déployé (sinon simple remarque). Les rapports gardent leur forme : les rubriques `clé` et
+  `bastion` de `credential_sources` n'apparaissent que si une clé ou un bastion est utilisé.
 - **Phase C2 : le mot de passe d'un routeur de l'inventaire est un `SecretStr`** (compare égal à la `str`
   correspondante ; `.reveal()` donne la valeur). `inventory.load()` résout les identifiants avec la source de chacun
   (`credential_sources`) ; un identifiant absent partout est une erreur claire (code 3) au lieu d'une `KeyError`.

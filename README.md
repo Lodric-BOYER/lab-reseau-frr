@@ -57,6 +57,8 @@ lab.clab.yml                    topologie containerlab (lab FRR)
 lab-multivendor.clab.yml        topologie containerlab (lab v2 : FRR + Nokia SR Linux)
 docker/Dockerfile               image FRR 10.2.1 + SSH (compte netops) ; clés d'hôte générées au démarrage (docker/entrypoint-sshkeys.sh)
 lab-access/pin_hostkeys.sh      épingle les clés d'hôte d'un lab déployé (lues dans les conteneurs) dans le known_hosts de netcheck
+lab-access/bastion_lab.sh       provisionnement du bastion de lab (clés, authorized_keys, PermitOpen ; clés des routeurs FRR)
+docker/bastion/                 image netcheck-bastion:1 : sshd sans shell, relais direct-tcpip vers les routeurs seulement
 lab-access/vault_lab.sh         Vault ou OpenBao de lab (conteneur de développement, AppRole, politique en lecture seule)
 lab-access/vault/netcheck-ro.hcl politique du rôle netcheck-ro : lecture seule sur le seul secret des identifiants du lab
 configs/daemons                 démons FRR activés
@@ -79,6 +81,8 @@ tests/tools/webhook_recorder.py récepteur de webhook LOCAL (tests et scénarios
 tests/integration.sh                lab FRR (S1-S5, C1/C2, guard, A1/A2 assert, D1/D2 --expect et rollback, E1 monitor, H1 clés d'hôte)
 tests/integration_multivendor.sh    lab v2 (S1, coupure r4<->r5, C1, A1/A2 assert, M1 monitor, H1 clés d'hôte)
 tests/integration_ceos.sh           lab cEOS (S1, C1, A1, N1 mauvaise clé OSPF, N2 API exposée, G1 guard, M1 monitor, H1 clés d'hôte)
+tests/lib_bastion.sh                scénarios B1/B2 du bastion et des clés SSH (joués par les trois integration*.sh)
+tests/tools/bastion_probe.py    sonde du lab : ce que le bastion refuse (paramiko écrit à la main, pas netcheck)
 tests/integration_vault.sh          Vault puis OpenBao : identifiants lus dans Vault sur le lab FRR, deux appels, rôle en lecture seule, priorité, pannes
 test_lab.sh                     scénario de bout en bout du lab FRR (phases 1 et 2), 28 contrôles
 test_lab_multivendor.sh         scénario de bout en bout du lab v2 (topologie + routage)
@@ -120,7 +124,7 @@ docker build -t frr-ssh:10.2.1 docker/
 sudo containerlab deploy -t lab.clab.yml
 ```
 
-containerlab affiche un tableau des 7 conteneurs (`clab-frr-lab-r1` …). Compte ~30 s pour la convergence OSPF + BGP.
+containerlab affiche un tableau des 8 conteneurs (`clab-frr-lab-r1` …, plus le bastion `clab-frr-lab-bastion`, phase C4). Compte ~30 s pour la convergence OSPF + BGP.
 
 Les clés d'hôte SSH des routeurs sont générées **au démarrage de chaque conteneur** (pas à la construction de
 l'image) : chaque routeur a la sienne, et elle change à chaque déploiement. netcheck vérifie ces clés : voir
@@ -585,6 +589,96 @@ seulement (ni jeton fourni, ni Kubernetes, ni espaces de noms Enterprise) ; le j
 fin d'exécution (`revoke-self` n'est pas dans la liste blanche : seule l'ouverture de session est une écriture) : il est
 à 1 usage, donc révoqué par Vault après la lecture, et expire en 60 s sinon ; le mode développement n'est ni persistant ni scellé : un vrai Vault se configure autrement.
 
+### Clés SSH et bastion (v4, phase C4)
+
+**Authentification par clé.** Un équipement peut s'authentifier par clé privée au lieu du mot de passe. Le fichier de
+clé suit les **mêmes règles que les mots de passe de C2** (fichier régulier, **pas de lien symbolique**, à vous,
+droits **0600 ou 0400**, 64 Ko au plus ; refus en code 3 avant toute connexion, sans jamais citer le contenu), et sa
+**phrase secrète** éventuelle est un `SecretStr` (fichier 0600 ou variable, **jamais en argument de ligne de commande**).
+Clés RSA, ECDSA et Ed25519, au format OpenSSH ou PEM, avec ou sans phrase secrète.
+
+| Variable | Rôle |
+|---|---|
+| `NETCHECK_<DRIVER>_KEY_FILE`, `NETCHECK_KEY_FILE`, puis `key_file` de l'inventaire | la clé privée de l'équipement (par ordre de priorité) |
+| `NETCHECK_<DRIVER>_KEY_PASSPHRASE`, puis son `_FILE`, puis `NETCHECK_KEY_PASSPHRASE`, puis son `_FILE` | sa phrase secrète (variable avant fichier à chaque niveau) |
+
+Quand une clé est configurée pour un équipement, **c'est son seul mode d'authentification** : le mot de passe n'est
+ni résolu, ni présenté, jamais en repli (testé : mauvaise clé + bon mot de passe d'inventaire = injoignable). netcheck
+charge lui-même la clé et la présente seule (`pkey`) : **ni l'agent SSH, ni les clés de `~/.ssh`** ne sont essayés
+(avec `key_file`, Netmiko laisserait paramiko essayer aussi `~/.ssh/id_*`). La source affichée est
+**« clé : chemin »** (« Identifiants, clé : /chemin (r1, r2) »), jamais le contenu, dans les mêmes rapports que les
+autres sources.
+
+**Bastion.** Un bloc `bastion:` au niveau de l'inventaire fait passer **toutes** les connexions par un bastion SSH :
+
+```yaml
+bastion:
+  host: 172.20.20.2
+  username: jump
+  key_file: /home/moi/.netcheck/netcheck_bastion      # ou NETCHECK_BASTION_KEY_FILE
+  # port: 22                                           # optionnel ; jamais de mot de passe de bastion
+```
+
+- netcheck ouvre une session SSH vers le bastion (**clé obligatoire**, `NETCHECK_BASTION_KEY_PASSPHRASE[_FILE]` pour sa
+  phrase secrète), puis un canal `direct-tcpip` vers `routeur:port` à travers elle, passé à Netmiko (`sock=`). La clé
+  d'hôte du routeur est vérifiée **de bout en bout**, et le routeur voit **l'adresse du bastion** comme source.
+- **La clé d'hôte du bastion est vérifiée en strict, dans le même `known_hosts`** que celles des routeurs
+  (`lab-access/pin_hostkeys.sh` l'épingle aussi, avec la même exigence d'unicité). Elle est vérifiée **avant** la clé
+  de netcheck : un bastion à clé changée ne reçoit aucune authentification. En `accept-new` (lab), le premier contact du
+  routeur se fait lui aussi **par le bastion**.
+- **Jamais de repli direct.** Bastion injoignable, clé refusée, rebond refusé, clé d'hôte inconnue ou changée : les
+  équipements sont « injoignables » ; netcheck ne tente pas la connexion directe (le bastion est une frontière de
+  sécurité, pas une commodité ; test : le routeur ne voit alors aucune session SSH).
+- **Rien d'interactif** : netcheck ne demande que des canaux `direct-tcpip`, jamais `shell`, `exec`, redirection
+  d'agent ni X11 (test statique), et n'utilise ni agent ni clés par défaut.
+- Un bastion à chaque connexion : une session par équipement, fermée avec lui. Un seul niveau (pas de chaîne).
+
+**Côté serveur, la configuration recommandée** (celle du bastion de lab, `docker/bastion/`) : un compte **sans shell**
+(`/sbin/nologin`, verrouillé pour les mots de passe), une clé publique dans un fichier **appartenant à root**
+(`AuthorizedKeysFile /etc/ssh/authorized_keys/%u` : le compte ne peut pas l'élargir) avec
+`restrict,port-forwarding,permitopen="<routeur>:22",…,command="/bin/false"`, et dans `sshd_config` :
+`AllowUsers jump`, `AuthenticationMethods publickey`, `PasswordAuthentication no`, `AllowTcpForwarding local`,
+`PermitOpen <les mêmes adresses>:22`, `AllowAgentForwarding no`, `X11Forwarding no`, `PermitTTY no`,
+`GatewayPorts no`, `PermitTunnel no`, `PermitUserEnvironment no`, `Match User jump / ForceCommand /bin/false`.
+La barrière qui compte est celle du serveur ; le client de netcheck n'est qu'un client bien élevé.
+
+**Lab.** Le nœud `bastion` (`netcheck-bastion:1`, Alpine + sshd, `docker/bastion/`, adresse `<réseau>.2`) est ajouté aux
+trois `.clab.yml` sans lien de données et **sans toucher aux configurations des routeurs** (`configs*/` et le gel sont
+inchangés). Image : `docker build -t netcheck-bastion:1 docker/bastion/` (faite par `test_lab*.sh`). Après le
+déploiement :
+
+```bash
+bash lab-access/bastion_lab.sh provision frr      # ou multivendor, ceos : clés, authorized_keys, PermitOpen
+bash lab-access/pin_hostkeys.sh frr               # épingle aussi la clé d'hôte du bastion
+# inventaire avec le bloc `bastion:` ci-dessus, puis :
+python -m netcheck snapshot avant -i mon-inventaire-bastion.yml
+```
+
+`provision` crée `lab-access/.keys/netcheck_bastion` et `netcheck_router` (Ed25519, 0600, ignorés par Git), installe
+la clé publique du bastion (restreinte aux 5 adresses de gestion, port 22), et, **sur le lab FRR seulement**, la clé
+publique de routeur dans `~netops/.ssh/authorized_keys` (un fichier du conteneur, pas une configuration FRR) ; les
+comptes des routeurs SR Linux et cEOS relèvent de la phase C5. **Après un redéploiement**, relancer `provision` et
+`pin_hostkeys.sh`.
+
+Preuves (`tests/lib_bastion.sh`, jouées par les trois `tests/integration*.sh`) : configuration effective de `sshd` lue
+par `sshd -T` ; adresse source vue **sur le routeur** (`ss -tn`) = le bastion par le bastion, la passerelle sans lui ;
+clé d'hôte du bastion changée = refus pour les 5 routeurs, aucune authentification reçue par le bastion, **aucune
+session vue sur le routeur** ; sonde du lab (paramiko écrit à la main, pas netcheck) : mot de passe refusé, `root`
+refusé, 8 rebonds hors liste refusés par le bastion (passerelle, le bastion lui-même, le bouclage, une adresse hors
+lab, le port 179 ou 80 ou 2222 d'un routeur), aucune commande ni shell exécutés, ni terminal, ni X11, ni `-R` ; fichier
+de clé en 0644, en lien symbolique, protégé sans phrase secrète, phrase secrète fausse : refus, code 3. **Lab FRR** :
+authentification par clé des routeurs (mot de passe d'inventaire volontairement faux), mauvaise clé = refus sans repli,
+puis **connexion directe coupée** (`AllowUsers netops@<bastion>` dans le `sshd` de chaque routeur, un fichier du
+conteneur) : les 5 routeurs injoignables en direct, joignables **seulement** par le bastion (diff sans constat, intent du
+lab sur le relevé pris par le bastion : OSPF/OSPFv3 Full partout, eBGP IPv4 et IPv6 Established), puis retour
+explicite **prouvé** (diff avant ↔ retour sans constat, `health.py` vert).
+
+Ressources (C24, mesurées) : image du bastion **14,2 Mo**, RAM du conteneur **≈ 2,5 Mo** au repos (sshd seul).
+**Limites** : un seul bastion (pas de chaîne), pas de certificats SSH ni de clés DSA, clés de routeur posées par le
+lab sur FRR seulement (C5 pour SR Linux et cEOS). Le journal du bastion montre des « Read error … Connection reset by
+peer » à chaque fermeture de session : paramiko ferme sans « disconnect » ; sans conséquence, mais ne les prenez pas
+pour une attaque.
+
 ### Codes retour
 
 | Commande | 0 | 1 | 2 | 3 | 70 |
@@ -664,7 +758,7 @@ Le script enchaîne 28 contrôles automatiques et renvoie le code 0 si tout pass
 | Étape | Ce qui est vérifié |
 |---|---|
 | Prérequis | Docker sans sudo, containerlab, module venv de Python |
-| Déploiement | construction de l'image, 7 conteneurs en état running |
+| Déploiement | construction des images (FRR et bastion), 8 conteneurs en état running |
 | Routage | voisins OSPF Full sur chaque routeur, eBGP Established avec 2 préfixes dans chaque sens, route vers le LAN distant, ping et chemin exact pc1 → pc2 |
 | Automatisation | environnement Python créé si besoin, `health.py`, `backup.py --baseline` et `drift.py` au vert |
 | Pannes simulées | coût OSPF modifié sur r2 et session BGP coupée sur r4 : `health.py` et `drift.py` doivent les détecter, pc2 doit devenir injoignable |
