@@ -156,13 +156,28 @@ d = data["derogations"]
 covered = sorted((x["device"], x["object"], x["status"]) for x in d["derogated"])
 sha = hashlib.sha256(open(sys.argv[2], "rb").read()).hexdigest()
 ok = (data["violations"] == [] and data["summary"]["derogated"] == 2 and d["file"]["sha256"] == sha
-      and covered == [("r4", "eth2", "DÉROGATION"), ("r5", "eth1", "DÉROGATION")])
+      and covered == [("r4", "eth2", "DÉROGATION"), ("r5", "eth1", "DÉROGATION")] and "coverage_notes" not in data)
 sys.exit(0 if ok else 1)
 PY
 out=$($NC check "${SEC[@]}" --derogations "$DER" --today 2027-01-05 2>&1); code=$?
 [[ "$code" == "2" ]] && echo "$out" | grep -q "expirée le 2027-01-04" \
   && ok "après la date d'expiration (--today 2027-01-05) : de nouveau code 2, « expirée le 2027-01-04 » dit" \
   || { ko "dérogation expirée mal gérée (code $code)"; echo "$out"; }
+
+
+# ---------------------------------------------------------------- C3b : l'IPv6 n'est jamais un silence (phase B4)
+title "C3b : security.yml SEUL sur ce lab en double pile -> information de couverture (« IPv6 configuré, aucune règle IPv6 chargée »)"
+out=$($NC check --rules netcheck/rules/security.yml --json "$JSON_DIR/c3b.json" 2>&1); code=$?
+[[ "$code" == "0" ]] && ok "code retour = 0 (l'information ne change pas le verdict)" || { ko "code retour = $code (attendu 0)"; echo "$out"; }
+echo "$out" | tr -s '[:space:]' ' ' | grep -q "aucune règle IPv6 chargée" \
+  && ok "terminal : l'absence de règle IPv6 est dite" || { ko "terminal : information de couverture absente"; echo "$out"; }
+$NC_PY - "$JSON_DIR/c3b.json" <<'PY' && ok "JSON : coverage_notes nomme r1 à r5, compté à part (summary.coverage_notes = 1)" || ko "JSON : information de couverture inattendue"
+import json, sys
+data = json.load(open(sys.argv[1]))
+note = data["coverage_notes"][0]
+sys.exit(0 if (note["kind"] == "ipv6-sans-regle" and note["devices"] == ["r1", "r2", "r3", "r4", "r5"]
+               and data["summary"]["coverage_notes"] == 1 and data["violations"] == []) else 1)
+PY
 
 # ---------------------------------------------------------------- C4 : authentification OSPFv3 retirée (phase B3)
 title "C4 : suppression de l'authentification OSPFv3 de r1 eth1 -> NON CONFORME (r1 eth1, hors dérogation), puis retour prouvé"

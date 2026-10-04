@@ -258,8 +258,8 @@ VRAIES configurations relevées sur les labs en double pile (`tests/test_ipv6_ru
 | Silence | Règle | Ce qui a changé |
 |---|---|---|
 | Authentification OSPFv3 | `ospf6-authentification` (FRR), `eos-ospf6-authentification-ipsec` (EOS), `srlinux-ospf6-authentification-keychain` (SR Linux), dans `netcheck/rules/security-ipv6.yml` | Toute interface OSPFv3 active (`ipv6 ospf6 area`, pas passive) doit être authentifiée. |
-| `::/0` en entrée | `ebgp-pas-de-route-par-defaut` (inchangée) | Lit aussi `match ipv6 address prefix-list` et les `ipv6 prefix-list` : une entrée `permit` dont le réseau est `::/0` (`le`/`ge` compris, écriture libre). |
-| Préfixe local en entrée | `ebgp-pas-de-reinjection-de-prefixes-locaux` (inchangée) | Compare aussi les préfixes IPv6 des `network` de l'`address-family ipv6 unicast`. |
+| `::/0` en entrée | `ebgp-pas-de-route-par-defaut` (FRR ; EOS depuis B4) | Lit aussi `match ipv6 address prefix-list` et les `ipv6 prefix-list` : une entrée `permit` dont le réseau est `::/0` (`le`/`ge` compris, écriture libre). |
+| Préfixe local en entrée | `ebgp-pas-de-reinjection-de-prefixes-locaux` (FRR ; EOS depuis B4) | Compare aussi les préfixes IPv6 des `network` de l'`address-family ipv6 unicast`. |
 
 Il n'existe **aucun mécanisme d'authentification OSPFv3 commun** aux trois constructeurs (constaté, pas supposé) :
 FRR 10.2.1 n'a que l'en-tête d'authentification de la RFC 7166 (`key-id … key …` ou `keychain` ; `null` et `ipsec`
@@ -329,9 +329,59 @@ derogations:
 - **Limite connue** : `validated_by` est du texte libre, que netcheck ne peut pas vérifier. Une signature du fichier est
   prévue en phase J.
 
-Connus : la règle IPv4 `ebgp-pas-de-route-par-defaut` lit toute entrée (`permit` ET `deny`) dont le réseau est
-`0.0.0.0/0` (comportement de la v0.3.0, conservé : le gel le compare) ; la version IPv6 ne compte que les `permit`.
-EOS n'a ni règle de route par défaut ni règle de réinjection (même en IPv4). `monitor --derogations` lit la date du jour.
+Connu : `monitor --derogations` lit la date du jour (il n'a pas de `--today`).
+
+## L'IPv6 n'est jamais un silence, `permit` seuls, politiques d'entrée EOS (Phase B4, v4)
+
+**Information de couverture.** Si l'état relevé (adresse IPv6, voisin OSPFv3, session BGP `ipv6 unicast`, route IPv6 hors
+lien local, management exclu) ou la configuration auditée (adresse ou préfixe IPv6, `router ospf6`, `address-family
+ipv6`…) contient de l'IPv6, et qu'**aucune règle à évaluateur IPv6 ne s'applique à l'équipement**, `check` le dit :
+« IPv6 configuré (r1, …), aucune règle IPv6 chargée pour ces équipements : l'authentification OSPFv3 n'est pas auditée.
+Charge netcheck/rules/security-ipv6.yml en plus du fichier de règles ». Un évaluateur est « IPv6 » quand son driver le
+déclare (`Check.ipv6` : les trois règles d'authentification OSPFv3) : la liste ne vit pas dans le moteur. Les deux règles
+de politique d'entrée lisent bien les listes IPv6, mais ne comptent pas : `security.yml` seul laissait justement
+l'authentification OSPFv3 sans règle.
+
+| Sortie | Forme |
+|---|---|
+| Terminal | une ligne `information (couverture)` et un compteur dans la synthèse |
+| JSON | `coverage_notes` (`kind`, `devices`, `text`) et `summary.coverage_notes`, **présents seulement** quand il y a une note |
+| HTML | un paragraphe et un badge |
+| `monitor` | mêmes rapports locaux (`check.json`, `check.html`) ; jamais une alerte |
+
+C'est une **information** : aucun effet sur le code retour ni sur le statut (`CONFORME` reste `CONFORME`). Limites : une règle
+`line_present`/`line_absent` dont le motif parle d'IPv6 n'est pas reconnue comme règle IPv6 ; et l'IPv6 écrit dans la
+configuration d'une interface de management compte (le filtre du management ne s'applique qu'à l'état relevé).
+
+**`permit` seuls, IPv4 comme IPv6.** Seules les entrées `permit` d'une prefix-list autorisent un préfixe. La v0.3.0
+comptait aussi les `deny` IPv4 et signalait donc `deny 0.0.0.0/0` (le bon filtre) comme une autorisation, de même que
+`deny <notre préfixe>` ; l'IPv4 est alignée sur l'IPv6 (B3). L'ordre des entrées n'est pas simulé (premier correspondant) :
+un `permit` est signalé même précédé d'un `deny` plus large.
+
+**EOS : les deux règles de politique d'entrée.** Depuis la v0.3.0, EOS n'avait ni règle « pas de route par défaut en entrée »
+ni règle « pas de réinjection de nos préfixes en entrée » (un silence). Les règles `ebgp-pas-de-route-par-defaut` et
+`ebgp-pas-de-reinjection-de-prefixes-locaux` sont maintenant `drivers: [frr, eos]` (mêmes kinds, mêmes textes de constat,
+`drivers/ebgp_filters.py`), IPv4 et IPv6, avec le **voisin effectif** : un membre de peer group hérite de la
+route-map d'entrée de son groupe, et son réglage propre masque celui du groupe **famille d'adresses par famille**
+(`BgpView.lines_by_family`) ; une plage de voisins dynamiques hérite aussi de son groupe. Syntaxes relevées sur cEOS 4.34.8M
+dans des sessions de configuration abandonnées :
+
+| Objet | Ce que fait EOS |
+|---|---|
+| `ipv6 prefix-list` | **toujours en sous-mode** (`ipv6 prefix-list NOM` puis `seq N permit …` indenté) ; la forme sur une ligne est refusée (« Invalid input ») |
+| `ip prefix-list` | sur **une ligne** OU en **sous-mode** ; dès qu'une liste IPv4 est saisie en sous-mode, EOS réécrit toutes les autres ainsi |
+| `seq N` | facultatif à la saisie (affiché avec un numéro) |
+| route-map en entrée | sous `router bgp` (IPv4) **ou** sous `address-family` ; EOS refuse la même ligne aux deux endroits (« Cannot configure route-map … while … is configured in mode … ») |
+| `seq …` non indenté | appliqué à la liste ouverte, quelle que soit l'indentation : signalé comme les autres sous-commandes (ligne NON lue) |
+
+Les deux formes de prefix-list sont lues. Seules les séquences `permit` d'un route-map comptent : `route-map X deny 5` +
+une liste qui contient `0.0.0.0/0` est la manière classique de REFUSER la route par défaut, pas une faute.
+
+**Limites connues.** Les évaluateurs FRR de ces deux règles ne lisent que le **premier** route-map en entrée d'un
+voisin (un voisin actif dans deux familles avec deux route-maps n'en voit qu'un) et lisent aussi les séquences `deny`
+d'un route-map (une séquence `deny` + une liste qui contient `0.0.0.0/0` est signalée à tort) : l'évaluateur EOS, lui,
+lit tous les route-maps par famille et ignore les séquences `deny`. À aligner sur EOS, sur décision (écart du gel à
+valider). Aucune des deux règles ne simule l'ordre des séquences.
 
 ## Sécurité
 
@@ -565,7 +615,7 @@ vit dans les drivers :
 | `configdir.py` | 153 | `check --config-dir` |
 
 Ajouter un 4e constructeur ne touche donc plus `compliance.py` : un `<constructeur>_rules.py`, un
-`parse_config` et deux lignes de registre (l'import et l'entrée de `drivers/registry.py`). Les tests passent de **695 (v0.3.0) à 1542**.
+`parse_config` et deux lignes de registre (l'import et l'entrée de `drivers/registry.py`). Les tests passent de **695 (v0.3.0) à 1664**.
 
 ## Reconnaissance du loopback (`is_loopback`)
 

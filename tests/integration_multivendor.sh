@@ -208,7 +208,7 @@ data = json.load(open(sys.argv[1]))
 d = data["derogations"]
 sha = hashlib.sha256(open(sys.argv[2], "rb").read()).hexdigest()
 ok = (data["violations"] == [] and data["summary"]["derogated"] == 2 and d["file"]["sha256"] == sha
-      and sorted(x["device"] for x in d["derogated"]) == ["r4", "r5"])
+      and sorted(x["device"] for x in d["derogated"]) == ["r4", "r5"] and "coverage_notes" not in data)
 sys.exit(0 if ok else 1)
 PY
 out=$($NC check "${INV[@]}" "${SEC[@]}" --derogations "$DER" --today 2027-01-05 2>&1); code=$?
@@ -218,6 +218,20 @@ out=$($NC check "${INV[@]}" "${SEC[@]}" --derogations "$DER" --today 2027-01-05 
 out=$($NC check "${INV[@]}" "${SEC[@]}" 2>&1); code=$?
 [[ "$code" == "2" ]] && echo "$out" | grep -q "ospf6" && ok "sans dérogation : le défaut OSPFv3 réel du lien r4-r5 est signalé (code 2)" \
   || { ko "défaut OSPFv3 non signalé sans dérogation (code $code)"; echo "$out"; }
+
+# ---------------------------------------------------------------- C3b : l'IPv6 n'est jamais un silence (phase B4)
+title "C3b : security.yml SEUL sur ce lab en double pile -> information de couverture (« IPv6 configuré, aucune règle IPv6 chargée »)"
+out=$($NC check "${INV[@]}" --rules netcheck/rules/security.yml --json "$JSON_DIR/c3b.json" 2>&1); code=$?
+[[ "$code" == "0" ]] && ok "code retour = 0 (l'information ne change pas le verdict)" || { ko "code retour = $code (attendu 0)"; echo "$out"; }
+echo "$out" | tr -s '[:space:]' ' ' | grep -q "aucune règle IPv6 chargée" \
+  && ok "terminal : l'absence de règle IPv6 est dite" || { ko "terminal : information de couverture absente"; echo "$out"; }
+$NC_PY - "$JSON_DIR/c3b.json" <<'PY' && ok "JSON : coverage_notes nomme r1 à r5, compté à part (summary.coverage_notes = 1)" || ko "JSON : information de couverture inattendue"
+import json, sys
+data = json.load(open(sys.argv[1]))
+note = data["coverage_notes"][0]
+sys.exit(0 if (note["kind"] == "ipv6-sans-regle" and note["devices"] == ["r1", "r2", "r3", "r4", "r5"]
+               and data["summary"]["coverage_notes"] == 1 and data["violations"] == []) else 1)
+PY
 
 
 # ---------------------------------------------------------------- M1 : monitor sur les deux drivers
@@ -237,9 +251,13 @@ wait_stable() {
 }
 wait_stable && ok "réseau stable avant la référence (deux relevés identiques)" || ko "réseau jamais stable"
 $NC snapshot m1_nominal --force "${INV[@]}" >/dev/null
+# monitor lit l'horloge (il n'a pas de --today) : la dérogation est une copie de celle du lab, validée aujourd'hui et
+# valable 60 jours, calculée à l'exécution : aucune date n'est écrite en dur, rien ne dépend du calendrier.
+DER_FRESH="$JSON_DIR/derogations_fraiches.yml"
+sed -e "s/^\(    validated_on:\).*/\1 $(date +%F)/" -e "s/^\(    expires:\).*/\1 $(date -d '+60 days' +%F)/" "$DER" > "$DER_FRESH"
 # shellcheck disable=SC2086  # $NC est volontairement découpé en mots (interpréteur + -m netcheck)
 out=$(env -u NETCHECK_WEBHOOK_URL $NC monitor --baseline m1_nominal --intent intents/lab-multivendor.yml \
-  --rules netcheck/rules/default.yml --state-file "$M_STATE" "${INV[@]}" 2>&1); code=$?
+  "${SEC[@]}" --derogations "$DER_FRESH" --state-file "$M_STATE" "${INV[@]}" 2>&1); code=$?
 [[ "$code" == "0" ]] && ok "code retour = 0" || { ko "code retour = $code (attendu 0)"; echo "$out"; }
 echo "$out" | grep -q "netcheck monitor : OK (diff OK · assert OK · check OK)" \
   && ok "statut OK sur les trois composants (r5 SR Linux inclus)" || { ko "statut inattendu"; echo "$out"; }

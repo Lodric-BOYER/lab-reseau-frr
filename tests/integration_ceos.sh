@@ -18,6 +18,10 @@ LAB=clab-frr-lab-ceos
 NC="netcheck/.venv/bin/python -m netcheck"
 NC_PY="netcheck/.venv/bin/python"
 INV=(-i automation/inventory-ceos.yml)  # doit venir APRÈS la sous-commande (argparse)
+# Les deux fichiers de règles (le second est IPv6) et la dérogation du lab, à une date FIXE (--today) : le scénario
+# ne dépend pas du calendrier (la dérogation du lab expire le 2027-01-04).
+SEC=(--rules netcheck/rules/security.yml --rules netcheck/rules/security-ipv6.yml)
+DER=derogations/lab-ceos.yml
 JSON_DIR=/tmp/netcheck_integration_ceos
 mkdir -p "$JSON_DIR"
 # Les identifiants viennent de l'inventaire (valeurs par défaut du lab) : on neutralise un
@@ -82,14 +86,16 @@ $NC snapshot s1_apres --force "${INV[@]}" >/dev/null
 run_diff s1 0 OK ""
 
 # ---------------------------------------------------------------- C1 : conformité nominale
-title "C1 : conformité du lab nominal (default.yml + security.yml) -> conforme"
-for rules in netcheck/rules/default.yml netcheck/rules/security.yml; do
-  name=$(basename "$rules" .yml)
-  out=$($NC check --rules "$rules" --json "$JSON_DIR/c1_$name.json" "${INV[@]}" 2>&1); code=$?
-  [[ "$code" == "0" ]] && ok "$name : code retour = 0" || { ko "$name : code retour = $code (attendu 0)"; echo "$out"; }
-  echo "$out" | grep -q "Conformité : CONFORME" && ok "$name : conformité = CONFORME" \
-    || { ko "$name : conformité inattendue"; echo "$out"; }
-done
+title "C1 : conformité du lab nominal (default.yml, puis security.yml + security-ipv6.yml + dérogation du lab) -> conforme"
+out=$($NC check --rules netcheck/rules/default.yml --json "$JSON_DIR/c1_default.json" "${INV[@]}" 2>&1); code=$?
+[[ "$code" == "0" ]] && ok "default : code retour = 0" || { ko "default : code retour = $code (attendu 0)"; echo "$out"; }
+echo "$out" | grep -q "Conformité : CONFORME" && ok "default : conformité = CONFORME" \
+  || { ko "default : conformité inattendue"; echo "$out"; }
+out=$($NC check "${SEC[@]}" --derogations "$DER" --today 2026-10-05 --json "$JSON_DIR/c1_security.json" "${INV[@]}" 2>&1); code=$?
+[[ "$code" == "0" ]] && ok "security + security-ipv6 + dérogation : code retour = 0" \
+  || { ko "security + security-ipv6 + dérogation : code retour = $code (attendu 0)"; echo "$out"; }
+echo "$out" | grep -q "Conformité : CONFORME" && ok "security + security-ipv6 + dérogation : conformité = CONFORME" \
+  || { ko "security + security-ipv6 + dérogation : conformité inattendue"; echo "$out"; }
 python3 - "$JSON_DIR/c1_security.json" <<'PY' && ok "règles EOS évaluées sur r4 (jamais « non applicables »), « non applicables » sur les FRR" \
   || ko "règles EOS mal réparties entre r4 et les routeurs FRR"
 import json, sys
@@ -100,6 +106,22 @@ eos_rules = {"eos-ospf-authentification-message-digest", "eos-ebgp-authentificat
 assert not [p for p in pairs if p[0] == "r4" and p[1] in eos_rules], "règle EOS ignorée sur r4"
 assert all(("r5", r) in pairs and ("r1", r) in pairs for r in eos_rules), "règle EOS appliquée à un routeur FRR"
 assert ("r4", "ospf-authentification-message-digest") in pairs, "règle FRR appliquée à r4"
+# Phase B4 : les deux règles de politique d'entrée sont évaluées sur r4 (EOS) comme sur r3 (FRR).
+for rule in ("ebgp-pas-de-route-par-defaut", "ebgp-pas-de-reinjection-de-prefixes-locaux"):
+    assert ("r4", rule) not in pairs and ("r3", rule) not in pairs, f"{rule} non évaluée sur r3 ou r4"
+PY
+
+title "C1b : security.yml SEUL sur ce lab en double pile -> information de couverture (« IPv6 configuré, aucune règle IPv6 chargée »)"
+out=$($NC check --rules netcheck/rules/security.yml --json "$JSON_DIR/c1b.json" "${INV[@]}" 2>&1); code=$?
+[[ "$code" == "0" ]] && ok "code retour = 0 (l'information ne change pas le verdict)" || { ko "code retour = $code (attendu 0)"; echo "$out"; }
+echo "$out" | tr -s '[:space:]' ' ' | grep -q "aucune règle IPv6 chargée" \
+  && ok "terminal : l'absence de règle IPv6 est dite" || { ko "terminal : information de couverture absente"; echo "$out"; }
+$NC_PY - "$JSON_DIR/c1b.json" <<'PY' && ok "JSON : coverage_notes nomme r1 à r5, compté à part (summary.coverage_notes = 1)" || ko "JSON : information de couverture inattendue"
+import json, sys
+data = json.load(open(sys.argv[1]))
+note = data["coverage_notes"][0]
+sys.exit(0 if (note["kind"] == "ipv6-sans-regle" and note["devices"] == ["r1", "r2", "r3", "r4", "r5"]
+               and data["summary"]["coverage_notes"] == 1 and data["violations"] == []) else 1)
 PY
 
 # ---------------------------------------------------------------- A1 : état attendu
@@ -180,7 +202,7 @@ management api netconf
 end
 EOF
 sleep 3
-out=$($NC check --rules netcheck/rules/security.yml --json "$JSON_DIR/n2.json" "${INV[@]}" 2>&1); code=$?
+out=$($NC check "${SEC[@]}" --derogations "$DER" --today 2026-10-05 --json "$JSON_DIR/n2.json" "${INV[@]}" 2>&1); code=$?
 eosconf <<'EOF'
 configure
 no management api http-commands
@@ -198,7 +220,7 @@ assert {x["device"] for x in v} == {"r4"} and len(v) == 3, v
 text = " ".join(x["detail"] for x in v)
 assert "eAPI" in text and "gNMI" in text and "NETCONF" in text
 PY
-out=$($NC check --rules netcheck/rules/security.yml "${INV[@]}" 2>&1); code=$?
+out=$($NC check "${SEC[@]}" --derogations "$DER" --today 2026-10-05 "${INV[@]}" 2>&1); code=$?
 [[ "$code" == "0" ]] && echo "$out" | grep -q "Conformité : CONFORME" \
   && ok "retour à la normale : conforme de nouveau (API retirées)" || { ko "toujours non conforme après le retrait des API"; echo "$out"; }
 
@@ -276,11 +298,6 @@ done
 wait_identical n3 && ok "preuve de retour : l'état actuel est identique à l'état d'avant (aucun constat)" \
   || ko "l'état actuel diffère de l'état d'avant la coupure"
 
-# Les deux fichiers de règles et la dérogation du lab, à une date FIXE (--today) : le scénario ne dépend pas du
-# calendrier (la dérogation du lab expire le 2027-01-04).
-SEC=(--rules netcheck/rules/security.yml --rules netcheck/rules/security-ipv6.yml)
-DER=derogations/lab-ceos.yml
-
 # ---------------------------------------------------------------- C3 : dérogations (phase B3)
 title "C3 : check (règles IPv6 + dérogation du lab) -> conforme, le lien r4-r5 en DÉROGATION des DEUX côtés"
 out=$($NC check "${INV[@]}" "${SEC[@]}" --derogations "$DER" --today 2026-10-05 --json "$JSON_DIR/c3.json" 2>&1); code=$?
@@ -292,7 +309,7 @@ data = json.load(open(sys.argv[1]))
 d = data["derogations"]
 sha = hashlib.sha256(open(sys.argv[2], "rb").read()).hexdigest()
 ok = (data["violations"] == [] and data["summary"]["derogated"] == 2 and d["file"]["sha256"] == sha
-      and sorted(x["device"] for x in d["derogated"]) == ["r4", "r5"])
+      and sorted(x["device"] for x in d["derogated"]) == ["r4", "r5"] and "coverage_notes" not in data)
 sys.exit(0 if ok else 1)
 PY
 out=$($NC check "${INV[@]}" "${SEC[@]}" --derogations "$DER" --today 2027-01-05 2>&1); code=$?
@@ -303,6 +320,112 @@ out=$($NC check "${INV[@]}" "${SEC[@]}" 2>&1); code=$?
 [[ "$code" == "2" ]] && echo "$out" | grep -q "ospf6" && ok "sans dérogation : le défaut OSPFv3 réel du lien r4-r5 est signalé (code 2)" \
   || { ko "défaut OSPFv3 non signalé sans dérogation (code $code)"; echo "$out"; }
 
+
+# ---------------------------------------------------------------- C6 : politiques d'entrée EOS (phase B4)
+bgp4_state() {   # $1 = r3 (FRR) ou r4 (cEOS) : la session eBGP IPv4 est-elle Established ?
+  if [[ "$1" == "r3" ]]; then docker exec "$LAB-r3" vtysh -c "show bgp ipv4 unicast summary json" 2>/dev/null | grep -q '"state":"Established"'
+  else docker exec "$LAB-r4" Cli -p 15 -c "show ip bgp summary | json" 2>/dev/null | grep -q '"peerState": "Established"'; fi
+}
+ospf6_full() {   # OSPFv3 Full des deux côtés du lien r4-r5 (r4 cEOS, r5 FRR)
+  docker exec "$LAB-r4" Cli -p 15 -c "show ospfv3 neighbor" 2>/dev/null | grep -qi full \
+    && docker exec "$LAB-r5" vtysh -c "show ipv6 ospf6 neighbor" 2>/dev/null | grep -qi full
+}
+adjacencies_ok() {   # OSPF, OSPFv3 et eBGP IPv4 + IPv6 en place (les règles de sécurité de la phase ne coupent rien)
+  [[ "$(ospf_full_r4)" == "1" && "$(ospf_full_r5)" == "1" ]] && ospf6_full \
+    && bgp4_state r3 && bgp4_state r4 && bgp6_state r3 && bgp6_state r4
+}
+title "C6 : route par défaut et préfixe local autorisés en entrée sur r4 (cEOS), IPv4 et IPv6 -> NON CONFORME, puis retour prouvé"
+adjacencies_ok && ok "avant : OSPF, OSPFv3, eBGP IPv4 et IPv6 en place" || ko "adjacences incomplètes avant C6"
+# Jamais de `write` : la configuration de démarrage de r4 vient des fichiers du dépôt, et son empreinte ne bouge pas.
+startup_hash() { docker exec "$LAB-r4" Cli -p 15 -c "show startup-config" | sha256sum | cut -d' ' -f1; }
+STARTUP_BEFORE=$(startup_hash)
+$NC snapshot c6_avant --force "${INV[@]}" >/dev/null
+eosconf <<'EOF'
+configure
+ip prefix-list PL-EBGP-IN seq 90 permit 0.0.0.0/0 le 32
+ip prefix-list PL-EBGP-IN seq 91 permit 10.2.0.0/16
+ipv6 prefix-list PL6-EBGP-IN
+   seq 90 permit ::/0 le 128
+   seq 91 permit 2001:db8:2::/48
+end
+EOF
+sleep 4
+adjacencies_ok && ok "pendant l'injection : OSPF, OSPFv3, eBGP IPv4 et IPv6 toujours en place" || ko "une adjacence a lâché pendant l'injection"
+docker exec "$LAB-r4" Cli -p 15 -c "show running-config" > "$JSON_DIR/c6_listes_r4.txt"   # lecture seule : fixture du gel
+out=$($NC check "${INV[@]}" "${SEC[@]}" --derogations "$DER" --today 2026-10-05 --json "$JSON_DIR/c6_listes.json" 2>&1); code=$?
+eosconf <<'EOF'
+configure
+no ip prefix-list PL-EBGP-IN seq 90
+no ip prefix-list PL-EBGP-IN seq 91
+ipv6 prefix-list PL6-EBGP-IN
+   no seq 90
+   no seq 91
+end
+EOF
+[[ "$code" == "2" ]] && ok "listes : code retour = 2" || { ko "listes : code retour = $code (attendu 2)"; echo "$out"; }
+$NC_PY - "$JSON_DIR/c6_listes.json" <<'PY' && ok "listes : 4 violations sur r4 (défaut et réinjection, IPv4 et IPv6), les 2 dérogations du lab intactes" || ko "listes : violations inattendues"
+import json, sys
+data = json.load(open(sys.argv[1]))
+v = sorted((x["rule_id"], x["device"], x["object"]) for x in data["violations"])
+expected = sorted([("ebgp-pas-de-route-par-defaut", "r4", "172.16.34.1"),
+                   ("ebgp-pas-de-route-par-defaut", "r4", "2001:db8:34::2"),
+                   ("ebgp-pas-de-reinjection-de-prefixes-locaux", "r4", "172.16.34.1"),
+                   ("ebgp-pas-de-reinjection-de-prefixes-locaux", "r4", "2001:db8:34::2")])
+sys.exit(0 if v == expected and data["summary"]["derogated"] == 2 else 1)
+PY
+wait_identical c6 && ok "preuve de retour (listes) : l'état actuel est identique à l'état d'avant (aucun constat)" \
+  || ko "l'état actuel diffère de l'état d'avant (listes)"
+
+# Peer group : la route-map d'entrée du GROUPE laisse passer la route par défaut et un préfixe local ; le membre
+# fictif (192.0.2.0/24, jamais routé) hérite de la politique de son groupe : c'est lui qu'il faut voir.
+eosconf <<'EOF'
+configure
+ip prefix-list PL-TEST-IN seq 10 permit 0.0.0.0/0 le 32
+ip prefix-list PL-TEST-IN seq 20 permit 192.168.2.0/24
+route-map RM-TEST-IN permit 10
+   match ip address prefix-list PL-TEST-IN
+router bgp 65002
+   neighbor PG-TEST peer group
+   neighbor PG-TEST remote-as 65099
+   neighbor PG-TEST route-map RM-TEST-IN in
+   neighbor 192.0.2.77 peer group PG-TEST
+end
+EOF
+sleep 4
+adjacencies_ok && ok "pendant l'injection (peer group) : OSPF, OSPFv3, eBGP IPv4 et IPv6 toujours en place" || ko "une adjacence a lâché pendant l'injection (peer group)"
+docker exec "$LAB-r4" Cli -p 15 -c "show running-config" > "$JSON_DIR/c6_groupe_r4.txt"   # lecture seule : fixture du gel
+out=$($NC check "${INV[@]}" "${SEC[@]}" --derogations "$DER" --today 2026-10-05 --json "$JSON_DIR/c6_groupe.json" 2>&1); code=$?
+eosconf <<'EOF'
+configure
+router bgp 65002
+   no neighbor 192.0.2.77 peer group PG-TEST
+   no neighbor PG-TEST peer group
+exit
+no route-map RM-TEST-IN
+no ip prefix-list PL-TEST-IN
+end
+EOF
+[[ "$code" == "2" ]] && ok "peer group : code retour = 2" || { ko "peer group : code retour = $code (attendu 2)"; echo "$out"; }
+$NC_PY - "$JSON_DIR/c6_groupe.json" <<'PY' && ok "peer group : le membre 192.0.2.77 est signalé pour la route par défaut ET pour le préfixe local, avec son groupe" || ko "peer group : violations du membre inattendues"
+import json, sys
+data = json.load(open(sys.argv[1]))
+rows = {(x["rule_id"], x["object"]): x["detail"] for x in data["violations"] if x["device"] == "r4"}
+d = rows.get(("ebgp-pas-de-route-par-defaut", "192.0.2.77"), "")
+o = rows.get(("ebgp-pas-de-reinjection-de-prefixes-locaux", "192.0.2.77"), "")
+ok = "voisin eBGP 192.0.2.77 (peer group PG-TEST)" in d and "autorise 0.0.0.0/0" in d \
+     and "voisin eBGP 192.0.2.77 (peer group PG-TEST)" in o and "autorise 192.168.2.0/24" in o \
+     and not any("PG-TEST)" in v and "voisin eBGP PG-TEST" in v for v in rows.values())
+sys.exit(0 if ok else 1)
+PY
+wait_identical c6 && ok "preuve de retour (peer group) : l'état actuel est identique à l'état d'avant (aucun constat)" \
+  || ko "l'état actuel diffère de l'état d'avant (peer group)"
+adjacencies_ok && ok "après : OSPF, OSPFv3, eBGP IPv4 et IPv6 en place" || ko "adjacences incomplètes après C6"
+out=$($NC check "${INV[@]}" "${SEC[@]}" --derogations "$DER" --today 2026-10-05 2>&1); code=$?
+[[ "$code" == "0" ]] && ok "check de nouveau conforme après le retour" || { ko "check non conforme après le retour"; echo "$out"; }
+[[ "$(docker exec "$LAB-r4" Cli -p 15 -c "show configuration sessions" | awk '/^ *---- /{t=1; next} t && NF' | wc -l)" == "0" ]] \
+  && ok "aucune session de configuration en attente sur r4" || ko "session de configuration en attente sur r4"
+[[ "$(startup_hash)" == "$STARTUP_BEFORE" ]] && ok "la configuration de démarrage de r4 n'a pas bougé (empreinte identique, aucun write)" \
+  || ko "la configuration de démarrage de r4 a changé"
 
 # ---------------------------------------------------------------- G1 : guard + rollback sur cEOS
 title "G1 : guard encadre une coupure d'interface cEOS (shutdown Ethernet2) + rollback valide -> code 4, retour prouvé"
@@ -344,7 +467,11 @@ recorder_pid=$!
 for _ in $(seq 1 50); do [[ -s "$M_PORT" ]] && break; sleep 0.2; done
 M_PORT_NUMBER=$(cat "$M_PORT")
 export NETCHECK_WEBHOOK_URL="http://127.0.0.1:$M_PORT_NUMBER/hook/SENTINEL-WEBHOOK-TOKEN-ceos"
-mon() { $NC monitor --baseline m1_nominal --intent intents/lab-ceos.yml --rules netcheck/rules/security.yml \
+# monitor lit l'horloge (il n'a pas de --today) : la dérogation est une copie de celle du lab, validée aujourd'hui et
+# valable 60 jours, calculée à l'exécution : aucune date n'est écrite en dur, rien ne dépend du calendrier.
+DER_FRESH="$JSON_DIR/derogations_fraiches.yml"
+sed -e "s/^\(    validated_on:\).*/\1 $(date +%F)/" -e "s/^\(    expires:\).*/\1 $(date -d '+60 days' +%F)/" "$DER" > "$DER_FRESH"
+mon() { $NC monitor --baseline m1_nominal --intent intents/lab-ceos.yml "${SEC[@]}" --derogations "$DER_FRESH" \
   --state-file "$M_STATE" "${INV[@]}" 2>&1; }
 out=$(mon); code=$?
 [[ "$code" == "0" ]] && echo "$out" | grep -q "netcheck monitor : OK (diff OK · assert OK · check OK)" \

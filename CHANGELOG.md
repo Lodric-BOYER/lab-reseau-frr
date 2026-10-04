@@ -87,6 +87,15 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   v0.3.0 sur des configurations réelles, leurs mutations et des sondes ; les écarts voulus sont tracés
   dans `meta.revisions`.
 
+- **Phase B4, l'IPv6 n'est jamais un silence.** Quand l'état relevé ou la configuration auditée contient de l'IPv6 et
+  qu'aucune règle IPv6 ne s'applique à l'équipement, `check` (et `monitor`, dans ses rapports) le dit en information
+  dans les trois sorties (« IPv6 configuré, aucune règle IPv6 chargée »), sans effet sur le code retour. Un évaluateur est
+  « IPv6 » quand son driver le déclare (`Check.ipv6`).
+- **Phase B4, EOS : les règles « pas de route par défaut en entrée » et « pas de réinjection de nos préfixes en entrée »**
+  (IPv4 et IPv6, peer groups compris, famille par famille), mutations de vraies configurations, preuve en direct sur le
+  lab cEOS (injection puis retour prouvé, `tests/integration_ceos.sh`, C6). Un seul texte de constat pour FRR et EOS
+  (`drivers/ebgp_filters.py`).
+
 ### Modifié
 
 - **Phase B3, règles IPv6 : les trois silences sont fermés.** L'authentification OSPFv3 (trois règles, une par
@@ -187,6 +196,17 @@ Défauts communs à FRR et EOS, sur les peer groups (relevés sur r3 et r4, mesu
 - **`remote-as external|internal` ignoré (FRR)** : un voisin `external` n'était jamais audité. EOS refuse
   ces deux formes (`% Invalid input`, relevé sur cEOS 4.34.8M).
 
+Phase B4 :
+
+- **`deny` IPv4 d'une prefix-list lu comme une autorisation (FRR).** `ebgp-pas-de-route-par-defaut` et
+  `ebgp-pas-de-reinjection-de-prefixes-locaux` comptaient toute entrée IPv4, `deny` compris : `deny 0.0.0.0/0` (le bon
+  filtre) ou `deny <notre préfixe>` étaient signalés comme des autorisations (faux positifs, code 2). Seuls les `permit`
+  comptent, comme en IPv6 depuis la phase B3. Aucune entrée du gel de référence ne contient de `deny` : zéro écart du gel.
+- **EOS : deux règles qui ne lisaient pas EOS (silence depuis la v0.3.0).** Une route par défaut ou un préfixe local
+  autorisé en entrée d'un voisin eBGP d'un routeur EOS n'était signalé par aucune règle (« non applicable » : `drivers:
+  [frr]`). Les deux règles sont maintenant `drivers: [frr, eos]`. Écart du gel : les réponses des cas EOS perdent deux
+  lignes « non applicable » et les sondes d'ajout de `0.0.0.0/0` à `PL-EBGP-IN` sont désormais signalées.
+
 ### Connu
 
 - **Peer groups SR Linux hors périmètre** : r5 n'a pas de BGP dans ce lab, donc aucun relevé réel ; les
@@ -201,9 +221,11 @@ Défauts communs à FRR et EOS, sur les peer groups (relevés sur r3 et r4, mesu
   dérogation datée par lab (`derogations/*.yml`, expire le 2027-01-04, à renouveler ou à retirer).
 - Le BGP des VRF n'est relevé par aucun driver (section `bgp_vrf`) ; OSPF n'est relevé que pour la VRF `default` ; les
   routes de lien local ne sont pas comparées par `diff`.
-- `ebgp-pas-de-route-par-defaut` lit en IPv4 toute entrée dont le réseau est `0.0.0.0/0`, `deny` compris (comportement
-  de la v0.3.0, conservé : le gel le compare) ; en IPv6 seules les entrées `permit` comptent. EOS n'a ni règle de route
-  par défaut ni règle de réinjection. `validated_by` d'une dérogation est un texte libre non vérifiable (signature en phase J).
+- `validated_by` d'une dérogation est un texte libre non vérifiable (signature en phase J). `monitor --derogations`
+  lit la date du jour (pas de `--today`).
+- Règles de politique d'entrée : l'évaluateur FRR ne lit que le premier route-map en entrée d'un voisin et compte aussi
+  les séquences `deny` d'un route-map (faux positif sur `route-map X deny 5` + liste contenant `0.0.0.0/0`) ; l'évaluateur
+  EOS lit tous les route-maps par famille et ignore les séquences `deny`. Aucun des deux ne simule l'ordre des séquences.
 - Une keychain SR Linux sans aucune clé n'est pas détectée (comportement de la v0.3.0, conservé) :
   amélioration prévue en phase E.
 

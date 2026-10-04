@@ -67,7 +67,7 @@ lab-cEOS.clab.yml               topologie containerlab (lab v3 : FRR + Arista cE
 configs-ceos/r4/startup-config  configuration de démarrage de r4 (cEOS, syntaxe EOS)
 automation/monitor.sh               enveloppe à planifier (cron/systemd) pour `netcheck monitor`
 netcheck/                       validation de changement et conformité (snapshot/diff/check/assert/guard/monitor)
-netcheck/rules/                 règles de conformité (default.yml) et d'audit de sécurité (security.yml)
+netcheck/rules/                 règles de conformité (default.yml) et d'audit de sécurité (security.yml + security-ipv6.yml)
 intents/                        états attendus du réseau, pour `netcheck assert` (lab FRR, lab v2, lab cEOS)
 docs/audit/                     rapports d'audit de sécurité avant/après durcissement (v3)
 tests/                          fixtures et scénarios de bout en bout de netcheck
@@ -640,12 +640,15 @@ mot-clé), avec des tests sur les lignes réelles et un test qui échoue si un h
 
 ```bash
 python -m netcheck snapshot avant -i automation/inventory-ceos.yml
-python -m netcheck check --rules netcheck/rules/security.yml -i automation/inventory-ceos.yml
+python -m netcheck check --rules netcheck/rules/security.yml --rules netcheck/rules/security-ipv6.yml \
+    --derogations derogations/lab-ceos.yml -i automation/inventory-ceos.yml
 python -m netcheck assert --intent intents/lab-ceos.yml -i automation/inventory-ceos.yml
 ```
 
 `check` applique cinq règles `drivers: [eos]` à r4 (authentification OSPF, mot de passe BGP,
-GTSM, limite de routes, **API de gestion exposée**) ; les règles FRR et SR Linux y sont « non
+GTSM, limite de routes, **API de gestion exposée**), l'authentification OSPFv3 d'EOS (`security-ipv6.yml`) et, depuis la phase
+B4, les deux règles de **politique d'entrée** partagées avec FRR (pas de route par défaut, pas de réinjection de nos
+préfixes, IPv4 et IPv6, peer groups compris) ; les règles FRR et SR Linux y sont « non
 applicables » (jamais une fausse violation), et inversement. `assert` utilise les mêmes types
 d'assertion que sur les autres labs, y compris `path`, qui traverse r4 : une route `dropRoute`
 (Null0) y est un **trou noir → ÉCHEC**, même sémantique qu'en Phase C.
@@ -742,10 +745,18 @@ conception, inchangé). Rapports avant/après dans [`docs/audit/`](docs/audit/) 
 (lab non durci, Phase A -- **non conforme** volontairement, c'est le point de départ) et
 `apres-*` (lab durci, Phase B -- **conforme** sur les deux labs).
 
+Depuis la phase B3, l'audit des labs en double pile utilise **deux fichiers de règles** (`--rules` est répétable) :
+`security.yml` (v0.3.0) **et** `security-ipv6.yml` (authentification OSPFv3), et la dérogation datée du lab pour le seul
+défaut connu (lien r4–r5). Avec `security.yml` seul, `check` le dit : « IPv6 configuré, aucune règle IPv6 chargée »
+(information, dans les trois sorties ; voir `netcheck/README.md`).
+
 ```bash
-python -m netcheck check --rules netcheck/rules/security.yml
-python -m netcheck check --rules netcheck/rules/security.yml -i automation/inventory-multivendor.yml
-python -m netcheck check --rules netcheck/rules/security.yml -i automation/inventory-ceos.yml
+python -m netcheck check --rules netcheck/rules/security.yml --rules netcheck/rules/security-ipv6.yml \
+    --derogations derogations/lab.yml
+python -m netcheck check --rules netcheck/rules/security.yml --rules netcheck/rules/security-ipv6.yml \
+    --derogations derogations/lab-multivendor.yml -i automation/inventory-multivendor.yml
+python -m netcheck check --rules netcheck/rules/security.yml --rules netcheck/rules/security-ipv6.yml \
+    --derogations derogations/lab-ceos.yml -i automation/inventory-ceos.yml
 ```
 
 **Le rapport avant/après** (`docs/audit/`, fichiers `.html` autonomes et `.json`) : même règles,
@@ -759,8 +770,9 @@ même commande, avant puis après le durcissement de la Phase B.
 Ces rapports sont des **preuves datées**, produites par netcheck 0.2.0 sur les labs de l'époque :
 ils ne sont pas régénérés (le lab « avant » n'existe plus, il a été durci). Le lab Arista cEOS est
 né durci : il n'a pas de rapport « avant », mais ses preuves négatives sont rejouées par
-`tests/integration_ceos.sh` (mauvaise clé OSPF, API de gestion exposée), et `security.yml` compte
-cinq règles `drivers: [eos]`. Les secrets de ce dépôt sont décrits dans « [Secrets du lab](#secrets-du-lab) ».
+`tests/integration_ceos.sh` (mauvaise clé OSPF, API de gestion exposée, route par défaut et préfixe
+local autorisés en entrée), et `security.yml` compte cinq règles `drivers: [eos]` et deux règles de politique d'entrée
+communes à FRR et EOS. Les secrets de ce dépôt sont décrits dans « [Secrets du lab](#secrets-du-lab) ».
 
 ### Ce que l'authentification OSPF et TCP-MD5 protègent réellement (et ce qu'elles ne protègent pas)
 
@@ -902,9 +914,12 @@ local et il faut pouvoir lire exactement ce qu'on confirme.
 > relevé répété et non autorisé peut être illégal. Ce dépôt ne vise que le lab.
 
 ```bash
-python -m netcheck monitor --baseline nominal [--intent intents/lab.yml] [--rules fichier.yml] \
-    [--confirm N] [--webhook-format generic|discord] [--state-file f.json] [--dry-run] [-i inventaire]
+python -m netcheck monitor --baseline nominal [--intent intents/lab.yml] [--rules fichier.yml]... \
+    [--derogations derogations/lab.yml] [--confirm N] [--webhook-format generic|discord] [--state-file f.json] [--dry-run] [-i inventaire]
 ```
+
+Pour les labs en double pile : `--rules netcheck/rules/security.yml --rules netcheck/rules/security-ipv6.yml
+--derogations derogations/<lab>.yml` (`monitor` lit la date du jour pour les dérogations, il n'a pas de `--today`).
 
 **Une exécution = un relevé** (pas de démon : le planificateur est externe, voir plus bas). Un seul
 relevé en direct sert au diff contre la référence, aux assertions (`--intent`) et à la conformité
