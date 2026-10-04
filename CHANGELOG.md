@@ -102,6 +102,9 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   moins de 30 jours : information ; orpheline : information ; règle critique, expiration absente ou à plus de 365 jours,
   doublon : refusés. L'horloge est un paramètre (`--today`), jamais appelée par le moteur. Chaque rapport indique le
   chemin et l'empreinte SHA-256 du fichier. Une dérogation par lab (`derogations/*.yml`) couvre le lien r4–r5.
+- **Gel de référence : cas double pile ajoutés** (10 cas dans `default` et `security`, zéro ligne du gel existant
+  modifiée) et gel du nouveau fichier de règles `security-ipv6` (`golden.py record-new`), vérifiés contre des
+  attentes écrites à la main (`tests/test_golden_dualstack.py`).
 - **Scénarios d'intégration IPv6 négatifs** : authentification OSPFv3 retirée, `::/0` et préfixe local autorisés en
   entrée (lab FRR, C3 à C5), dérogation en cours et expirée (les trois labs), retour prouvé par un diff à zéro constat.
 - **`diff` : une section perdue est un constat ATTENTION.** Relevée avant et non relevée après (collecte échouée

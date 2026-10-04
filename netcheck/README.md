@@ -565,7 +565,7 @@ vit dans les drivers :
 | `configdir.py` | 153 | `check --config-dir` |
 
 Ajouter un 4e constructeur ne touche donc plus `compliance.py` : un `<constructeur>_rules.py`, un
-`parse_config` et deux lignes de registre (l'import et l'entrée de `drivers/registry.py`). Les tests passent de **695 (v0.3.0) à 1510**.
+`parse_config` et deux lignes de registre (l'import et l'entrée de `drivers/registry.py`). Les tests passent de **695 (v0.3.0) à 1542**.
 
 ## Reconnaissance du loopback (`is_loopback`)
 
