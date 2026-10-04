@@ -33,7 +33,6 @@ topology:
       exec:
         - sysctl -w net.ipv4.ip_forward=1
         - sysctl -w net.ipv6.conf.all.forwarding=1
-        - /usr/sbin/sshd
     r2:
       kind: linux
       image: frr-ssh:10.2.1
@@ -49,7 +48,6 @@ topology:
         - ip link add dum-demo type dummy
         - ip link set dum-demo master DEMO
         - ip link set dum-demo up
-        - /usr/sbin/sshd
     r3:
       kind: linux
       image: frr-ssh:10.2.1
@@ -60,7 +58,6 @@ topology:
       exec:
         - sysctl -w net.ipv4.ip_forward=1
         - sysctl -w net.ipv6.conf.all.forwarding=1
-        - /usr/sbin/sshd
 
     # --- Routeurs AS65002 : r4 = FRR inchange, r5 = Nokia SR Linux (O4) ---
     r4:
@@ -73,7 +70,6 @@ topology:
       exec:
         - sysctl -w net.ipv4.ip_forward=1
         - sysctl -w net.ipv6.conf.all.forwarding=1
-        - /usr/sbin/sshd
     r5:
       kind: nokia_srlinux
       image: ghcr.io/nokia/srlinux:26.7.2-519

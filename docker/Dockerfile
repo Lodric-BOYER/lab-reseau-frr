@@ -4,7 +4,9 @@
 #
 # Clés d'hôte SSH (phase C1) : elles ne sont PAS générées à la construction de l'image (tous les
 # conteneurs auraient la même clé, et en compromettre un permettrait d'usurper les autres), mais au
-# DÉMARRAGE de chaque conteneur, par le point d'entrée ci-dessous.
+# DÉMARRAGE de chaque conteneur, par le point d'entrée ci-dessous, qui lance ensuite sshd (et arrête le
+# conteneur si les clés ou sshd manquent). HEALTHCHECK : si sshd meurt plus tard, `docker ps` le montre
+# (« unhealthy ») au lieu de laisser un conteneur qui répond « Connection refused ».
 FROM quay.io/frrouting/frr:10.2.1
 
 RUN apk add --no-cache openssh-server \
@@ -17,6 +19,9 @@ RUN apk add --no-cache openssh-server \
 
 COPY entrypoint-sshkeys.sh /usr/local/bin/entrypoint-sshkeys.sh
 RUN chmod 755 /usr/local/bin/entrypoint-sshkeys.sh
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=2 \
+  CMD ss -ltn | grep -q ':22 ' || exit 1
 
 # Redéfinir ENTRYPOINT efface le CMD hérité de l'image FRR : on le répète tel quel.
 ENTRYPOINT ["/usr/local/bin/entrypoint-sshkeys.sh"]
