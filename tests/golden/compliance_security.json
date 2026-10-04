@@ -344,6 +344,881 @@
       ]
      }
     ]
+   },
+   {
+    "rules": "security",
+    "reason": "B4 : les regles de politique d'entree couvrent EOS (90 ecarts valides par l'utilisateur)",
+    "code_commit": null,
+    "code_tree": "895bcca9f0686eb35d702ad57e9786548aedeadf",
+    "targets": [
+     {
+      "case": "config:eos-r4",
+      "mutation": "base",
+      "rules_before": [],
+      "rules_after": []
+     },
+     {
+      "case": "dualstack:eos-r4",
+      "mutation": "base",
+      "rules_before": [],
+      "rules_after": []
+     },
+     {
+      "case": "fixture:eos-degraded_api_exposed",
+      "mutation": "base",
+      "rules_before": [
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee"
+      ],
+      "rules_after": [
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_bgp_connect",
+      "mutation": "base",
+      "rules_before": [],
+      "rules_after": []
+     },
+     {
+      "case": "fixture:eos-degraded_bgp_maxpath",
+      "mutation": "base",
+      "rules_before": [],
+      "rules_after": []
+     },
+     {
+      "case": "fixture:eos-degraded_interface_shutdown",
+      "mutation": "base",
+      "rules_before": [],
+      "rules_after": []
+     },
+     {
+      "case": "fixture:eos-degraded_ospf_down",
+      "mutation": "base",
+      "rules_before": [],
+      "rules_after": []
+     },
+     {
+      "case": "fixture:eos-r4",
+      "mutation": "base",
+      "rules_before": [],
+      "rules_after": []
+     },
+     {
+      "case": "lab:ceos",
+      "mutation": "base",
+      "rules_before": [
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "ebgp-authentification-tcp-md5",
+       "ebgp-maximum-prefix",
+       "ebgp-gtsm-ttl-security"
+      ],
+      "rules_after": [
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "ospf-authentification-message-digest",
+       "ebgp-authentification-tcp-md5",
+       "ebgp-maximum-prefix",
+       "ebgp-gtsm-ttl-security"
+      ]
+     },
+     {
+      "case": "lab:config-ceos",
+      "mutation": "base",
+      "rules_before": [],
+      "rules_after": []
+     },
+     {
+      "case": "lab:dualstack-ceos",
+      "mutation": "base",
+      "rules_before": [],
+      "rules_after": []
+     },
+     {
+      "case": "peergroup:eos_s1_group",
+      "mutation": "base",
+      "rules_before": [],
+      "rules_after": []
+     },
+     {
+      "case": "peergroup:eos_s2_override",
+      "mutation": "base",
+      "rules_before": [],
+      "rules_after": []
+     },
+     {
+      "case": "peergroup:eos_s3_open_group",
+      "mutation": "base",
+      "rules_before": [
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ],
+      "rules_after": [
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s5_orphan_group",
+      "mutation": "base",
+      "rules_before": [],
+      "rules_after": []
+     },
+     {
+      "case": "peergroup:eos_s6_listen_group",
+      "mutation": "base",
+      "rules_before": [],
+      "rules_after": []
+     },
+     {
+      "case": "peergroup:eos_s7_listen_open_group",
+      "mutation": "base",
+      "rules_before": [
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ],
+      "rules_after": [
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ]
+     },
+     {
+      "case": "scenario:eos-peergroup-member-maximum-routes-0",
+      "mutation": "base",
+      "rules_before": [
+       "eos-ebgp-maximum-routes"
+      ],
+      "rules_after": [
+       "eos-ebgp-maximum-routes"
+      ]
+     },
+     {
+      "case": "config:eos-r4",
+      "mutation": "69:222e8c26",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux"
+      ]
+     },
+     {
+      "case": "config:eos-r4",
+      "mutation": "probe:prefix-list-default-le32@63",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "config:eos-r4",
+      "mutation": "probe:prefix-list-default-le32@64",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "config:eos-r4",
+      "mutation": "probe:prefix-list-default@63",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "config:eos-r4",
+      "mutation": "probe:prefix-list-default@64",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "dualstack:eos-r4",
+      "mutation": "64:dced1e47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux"
+      ]
+     },
+     {
+      "case": "dualstack:eos-r4",
+      "mutation": "77:222e8c26",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux"
+      ]
+     },
+     {
+      "case": "dualstack:eos-r4",
+      "mutation": "83:b6bbe999",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux"
+      ]
+     },
+     {
+      "case": "dualstack:eos-r4",
+      "mutation": "probe:prefix-list-default-le32@55",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "dualstack:eos-r4",
+      "mutation": "probe:prefix-list-default-le32@56",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "dualstack:eos-r4",
+      "mutation": "probe:prefix-list-default@55",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "dualstack:eos-r4",
+      "mutation": "probe:prefix-list-default@56",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_api_exposed",
+      "mutation": "65:222e8c26",
+      "rules_before": [
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee"
+      ],
+      "rules_after": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_api_exposed",
+      "mutation": "probe:prefix-list-default-le32@55",
+      "rules_before": [
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee"
+      ],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_api_exposed",
+      "mutation": "probe:prefix-list-default-le32@56",
+      "rules_before": [
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee"
+      ],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_api_exposed",
+      "mutation": "probe:prefix-list-default@55",
+      "rules_before": [
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee"
+      ],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_api_exposed",
+      "mutation": "probe:prefix-list-default@56",
+      "rules_before": [
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee"
+      ],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee",
+       "eos-api-gestion-exposee"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_bgp_connect",
+      "mutation": "56:222e8c26",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_bgp_connect",
+      "mutation": "probe:prefix-list-default-le32@46",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_bgp_connect",
+      "mutation": "probe:prefix-list-default-le32@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_bgp_connect",
+      "mutation": "probe:prefix-list-default@46",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_bgp_connect",
+      "mutation": "probe:prefix-list-default@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_bgp_maxpath",
+      "mutation": "56:222e8c26",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_bgp_maxpath",
+      "mutation": "probe:prefix-list-default-le32@46",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_bgp_maxpath",
+      "mutation": "probe:prefix-list-default-le32@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_bgp_maxpath",
+      "mutation": "probe:prefix-list-default@46",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_bgp_maxpath",
+      "mutation": "probe:prefix-list-default@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_interface_shutdown",
+      "mutation": "57:222e8c26",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_interface_shutdown",
+      "mutation": "probe:prefix-list-default-le32@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_interface_shutdown",
+      "mutation": "probe:prefix-list-default-le32@48",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_interface_shutdown",
+      "mutation": "probe:prefix-list-default@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_interface_shutdown",
+      "mutation": "probe:prefix-list-default@48",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_ospf_down",
+      "mutation": "56:222e8c26",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_ospf_down",
+      "mutation": "probe:prefix-list-default-le32@46",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_ospf_down",
+      "mutation": "probe:prefix-list-default-le32@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_ospf_down",
+      "mutation": "probe:prefix-list-default@46",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-degraded_ospf_down",
+      "mutation": "probe:prefix-list-default@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-r4",
+      "mutation": "56:222e8c26",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux"
+      ]
+     },
+     {
+      "case": "fixture:eos-r4",
+      "mutation": "probe:prefix-list-default-le32@46",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-r4",
+      "mutation": "probe:prefix-list-default-le32@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-r4",
+      "mutation": "probe:prefix-list-default@46",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "fixture:eos-r4",
+      "mutation": "probe:prefix-list-default@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s1_group",
+      "mutation": "56:222e8c26",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s1_group",
+      "mutation": "probe:prefix-list-default-le32@46",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "ebgp-pas-de-route-par-defaut",
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s1_group",
+      "mutation": "probe:prefix-list-default-le32@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "ebgp-pas-de-route-par-defaut",
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s1_group",
+      "mutation": "probe:prefix-list-default@46",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "ebgp-pas-de-route-par-defaut",
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s1_group",
+      "mutation": "probe:prefix-list-default@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "ebgp-pas-de-route-par-defaut",
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s2_override",
+      "mutation": "56:222e8c26",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s2_override",
+      "mutation": "probe:prefix-list-default-le32@46",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s2_override",
+      "mutation": "probe:prefix-list-default-le32@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s2_override",
+      "mutation": "probe:prefix-list-default@46",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s2_override",
+      "mutation": "probe:prefix-list-default@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s3_open_group",
+      "mutation": "56:222e8c26",
+      "rules_before": [
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ],
+      "rules_after": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s3_open_group",
+      "mutation": "probe:prefix-list-default-le32@46",
+      "rules_before": [
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s3_open_group",
+      "mutation": "probe:prefix-list-default-le32@47",
+      "rules_before": [
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s3_open_group",
+      "mutation": "probe:prefix-list-default@46",
+      "rules_before": [
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s3_open_group",
+      "mutation": "probe:prefix-list-default@47",
+      "rules_before": [
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s5_orphan_group",
+      "mutation": "56:222e8c26",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s5_orphan_group",
+      "mutation": "probe:prefix-list-default-le32@46",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s5_orphan_group",
+      "mutation": "probe:prefix-list-default-le32@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s5_orphan_group",
+      "mutation": "probe:prefix-list-default@46",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s5_orphan_group",
+      "mutation": "probe:prefix-list-default@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s6_listen_group",
+      "mutation": "56:222e8c26",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s6_listen_group",
+      "mutation": "probe:prefix-list-default-le32@46",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s6_listen_group",
+      "mutation": "probe:prefix-list-default-le32@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s6_listen_group",
+      "mutation": "probe:prefix-list-default@46",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s6_listen_group",
+      "mutation": "probe:prefix-list-default@47",
+      "rules_before": [],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "ebgp-pas-de-route-par-defaut"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s7_listen_open_group",
+      "mutation": "56:222e8c26",
+      "rules_before": [
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ],
+      "rules_after": [
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s7_listen_open_group",
+      "mutation": "probe:prefix-list-default-le32@46",
+      "rules_before": [
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s7_listen_open_group",
+      "mutation": "probe:prefix-list-default-le32@47",
+      "rules_before": [
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s7_listen_open_group",
+      "mutation": "probe:prefix-list-default@46",
+      "rules_before": [
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ]
+     },
+     {
+      "case": "peergroup:eos_s7_listen_open_group",
+      "mutation": "probe:prefix-list-default@47",
+      "rules_before": [
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ],
+      "rules_after": [
+       "ebgp-pas-de-route-par-defaut",
+       "eos-ebgp-authentification-tcp-md5",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "eos-ebgp-maximum-routes"
+      ]
+     }
+    ]
    }
   ]
  },
@@ -2047,16 +2922,6 @@
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],
      [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
       "securite-pas-de-mot-de-passe-en-clair",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
@@ -2484,6 +3349,173 @@
        "acces"
       ]
      ]
+    },
+    "65:222e8c26": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@55": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@56": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@55": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@56": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion eAPI (management api http-commands) active (no shutdown)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion gNMI (management api gnmi) active (transport configuré)",
+       "acces"
+      ],
+      [
+       "haute",
+       "eos-api-gestion-exposee",
+       "r4",
+       "API de gestion NETCONF (management api netconf) active (transport configuré)",
+       "acces"
+      ]
+     ]
     }
    }
   },
@@ -2515,16 +3547,6 @@
      ],
      [
       "ebgp-gtsm-ttl-security",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],
@@ -2677,6 +3699,78 @@
        "bgp"
       ]
      ]
+    },
+    "56:222e8c26": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@46": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@46": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
     }
    }
   },
@@ -2708,16 +3802,6 @@
      ],
      [
       "ebgp-gtsm-ttl-security",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],
@@ -2870,6 +3954,78 @@
        "bgp"
       ]
      ]
+    },
+    "56:222e8c26": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@46": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@46": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
     }
    }
   },
@@ -2901,16 +4057,6 @@
      ],
      [
       "ebgp-gtsm-ttl-security",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],
@@ -3063,6 +4209,78 @@
        "bgp"
       ]
      ]
+    },
+    "57:222e8c26": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@48": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@48": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
     }
    }
   },
@@ -3094,16 +4312,6 @@
      ],
      [
       "ebgp-gtsm-ttl-security",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],
@@ -3256,6 +4464,78 @@
        "bgp"
       ]
      ]
+    },
+    "56:222e8c26": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@46": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@46": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
     }
    }
   },
@@ -3287,16 +4567,6 @@
      ],
      [
       "ebgp-gtsm-ttl-security",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],
@@ -3446,6 +4716,78 @@
        "eos-ebgp-maximum-routes",
        "r4",
        "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    },
+    "56:222e8c26": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@46": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@46": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
        "bgp"
       ]
      ]
@@ -4371,16 +5713,6 @@
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],
      [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
       "securite-pas-de-mot-de-passe-en-clair",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
@@ -4526,6 +5858,78 @@
        "eos-ebgp-maximum-routes",
        "r4",
        "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    },
+    "69:222e8c26": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@63": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@64": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@63": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@64": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
        "bgp"
       ]
      ]
@@ -5062,16 +6466,6 @@
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],
      [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
       "securite-pas-de-mot-de-passe-en-clair",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
@@ -5381,16 +6775,6 @@
      ],
      [
       "ebgp-gtsm-ttl-security",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],
@@ -5772,16 +7156,6 @@
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],
      [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
       "securite-pas-de-mot-de-passe-en-clair",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
@@ -6010,6 +7384,162 @@
        "bgp"
       ]
      ]
+    },
+    "56:222e8c26": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 192.0.2.1 (peer group PG-TEST)) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 192.0.2.1 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 192.0.2.2 (peer group PG-TEST)) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 192.0.2.2 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@46": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.1 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.2 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.1 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.2 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@46": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.1 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.2 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.1 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.2 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
     }
    }
   },
@@ -6041,16 +7571,6 @@
      ],
      [
       "ebgp-gtsm-ttl-security",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],
@@ -6268,6 +7788,78 @@
        "bgp"
       ]
      ]
+    },
+    "56:222e8c26": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@46": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@46": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
     }
    }
   },
@@ -6321,16 +7913,6 @@
      ],
      [
       "ebgp-gtsm-ttl-security",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],
@@ -6669,6 +8251,173 @@
        "bgp"
       ]
      ]
+    },
+    "56:222e8c26": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@46": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@47": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@46": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@47": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.5 (peer group PG-OPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
     }
    }
   },
@@ -6700,16 +8449,6 @@
      ],
      [
       "ebgp-gtsm-ttl-security",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],
@@ -6882,6 +8621,78 @@
        "bgp"
       ]
      ]
+    },
+    "56:222e8c26": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@46": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@46": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
     }
    }
   },
@@ -6913,16 +8724,6 @@
      ],
      [
       "ebgp-gtsm-ttl-security",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],
@@ -7127,6 +8928,120 @@
        "bgp"
       ]
      ]
+    },
+    "56:222e8c26": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN)) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@46": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@46": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYN)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
     }
    }
   },
@@ -7180,16 +9095,6 @@
      ],
      [
       "ebgp-gtsm-ttl-security",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],
@@ -7520,6 +9425,173 @@
        "eos-ebgp-maximum-routes",
        "r4",
        "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    },
+    "56:222e8c26": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@46": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@47": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@46": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@47": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.64/26 (plage dynamique, peer group PG-DYNOPEN) sans limite maximum-routes",
        "bgp"
       ]
      ]
@@ -10967,16 +13039,6 @@
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],
      [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
       "securite-pas-de-mot-de-passe-en-clair",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
@@ -12095,16 +14157,6 @@
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],
      [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
       "securite-pas-de-mot-de-passe-en-clair",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
@@ -12302,6 +14354,118 @@
        "eos-ebgp-maximum-routes",
        "r4",
        "voisin eBGP 2001:db8:34::2 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    },
+    "64:dced1e47": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:a2::/64, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "77:222e8c26": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "83:b6bbe999": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-OUT' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-OUT' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:a2::/64, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@55": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@56": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@55": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@56": {
+     "compliant": false,
+     "code": 2,
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
        "bgp"
       ]
      ]
@@ -12885,16 +15049,6 @@
      ],
      [
       "ebgp-gtsm-ttl-security",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-route-par-defaut",
-      "r4",
-      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
-     ],
-     [
-      "ebgp-pas-de-reinjection-de-prefixes-locaux",
       "r4",
       "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
      ],

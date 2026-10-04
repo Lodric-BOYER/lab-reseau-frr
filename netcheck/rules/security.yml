@@ -16,8 +16,9 @@
 #   bgp_neighbor_maximum_prefix_required     chaque voisin eBGP a "neighbor X maximum-prefix N"
 #   bgp_neighbor_ttl_security_required       chaque voisin eBGP a "neighbor X ttl-security ..."
 #   bgp_neighbor_no_default_route_policy     la prefix-list en entrée n'autorise pas 0.0.0.0/0
+#                                             (ni ::/0) ; FRR et EOS (Phase B4 : EOS)
 #   bgp_neighbor_no_own_prefixes_policy      la prefix-list en entrée n'autorise pas un préfixe
-#                                             que ce routeur annonce déjà lui-même
+#                                             que ce routeur annonce déjà lui-même ; FRR et EOS
 #   srlinux_ospf_authentication_required     chaque interface OSPF SR Linux active référence une
 #                                             keychain existante, de type ospf
 #
@@ -114,10 +115,10 @@ rules:
         url: "https://www.rfc-editor.org/rfc/rfc7454.html"
 
   - id: ebgp-pas-de-route-par-defaut
-    description: "La prefix-list appliquée en entrée à un voisin eBGP ne doit pas autoriser la route par défaut, 0.0.0.0/0 (IPv4) ni ::/0 (IPv6), sous aucune forme (avec ou sans le/ge)."
+    description: "La prefix-list appliquée en entrée à un voisin eBGP (FRR et EOS, peer groups compris) ne doit pas autoriser la route par défaut, 0.0.0.0/0 (IPv4) ni ::/0 (IPv6), sous aucune forme (avec ou sans le/ge). Seules les entrées permit comptent : un deny est un filtre, pas une faute."
     severity: haute
     applies_to: [r3, r4]
-    drivers: [frr]
+    drivers: [frr, eos]
     category: bgp
     kind: bgp_neighbor_no_default_route_policy
     references:
@@ -125,10 +126,10 @@ rules:
         url: "https://www.rfc-editor.org/rfc/rfc7454.html"
 
   - id: ebgp-pas-de-reinjection-de-prefixes-locaux
-    description: "La prefix-list appliquée en entrée à un voisin eBGP ne doit pas autoriser un préfixe (IPv4 ou IPv6) que ce routeur annonce déjà lui-même."
+    description: "La prefix-list appliquée en entrée à un voisin eBGP (FRR et EOS, peer groups compris) ne doit pas autoriser un préfixe (IPv4 ou IPv6) que ce routeur annonce déjà lui-même. Seules les entrées permit comptent : un deny est un filtre, pas une faute."
     severity: haute
     applies_to: [r3, r4]
-    drivers: [frr]
+    drivers: [frr, eos]
     category: bgp
     kind: bgp_neighbor_no_own_prefixes_policy
     references:

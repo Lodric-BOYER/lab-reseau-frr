@@ -24,6 +24,12 @@ import re
 
 from netcheck.confparse import ConfigNode, ParsedConfig
 from netcheck.drivers.bgp_neighbors import EOS_SYNTAX, BgpView
+from netcheck.drivers.ebgp_filters import (
+    DEFAULT_ROUTE,
+    default_route_violation,
+    reinjection_violation,
+    same_network,
+)
 from netcheck.model import DeviceState
 from netcheck.ruletypes import Check, Rule, Violation
 
@@ -166,6 +172,95 @@ def _check_eos_bgp_neighbor_maximum_routes_required(rule: Rule, device: DeviceSt
     return violations
 
 
+# ------------------------------------------------------------------------------------------
+# Politiques d'entrée : ce que la prefix-list autorise réellement (Phase B4)
+# ------------------------------------------------------------------------------------------
+
+def _route_map_prefix_lists(cfg: ParsedConfig, route_map: str) -> list[tuple[str, str]]:
+    """(famille, nom) des prefix-lists que les séquences `permit` d'un route-map font correspondre :
+    `match ip address prefix-list` (famille « ip ») et `match ipv6 address prefix-list` (« ipv6 »). Une
+    séquence `deny` est ignorée : elle REFUSE ce qu'elle reconnaît, c'est la manière classique d'écarter la
+    route par défaut (`route-map X deny 5` + `match ip address prefix-list DEFAUT`), pas une faute. Sans
+    action, EOS lit `permit`."""
+    found: list[tuple[str, str]] = []
+    for block in cfg.top("route-map", route_map):
+        if block.words[2:3] == ("deny",):
+            continue
+        for line in block.children:
+            w = line.words
+            is_match = len(w) >= 5 and w[0] == "match" and w[1] in ("ip", "ipv6")
+            if is_match and w[2:4] == ("address", "prefix-list"):
+                found.append((w[1], w[4]))
+    return found
+
+
+def _prefix_list_permits(cfg: ParsedConfig, family: str, name: str) -> list[str]:
+    """Réseau (sans le `ge`/`le` éventuel) de chaque entrée `permit` d'une prefix-list EOS. Relevé sur cEOS
+    4.34.8M (sessions de configuration abandonnées) : une liste IPv6 s'écrit TOUJOURS en sous-mode
+    (`ipv6 prefix-list NOM` puis `seq N permit ...` indenté ; la forme sur une ligne est refusée) ; une
+    liste IPv4 s'écrit sur une ligne (`ip prefix-list NOM seq N permit ...`) OU en sous-mode, et dès qu'une
+    liste IPv4 est en sous-mode EOS réécrit toutes les autres ainsi. `seq N` est facultatif à la saisie.
+    Les deux formes sont lues."""
+    networks: list[str] = []
+    for node in cfg.top(family, "prefix-list", name):
+        entries = ([node.words[3:]] if len(node.words) > 3 else []) + [c.words for c in node.children]
+        for words in entries:
+            if words[:1] == ("seq",) and len(words) >= 2 and words[1].isdigit():
+                words = words[2:]
+            if len(words) >= 2 and words[0] == "permit":
+                networks.append(words[1])
+    return networks
+
+
+def _in_policies(cfg: ParsedConfig, bgp: BgpView, neighbor: str) -> list[tuple[str, str, list[str]]]:
+    """(famille, prefix-list, réseaux autorisés) de chaque prefix-list des route-maps appliqués en ENTRÉE au
+    voisin, avec ses réglages effectifs PAR FAMILLE d'adresses (le membre masque son groupe famille par
+    famille). Un voisin sans route-map en entrée n'a rien à lire ici : la règle de politique d'entrée le
+    dit déjà."""
+    seen: list[tuple[str, str]] = []
+    for line in bgp.lines_by_family(
+            neighbor, lambda rest: len(rest) == 3 and rest[0] == "route-map" and rest[2] == "in"):
+        for key in _route_map_prefix_lists(cfg, line.words[3]):
+            if key not in seen:
+                seen.append(key)
+    return [(family, name, _prefix_list_permits(cfg, family, name)) for family, name in seen]
+
+
+def _check_eos_bgp_neighbor_no_default_route_policy(rule: Rule, device: DeviceState, cfg) -> list[Violation]:
+    """La prefix-list appliquée en entrée à chaque voisin eBGP ne doit autoriser la route par défaut
+    (0.0.0.0/0 et ::/0) sous aucune forme, avec ou sans `ge`/`le` (Phase B4 : la v0.3.0 ne lisait pas du
+    tout EOS ici). Politique déclarée, pas table de routage. Seuls les `permit` comptent (voir
+    `ebgp_filters`) et seules les séquences `permit` des route-maps (voir `_route_map_prefix_lists`)."""
+    config = _config(cfg)
+    bgp = _bgp(config)
+    if bgp is None:
+        return []
+    violations = []
+    for ip in bgp.ebgp:
+        for family, name, networks in _in_policies(config, bgp, ip):
+            if any(same_network(family, n, DEFAULT_ROUTE[family]) for n in networks):
+                violations.append(default_route_violation(rule, device.name, bgp.label(ip), ip, family, name))
+    return violations
+
+
+def _check_eos_bgp_neighbor_no_own_prefixes_policy(rule: Rule, device: DeviceState, cfg) -> list[Violation]:
+    """La prefix-list appliquée en entrée à chaque voisin eBGP ne doit pas autoriser un préfixe que ce routeur
+    annonce lui-même (`network` sous `router bgp` ou sous `address-family`) : sans ce filtre, un voisin
+    pourrait réannoncer nos préfixes, créant une boucle ou un détournement de trafic. Un constat par préfixe
+    autorisé."""
+    config = _config(cfg)
+    bgp = _bgp(config)
+    if bgp is None:
+        return []
+    own = [n.words[1] for n in bgp.below if n.words[0] == "network" and len(n.words) >= 2]
+    violations = []
+    for ip in bgp.ebgp:
+        for family, name, networks in _in_policies(config, bgp, ip):
+            violations += [reinjection_violation(rule, device.name, bgp.label(ip), ip, name, network)
+                           for network in networks if any(same_network(family, network, o) for o in own)]
+    return violations
+
+
 def _check_eos_management_api_disabled(rule: Rule, device: DeviceState, cfg) -> list[Violation]:
     """Aucune API de gestion EOS ne doit être active : eAPI, gNMI, NETCONF. Seul SSH est utilisé
     par netcheck, et un lab de sécurité n'expose pas d'API inutiles (chacune est un service réseau
@@ -202,6 +297,8 @@ _BLOCK_SUBCOMMANDS: tuple[tuple[tuple[str, ...], str], ...] = (
     (("redistribute",), "router bgp ou router ospf"),
     (("match",), "route-map"), (("set",), "route-map"), (("continue",), "route-map"),
     (("transport",), "management api"), (("no", "shutdown"), "management api ou interface"),
+    # Phase B4 : les entrées d'une prefix-list en sous-mode (`ipv6 prefix-list NOM` + `seq N permit ...`).
+    (("seq",), "ip prefix-list ou ipv6 prefix-list"),
 )
 
 
@@ -223,4 +320,7 @@ CHECKS: dict[str, Check] = {
     "eos_bgp_neighbor_ttl_security_required": Check(_check_eos_bgp_neighbor_ttl_security_required),
     "eos_bgp_neighbor_maximum_routes_required": Check(_check_eos_bgp_neighbor_maximum_routes_required),
     "eos_management_api_disabled": Check(_check_eos_management_api_disabled),
+    # Mêmes kinds que FRR (une seule règle YAML, `drivers: [frr, eos]`, un seul texte de constat).
+    "bgp_neighbor_no_default_route_policy": Check(_check_eos_bgp_neighbor_no_default_route_policy),
+    "bgp_neighbor_no_own_prefixes_policy": Check(_check_eos_bgp_neighbor_no_own_prefixes_policy),
 }

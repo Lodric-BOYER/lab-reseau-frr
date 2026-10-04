@@ -52,6 +52,14 @@ FRR_SYNTAX = Syntax(("peer-group",), {"external": True, "internal": False})
 EOS_SYNTAX = Syntax(("peer", "group"), {})
 
 
+def _family_of(line: ConfigNode) -> str:
+    """La famille d'adresses d'une ligne `neighbor ...` : celle de son bloc `address-family`, sinon IPv4."""
+    parent = line.parent
+    if parent is not None and parent.words[:1] == ("address-family",) and len(parent.words) >= 2:
+        return parent.words[1]
+    return "ipv4"
+
+
 class BgpView:
     """Les voisins d'un bloc `router bgp <AS>`, avec leurs réglages effectifs."""
 
@@ -131,6 +139,23 @@ class BgpView:
             return own
         group = self._group_of.get(key)
         return [n for n in self._lines.get(group, ()) if selector(n.words[2:])] if group else []
+
+    def lines_by_family(self, key: str, selector: Callable[[Rest], bool]) -> list[ConfigNode]:
+        """Comme `lines`, mais la surcharge se juge PAR FAMILLE d'adresses (Phase B4) : ce que le membre pose
+        dans une famille masque celui de son groupe dans CETTE famille seulement. Une ligne sous
+        `address-family <famille>` est de cette famille ; une ligne directement sous `router bgp` est IPv4
+        (EOS refuse la même ligne dans les deux endroits : `% Cannot configure route-map ... in mode
+        'address-family ipv4' while ... is configured in mode 'router bgp'`)."""
+        def per_family(k: str | None) -> dict[str, list[ConfigNode]]:
+            found: dict[str, list[ConfigNode]] = {}
+            for n in self._lines.get(k, ()) if k else ():
+                if selector(n.words[2:]):
+                    found.setdefault(_family_of(n), []).append(n)
+            return found
+
+        own, inherited = per_family(key), per_family(self._group_of.get(key))
+        return [n for family in [*own, *(f for f in inherited if f not in own)]
+                for n in own.get(family, inherited.get(family, []))]
 
     def label(self, key: str) -> str:
         """Comment nommer ce voisin dans un constat : l'IP seule s'il n'est pas dans un groupe."""
