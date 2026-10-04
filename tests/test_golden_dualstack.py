@@ -154,3 +154,91 @@ def test_the_ipv6_probes_change_an_answer_only_where_a_rule_reads_ipv6_prefix_li
     for case, entry in gel("security").items():
         has = any(k.startswith("probe:ipv6-prefix-list") for k in entry.get("mutants_changed", {}))
         assert has == (case in ("dualstack:frr-r3", "dualstack:frr-r4")), case
+
+
+# ------------------------------------------------------------------------------------------
+# Phase B4 : deux configurations RÉELLES de r4 (cEOS) relevées pendant le scénario d'intégration C6
+# ------------------------------------------------------------------------------------------
+
+LISTS = "dualstack:eos-r4-inbound-lists"
+GROUP = "dualstack:eos-r4-inbound-peergroup"
+NODEF = "ebgp-pas-de-route-par-defaut"
+NOOWN = "ebgp-pas-de-reinjection-de-prefixes-locaux"
+
+
+def found(rules: str, case: str) -> list[tuple[str, str]]:
+    """(règle, détail) de chaque violation gelée de la base du cas."""
+    return sorted((v[1], v[3]) for v in gel(rules)[case]["base"]["violations"])
+
+
+def rule_ids(answer: dict) -> list[str]:
+    return sorted(v[1] for v in answer["violations"])
+
+
+def default_message(prefix_list: str, neighbor: str, network: str) -> str:
+    return (f"prefix-list '{prefix_list}' (politique d'entrée du voisin eBGP {neighbor}) "
+            f"autorise {network} : route par défaut acceptable depuis l'extérieur")
+
+
+def reinjection_message(prefix_list: str, neighbor: str, network: str) -> str:
+    return (f"prefix-list '{prefix_list}' (politique d'entrée du voisin eBGP {neighbor}) autorise {network}, "
+            "que ce routeur annonce déjà lui-même : risque de réinjection")
+
+
+def test_the_real_eos_configuration_with_dangerous_input_lists_has_exactly_four_violations():
+    # Écrit d'après la configuration injectée : PL-EBGP-IN autorise 0.0.0.0/0 et 10.2.0.0/16 (que r4 annonce),
+    # PL6-EBGP-IN autorise ::/0 et 2001:db8:2::/48 (que r4 annonce) : une violation par règle et par famille.
+    expected = sorted([
+        (NODEF, default_message("PL-EBGP-IN", "172.16.34.1", "0.0.0.0/0")),
+        (NODEF, default_message("PL6-EBGP-IN", "2001:db8:34::2", "::/0")),
+        (NOOWN, reinjection_message("PL-EBGP-IN", "172.16.34.1", "10.2.0.0/16")),
+        (NOOWN, reinjection_message("PL6-EBGP-IN", "2001:db8:34::2", "2001:db8:2::/48")),
+    ])
+    assert found("security", LISTS) == expected
+    assert gel("security")[LISTS]["base"]["code"] == 2
+
+
+def test_the_real_eos_peer_group_member_is_reported_with_its_group():
+    # Le membre fictif 192.0.2.77 hérite de la route-map d'entrée de PG-TEST (qui autorise 0.0.0.0/0 et
+    # 192.168.2.0/24, que r4 annonce) : les deux règles de politique d'entrée le signalent, avec son
+    # groupe. Il n'a ni mot de passe, ni GTSM, ni limite de routes : les trois autres règles eBGP aussi.
+    # Rien d'autre.
+    member = "192.0.2.77 (peer group PG-TEST)"
+    expected = sorted([
+        (NODEF, default_message("PL-TEST-IN", member, "0.0.0.0/0")),
+        (NOOWN, reinjection_message("PL-TEST-IN", member, "192.168.2.0/24")),
+        ("eos-ebgp-authentification-tcp-md5",
+         f"voisin eBGP {member} sans authentification TCP-MD5 (mot de passe)"),
+        ("eos-ebgp-gtsm-ttl-maximum-hops", f"voisin eBGP {member} sans GTSM (ttl maximum-hops)"),
+        ("eos-ebgp-maximum-routes", f"voisin eBGP {member} sans limite maximum-routes"),
+    ])
+    assert found("security", GROUP) == expected
+
+
+@pytest.mark.parametrize("case", [LISTS, GROUP])
+def test_the_other_rule_files_only_see_the_known_link_on_the_real_eos_inbound_cases(case):
+    assert gel("default")[case]["base"]["violations"] == []
+    ipv6_rules = [v[1] for v in gel("security-ipv6")[case]["base"]["violations"]]
+    assert ipv6_rules == ["eos-ospf6-authentification-ipsec"]
+
+
+@pytest.mark.parametrize(("needle", "removed", "kept"), [
+    ("ip prefix-list PL-EBGP-IN seq 90 permit 0.0.0.0/0 le 32", (NODEF, "172.16.34.1"), 3),
+    ("ip prefix-list PL-EBGP-IN seq 91 permit 10.2.0.0/16", (NOOWN, "172.16.34.1"), 3),
+    ("   seq 90 permit ::/0 le 128", (NODEF, "2001:db8:34::2"), 3),
+    ("   seq 91 permit 2001:db8:2::/48", (NOOWN, "2001:db8:34::2"), 3),
+])
+def test_removing_one_dangerous_entry_removes_exactly_its_violation(needle, removed, kept):
+    lines = (FIXTURES / "eos_r4_inbound_lists.txt").read_text(encoding="utf-8").split("\n")
+    index = lines.index(needle)
+    answer = mutant("security", LISTS, key_of(index, lines[index]))
+    assert len(answer["violations"]) == kept
+    assert not [v for v in answer["violations"] if v[1] == removed[0] and removed[1] in v[3]]
+
+
+def test_removing_the_route_map_of_the_peer_group_removes_the_policy_violations_of_the_member():
+    lines = (FIXTURES / "eos_r4_inbound_peergroup.txt").read_text(encoding="utf-8").split("\n")
+    index = lines.index("   neighbor PG-TEST route-map RM-TEST-IN in")
+    answer = mutant("security", GROUP, key_of(index, lines[index]))
+    assert rule_ids(answer) == ["eos-ebgp-authentification-tcp-md5", "eos-ebgp-gtsm-ttl-maximum-hops",
+                                "eos-ebgp-maximum-routes"]

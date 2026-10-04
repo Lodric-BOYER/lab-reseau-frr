@@ -22,7 +22,18 @@
    "code_commit": "baba43e",
    "current_code": true,
    "reason": "fichier de règles ajouté en B3 : aucune réponse de la v0.3.0"
-  }
+  },
+  "additions": [
+   {
+    "cases": [
+     "dualstack:eos-r4-inbound-lists",
+     "dualstack:eos-r4-inbound-peergroup"
+    ],
+    "code_commit": "ca3665b",
+    "reason": "B4 : configurations reelles de r4 (cEOS) relevees pendant le scenario C6",
+    "current_code": true
+   }
+  ]
  },
  "cases": {
   "fixture:frr-r1": {
@@ -1716,6 +1727,168 @@
       "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
      ]
     ]
+   }
+  },
+  "dualstack:eos-r4-inbound-lists": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "eos-ospf6-authentification-ipsec",
+      "r4",
+      "interface Ethernet2 : adjacence OSPFv3 active sans authentification (ospfv3 authentication ipsec)",
+      "ospf"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 124,
+   "mutants_changed": {
+    "28:53e21df1": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf6-authentification-ipsec",
+       "r4",
+       "interface Ethernet1 : adjacence OSPFv3 active sans authentification (ospfv3 authentication ipsec)",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ospf6-authentification-ipsec",
+       "r4",
+       "interface Ethernet2 : adjacence OSPFv3 active sans authentification (ospfv3 authentication ipsec)",
+       "ospf"
+      ]
+     ]
+    },
+    "31:0a64c078": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "41:b3968488": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "43:6afa61e9": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "47:53e21df1": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf6-authentification-ipsec",
+       "r4",
+       "interface Ethernet2 : adjacence OSPFv3 active sans authentification (ospfv3 authentication ipsec)",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ospf6-authentification-ipsec",
+       "r4",
+       "interface Loopback0 : adjacence OSPFv3 active sans authentification (ospfv3 authentication ipsec)",
+       "ospf"
+      ]
+     ]
+    }
+   }
+  },
+  "dualstack:eos-r4-inbound-peergroup": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "eos-ospf6-authentification-ipsec",
+      "r4",
+      "interface Ethernet2 : adjacence OSPFv3 active sans authentification (ospfv3 authentication ipsec)",
+      "ospf"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "ospf6-authentification",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf6-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 128,
+   "mutants_changed": {
+    "28:53e21df1": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf6-authentification-ipsec",
+       "r4",
+       "interface Ethernet1 : adjacence OSPFv3 active sans authentification (ospfv3 authentication ipsec)",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ospf6-authentification-ipsec",
+       "r4",
+       "interface Ethernet2 : adjacence OSPFv3 active sans authentification (ospfv3 authentication ipsec)",
+       "ospf"
+      ]
+     ]
+    },
+    "31:0a64c078": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "41:b3968488": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "43:6afa61e9": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "47:53e21df1": {
+     "violations": [
+      [
+       "haute",
+       "eos-ospf6-authentification-ipsec",
+       "r4",
+       "interface Ethernet2 : adjacence OSPFv3 active sans authentification (ospfv3 authentication ipsec)",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ospf6-authentification-ipsec",
+       "r4",
+       "interface Loopback0 : adjacence OSPFv3 active sans authentification (ospfv3 authentication ipsec)",
+       "ospf"
+      ]
+     ]
+    }
    }
   }
  }

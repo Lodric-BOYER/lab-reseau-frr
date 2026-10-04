@@ -153,6 +153,13 @@ def devices() -> dict[str, DeviceState]:
     for r in ("r1", "r2", "r3", "r4", "r5"):
         out[f"dualstack:frr-{r}"] = _config_only(r, "frr", DUALSTACK / f"frr_{r}.txt")
     out["dualstack:eos-r4"] = _config_only("r4", "eos", DUALSTACK / "eos_r4.txt")
+    # Ajoutés en B4 : `running-config` de r4 (cEOS) relevées PENDANT le scénario d'intégration C6 (lecture
+    # seule, sur le lab nominal modifié puis restauré) : listes d'entrée qui autorisent 0.0.0.0/0, ::/0 et
+    # nos préfixes ; membre fictif d'un peer group dont la route-map d'entrée fait de même. Capacité
+    # nouvelle (`add --current-code`).
+    out["dualstack:eos-r4-inbound-lists"] = _config_only("r4", "eos", DUALSTACK / "eos_r4_inbound_lists.txt")
+    out["dualstack:eos-r4-inbound-peergroup"] = _config_only(
+        "r4", "eos", DUALSTACK / "eos_r4_inbound_peergroup.txt")
     out["dualstack:srlinux-r5"] = _config_only("r5", "srlinux", DUALSTACK / "srl_r5.txt")
     return out
 

@@ -70,6 +70,15 @@
     "code_commit": "baba43e",
     "reason": "B3 : configurations relevees en direct sur les labs en double pile (capacite nouvelle, IPv6) ; reponse verifiee contre des attentes ecrites a la main (tests/test_golden_dualstack.py)",
     "current_code": true
+   },
+   {
+    "cases": [
+     "dualstack:eos-r4-inbound-lists",
+     "dualstack:eos-r4-inbound-peergroup"
+    ],
+    "code_commit": "ca3665b",
+    "reason": "B4 : configurations reelles de r4 (cEOS) relevees pendant le scenario C6",
+    "current_code": true
    }
   ],
   "revisions": [
@@ -15188,6 +15197,2292 @@
       "driver 'frr' non couvert par cette règle (drivers: ['eos'])"
      ]
     ]
+   }
+  },
+  "dualstack:eos-r4-inbound-lists": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+      "bgp"
+     ],
+     [
+      "haute",
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+      "bgp"
+     ],
+     [
+      "haute",
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+      "bgp"
+     ],
+     [
+      "haute",
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+      "bgp"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ]
+    ]
+   },
+   "mutants_total": 124,
+   "mutants_changed": {
+    "37:4e2f7b4e": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "39:183e7882": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : message-digest activé mais aucune clé md5 configurée",
+       "ospf"
+      ]
+     ]
+    },
+    "57:fcf5ca2c": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "58:c0dfbe35": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "62:423426f4": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "65:1a2d5c00": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "66:ca2054a7": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "68:dced1e47": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:a2::/64, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "78:e7fc1527": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "79:9635aae5": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "81:222e8c26": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "84:5c93042b": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "85:5dd09bec": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "87:b6bbe999": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-OUT' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-OUT' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:a2::/64, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "90:91caf8c9": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "92:20e57def": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "94:309a8686": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "95:f9e7f374": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "97:c847a6c5": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "98:52acb5e4": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "99:f6cc9f7f": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "101:e7b7d1bb": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 2001:db8:34::2 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ]
+     ]
+    },
+    "102:f5465bf8": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 2001:db8:34::2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ]
+     ]
+    },
+    "103:1b5ef6ee": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 2001:db8:34::2 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "107:c202ac67": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "112:d6a9aad6": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "114:71ea9768": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ]
+     ]
+    },
+    "126:55f23123": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "127:5aa8af9d": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Loopback0 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@90": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@98": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@103": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise ::/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 2001:db8:34::2 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    }
+   }
+  },
+  "dualstack:eos-r4-inbound-peergroup": {
+   "base": {
+    "compliant": false,
+    "code": 2,
+    "violations": [
+     [
+      "haute",
+      "ebgp-pas-de-route-par-defaut",
+      "r4",
+      "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+      "bgp"
+     ],
+     [
+      "haute",
+      "ebgp-pas-de-reinjection-de-prefixes-locaux",
+      "r4",
+      "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+      "bgp"
+     ],
+     [
+      "haute",
+      "eos-ebgp-authentification-tcp-md5",
+      "r4",
+      "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "eos-ebgp-gtsm-ttl-maximum-hops",
+      "r4",
+      "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+      "bgp"
+     ],
+     [
+      "moyenne",
+      "eos-ebgp-maximum-routes",
+      "r4",
+      "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+      "bgp"
+     ]
+    ],
+    "not_applicable": [
+     [
+      "ospf-authentification-message-digest",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-ospf-authentification-keychain",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "ebgp-authentification-tcp-md5",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-maximum-prefix",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-gtsm-ttl-security",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "securite-pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-banniere-de-connexion",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "securite-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ]
+    ]
+   },
+   "mutants_total": 128,
+   "mutants_changed": {
+    "37:4e2f7b4e": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "39:183e7882": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet2 : message-digest activé mais aucune clé md5 configurée",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "59:0a4c2ac8": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "60:fa49aea1": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "66:dced1e47": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-IN' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:a2::/64, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "79:222e8c26": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 10.2.0.0/16, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-EBGP-OUT' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "82:0a78d877": {
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "83:6d507a6e": {
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "88:b6bbe999": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-OUT' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:2::/48, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL6-EBGP-OUT' (politique d'entrée du voisin eBGP 2001:db8:34::2) autorise 2001:db8:a2::/64, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "91:91caf8c9": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "94:78e3f56e": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "95:5d3e0e09": {
+     "violations": [
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "98:309a8686": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "101:c847a6c5": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "102:52acb5e4": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 sans limite maximum-routes",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "103:e3f09401": {
+     "compliant": true,
+     "code": 0,
+     "violations": []
+    },
+    "106:e7b7d1bb": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 2001:db8:34::2 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "107:f5465bf8": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 2001:db8:34::2 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "108:1b5ef6ee": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 2001:db8:34::2 sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "113:d84aed73": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "131:55f23123": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Ethernet1 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "132:5aa8af9d": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ospf-authentification-message-digest",
+       "r4",
+       "interface Loopback0 : adjacence OSPF active sans authentification message-digest",
+       "ospf"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@55": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@55": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default@56": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:prefix-list-default-le32@56": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-EBGP-IN' (politique d'entrée du voisin eBGP 172.16.34.1) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:bgp-extra-ebgp@91": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 10.9.9.9 sans limite maximum-routes",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@102": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 172.16.34.1 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ]
+     ]
+    },
+    "probe:limit-zero@108": {
+     "violations": [
+      [
+       "haute",
+       "ebgp-pas-de-route-par-defaut",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 0.0.0.0/0 : route par défaut acceptable depuis l'extérieur",
+       "bgp"
+      ],
+      [
+       "haute",
+       "ebgp-pas-de-reinjection-de-prefixes-locaux",
+       "r4",
+       "prefix-list 'PL-TEST-IN' (politique d'entrée du voisin eBGP 192.0.2.77 (peer group PG-TEST)) autorise 192.168.2.0/24, que ce routeur annonce déjà lui-même : risque de réinjection",
+       "bgp"
+      ],
+      [
+       "haute",
+       "eos-ebgp-authentification-tcp-md5",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans authentification TCP-MD5 (mot de passe)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-gtsm-ttl-maximum-hops",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans GTSM (ttl maximum-hops)",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 192.0.2.77 (peer group PG-TEST) sans limite maximum-routes",
+       "bgp"
+      ],
+      [
+       "moyenne",
+       "eos-ebgp-maximum-routes",
+       "r4",
+       "voisin eBGP 2001:db8:34::2 : maximum-routes 0 (illimité) n'est pas une limite",
+       "bgp"
+      ]
+     ]
+    }
    }
   }
  }

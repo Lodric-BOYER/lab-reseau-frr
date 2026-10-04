@@ -70,6 +70,15 @@
     "code_commit": "baba43e",
     "reason": "B3 : configurations relevees en direct sur les labs en double pile (capacite nouvelle, IPv6) ; reponse verifiee contre des attentes ecrites a la main (tests/test_golden_dualstack.py)",
     "current_code": true
+   },
+   {
+    "cases": [
+     "dualstack:eos-r4-inbound-lists",
+     "dualstack:eos-r4-inbound-peergroup"
+    ],
+    "code_commit": "ca3665b",
+    "reason": "B4 : configurations reelles de r4 (cEOS) relevees pendant le scenario C6",
+    "current_code": true
    }
   ],
   "revisions": [
@@ -5703,6 +5712,128 @@
      ]
     ]
    }
+  },
+  "dualstack:eos-r4-inbound-lists": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "syslog-actif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-entrante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-sortante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lan-en-ospf-passif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-pas-de-route-defaut-statique",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-ospf-router-id-explicite",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 124,
+   "mutants_changed": {}
+  },
+  "dualstack:eos-r4-inbound-peergroup": {
+   "base": {
+    "compliant": true,
+    "code": 0,
+    "violations": [],
+    "not_applicable": [
+     [
+      "syslog-actif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "pas-de-mot-de-passe-en-clair",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-entrante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "ebgp-politique-sortante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lan-en-ospf-passif",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-journalisation-active",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-pas-de-route-defaut-statique",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "lodric-ospf-router-id-explicite",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['frr'])"
+     ],
+     [
+      "srlinux-mtu-marge-suffisante",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ],
+     [
+      "srlinux-ospf-point-to-point",
+      "r4",
+      "driver 'eos' non couvert par cette règle (drivers: ['srlinux'])"
+     ]
+    ]
+   },
+   "mutants_total": 128,
+   "mutants_changed": {}
   }
  }
 }
