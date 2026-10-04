@@ -194,5 +194,6 @@ CHECKS: dict[str, Check] = {
     "srlinux_interface_mtu_margin": Check(_check_srlinux_interface_mtu_margin),
     "srlinux_ospf_interface_type_point_to_point": Check(_check_srlinux_ospf_interface_type_point_to_point),
     "srlinux_ospf_authentication_required": Check(_check_srlinux_ospf_authentication_required),
-    "srlinux_ospf6_authentication_required": Check(_check_srlinux_ospf6_authentication_required),
+    "srlinux_ospf6_authentication_required": Check(_check_srlinux_ospf6_authentication_required,
+                                                    ipv6=True),
 }

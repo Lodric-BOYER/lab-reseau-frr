@@ -27,6 +27,8 @@ normalisé (`netcheck/model.py`) et sur les évaluateurs que les drivers fournis
 """
 from __future__ import annotations
 
+import ipaddress
+import re
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import ClassVar
@@ -34,6 +36,21 @@ from typing import ClassVar
 from netcheck.confparse import ParsedConfig
 from netcheck.model import DeviceState
 from netcheck.ruletypes import Check
+
+_IPV6_TOKEN = re.compile(r"[0-9A-Fa-f:.]{2,}(?:/[0-9]{1,3})?")
+
+
+def has_ipv6_literal(text: str) -> bool:
+    """Vrai si le texte contient une adresse ou un préfixe IPv6 (`2001:db8::1/64`, `::/0`). Un candidat doit
+    être une vraie adresse IPv6 (module `ipaddress`) : une adresse MAC, une heure, une communauté BGP
+    (`65001:100`) ne comptent pas."""
+    for match in _IPV6_TOKEN.finditer(text):
+        try:
+            ipaddress.IPv6Interface(match.group(0))
+        except ValueError:
+            continue
+        return True
+    return False
 
 
 class Driver(ABC):
@@ -69,6 +86,21 @@ class Driver(ABC):
     #: `--driver` serait « conforme ») et signale en information les autres. None = pas de contrôle (à
     #: éviter : un driver sans liste accepte n'importe quel texte).
     ROOT_KEYWORDS: ClassVar[frozenset[str] | None] = None
+
+    #: Phase B4 : débuts de ligne (indentation retirée) qui montrent que l'IPv6 est configuré même sans
+    # qu'aucune adresse IPv6 n'apparaisse (`router ospf6`, `address-family ipv6`...). Les adresses, elles,
+    # sont reconnues quel que soit le constructeur (`has_ipv6_literal`).
+    IPV6_CONFIG_PREFIXES: ClassVar[tuple[str, ...]] = ()
+
+    def config_uses_ipv6(self, running_config: str) -> bool:
+        """La configuration utilise-t-elle l'IPv6 ? (adresse ou préfixe IPv6, ou ligne de
+        IPV6_CONFIG_PREFIXES). Sert à dire, en information, qu'aucune règle IPv6 ne couvre un équipement
+        qui en a (`check`)."""
+        if has_ipv6_literal(running_config):
+            return True
+        prefixes = self.IPV6_CONFIG_PREFIXES
+        lines = (line.lstrip() for line in running_config.splitlines())
+        return bool(prefixes) and any(line.startswith(prefixes) for line in lines)
 
     def parse_config(self, running_config: str) -> ParsedConfig | None:
         """Analyse structurée de la running-config (voir `netcheck/confparse.py`), ou None si ce

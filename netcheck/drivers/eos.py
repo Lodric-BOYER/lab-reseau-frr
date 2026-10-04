@@ -91,6 +91,8 @@ class EosDriver(Driver):
 
     # Phase A (v4) : les règles qui lisent la syntaxe d'EOS vivent dans drivers/eos_rules.py.
     CONFIG_CHECKS = eos_rules.CHECKS
+    IPV6_CONFIG_PREFIXES = ("ipv6 unicast-routing", "ipv6 enable", "router ospfv3", "ospfv3 ",
+                            "address-family ipv6", "ipv6 route", "ipv6 prefix-list")
     CONFIG_FILENAMES = ("startup-config",)
     # Observés : ip, interface, router, no, route-map, end, hostname, service, spanning-tree, system,
     # transceiver, username, management. Ajoutés : les commandes racines courantes d'EOS.

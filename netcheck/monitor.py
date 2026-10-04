@@ -98,6 +98,7 @@ class Evaluation:
     not_applicable: list[compliance.NotApplicable] | None = None
     config_warnings: list[compliance.ConfigWarning] | None = None
     derogations: dict | None = None     # report.derogation_data(...) : None sans fichier de dérogations
+    coverage: list[dict] | None = None  # report.coverage_data(...) : ce que l'audit ne couvre pas (info)
 
 
 def diff_outcome(findings: list[diff.Finding]) -> tuple[str, list[Contribution]]:
@@ -199,6 +200,7 @@ def evaluate(
                                             management_vrfs=mgmt_vrfs, derogations=derogations, today=today)
         ev.violations, ev.not_applicable = audit.violations, audit.not_applicable
         ev.derogations = report.derogation_data(audit)
+        ev.coverage = report.coverage_data(audit)
         ev.config_warnings = audit.config_warnings
         ev.compliant = compliance.verdict(ev.violations, ev.config_warnings)[0]
         components["check"], extra = check_outcome(ev.violations, ev.config_warnings)
@@ -612,10 +614,12 @@ def write_reports(directory: Path, evaluation: Evaluation, baseline_name: str,
     if evaluation.violations is not None:
         report.write_compliance_json(evaluation.violations, evaluation.compliant,
                                      str(directory / "check.json"), evaluation.not_applicable,
-                                     evaluation.config_warnings, derogations=evaluation.derogations)
+                                     evaluation.config_warnings, derogations=evaluation.derogations,
+                                     coverage=evaluation.coverage)
         report.write_compliance_html(evaluation.violations, evaluation.compliant, rules_path or "",
                                      str(directory / "check.html"), evaluation.not_applicable,
-                                     evaluation.config_warnings, derogations=evaluation.derogations)
+                                     evaluation.config_warnings, derogations=evaluation.derogations,
+                                     coverage=evaluation.coverage)
     summary = {
         "timestamp": now, "status": evaluation.status, "baseline": baseline_name,
         "components": evaluation.components,

@@ -49,6 +49,8 @@ class FrrDriver(Driver):
 
     # Phase A (v4) : les règles qui lisent la syntaxe de FRR vivent dans drivers/frr_rules.py.
     CONFIG_CHECKS = frr_rules.CHECKS
+    IPV6_CONFIG_PREFIXES = ("router ospf6", "ipv6 ospf6", "address-family ipv6", "ipv6 route",
+                            "ipv6 prefix-list")
     CONFIG_FILENAMES = ("frr.conf",)
     # Observés : exit, interface, ip, frr, router, route-map, end, hostname, log, domainname, no, service, et
     # l'en-tête de `show running-config` (Building, Current). Ajoutés : les commandes racines courantes.

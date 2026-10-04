@@ -162,21 +162,24 @@ def cmd_check(args: argparse.Namespace) -> int:
         rules, devices, management_interfaces=set(inv.management_interfaces), offline=bool(args.config_dir),
         management_vrfs=set(inv.management_vrfs), derogations=derogation_set, today=today)
     derogation_info = report.derogation_data(result)
+    coverage = report.coverage_data(result)
     # Une ligne de configuration non lue (ou un fichier non audité) donne au minimum le code 1 : jamais
     # « conforme » sur une configuration que l'audit n'a pas entièrement lue.
     warnings = result.config_warnings + file_warnings
     compliant, code = compliance.verdict(result.violations, warnings)
 
     report.print_compliance_terminal(result.violations, compliant, result.not_applicable,
-                                     config_warnings=warnings, source=source, derogations=derogation_info)
+                                     config_warnings=warnings, source=source, derogations=derogation_info,
+                                     coverage=coverage)
     if args.json:
         report.write_compliance_json(result.violations, compliant, args.json, result.not_applicable,
-                                     warnings, source=source, derogations=derogation_info)
+                                     warnings, source=source, derogations=derogation_info,
+                                     coverage=coverage)
         print(f"Constats écrits (JSON) : {args.json}")
     if args.html:
         report.write_compliance_html(result.violations, compliant, rules_path, args.html,
                                      result.not_applicable, warnings, source=source,
-                                     derogations=derogation_info)
+                                     derogations=derogation_info, coverage=coverage)
         print(f"Rapport HTML écrit : {args.html}")
     return code
 

@@ -99,6 +99,10 @@ CheckFn = Callable[[Rule, DeviceState, ParsedConfig | None], list[Violation]]
 class Check:
     """Un évaluateur et ce qu'il lit : `needs` vaut {"config"} (la configuration seule) ou y ajoute
     "interfaces" (le modèle collecté). Hors ligne (`check --config-dir`), seule la configuration
-    existe : une règle qui lit le modèle y est « non applicable » (Phase A5)."""
+    existe : une règle qui lit le modèle y est « non applicable » (Phase A5).
+
+    `ipv6` (Phase B4) : l'évaluateur juge un objet PROPRE à l'IPv6 (ex. l'authentification OSPFv3). `check`
+    s'en sert pour dire qu'aucune règle IPv6 ne s'applique à un équipement qui utilise l'IPv6."""
     fn: CheckFn
     needs: frozenset[str] = frozenset({"config"})
+    ipv6: bool = False

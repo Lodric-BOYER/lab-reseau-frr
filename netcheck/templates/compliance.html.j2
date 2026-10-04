@@ -42,6 +42,10 @@
 SHA-256 <code>{{ derogations.file.sha256 }}</code>.</p>
 {% endif %}
 
+{% for n in coverage %}
+<p class="meta coverage-note"><span class="badge badge-info">information (couverture)</span> {{ n.text }}</p>
+{% endfor %}
+
 {% if source %}
 <p class="meta"><strong>Mode hors ligne</strong> (<code>check --config-dir</code>) : {{ source.devices|length }}
 équipement(s) lu(s) depuis des fichiers, aucun équipement interrogé. Les règles qui lisent l'état collecté
@@ -74,6 +78,9 @@ cause « ÉTAT REQUIS (hors ligne) ».</p>
   {% endif %}
   {% if summary.config_notes %}
   <span class="badge badge-info">{{ summary.config_notes }} information(s) d'analyse</span>
+  {% endif %}
+  {% if coverage %}
+  <span class="badge badge-info">{{ coverage|length }} information(s) de couverture</span>
   {% endif %}
   {% if summary.not_applicable_not_implemented %}
   <span class="badge badge-gap">{{ summary.not_applicable_not_implemented }} règle(s) non implémentée(s) par leur driver</span>

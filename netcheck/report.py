@@ -99,6 +99,14 @@ def derogation_data(result) -> dict | None:
     }
 
 
+def coverage_data(result) -> list[dict]:
+    """Les notes de couverture d'un audit (`compliance.ComplianceResult.coverage_notes`) en données simples :
+    ce que l'audit ne couvre pas (ex. « IPv6 configuré, aucune règle IPv6 chargée »). Information
+    seulement."""
+    return [{"kind": n.kind, "devices": list(n.devices), "text": mask_secrets(n.text)}
+            for n in result.coverage_notes]
+
+
 def _reactivation(derogations: dict | None) -> dict[tuple[str, str, str], str]:
     """{(règle, équipement, objet): texte} des violations que l'expiration d'une dérogation a réactivées."""
     return {(r["rule_id"], r["device"], r["object"]):
@@ -303,6 +311,7 @@ def print_compliance_terminal(
     config_warnings: list[ConfigWarning] | None = None,
     source: dict | None = None,
     derogations: dict | None = None,
+    coverage: list[dict] | None = None,
 ) -> None:
     console = console or Console()
     violations = _masked_violations(violations)
@@ -339,6 +348,10 @@ def print_compliance_terminal(
         console.print(table)
     else:
         console.print("Aucune non-conformité.")
+
+    # Phase B4 : ce que l'audit ne couvre pas (information, sans effet sur le verdict).
+    for n in coverage or []:
+        console.print(f"  [cyan]information (couverture)[/] : {escape(n['text'])}")
 
     # Phase B3 : dérogations. Le fichier utilisé est toujours nommé (chemin + empreinte), même sans violation
     # couverte ; les violations couvertes gardent leur statut DÉROGATION, comptées à part, sans effet sur
@@ -409,6 +422,8 @@ def print_compliance_terminal(
         parts.append(f"{counts['config_files_not_audited']} fichier(s) non audité(s)")
     if counts["config_notes"]:
         parts.append(f"{counts['config_notes']} information(s) d'analyse")
+    if coverage:
+        parts.append(f"{len(coverage)} information(s) de couverture")
     if counts["not_applicable"]:
         na_part = f"{counts['not_applicable']} non applicable(s)"
         if counts["not_applicable_not_implemented"]:
@@ -423,7 +438,7 @@ def print_compliance_terminal(
 def compliance_to_dict(
     violations: list[Violation], compliant: bool, not_applicable: list[NotApplicable] | None = None,
     config_warnings: list[ConfigWarning] | None = None, source: dict | None = None,
-    derogations: dict | None = None,
+    derogations: dict | None = None, coverage: list[dict] | None = None,
 ) -> dict:
     violations = _masked_violations(violations)
     not_applicable = _masked_not_applicable(not_applicable or [])
@@ -465,6 +480,10 @@ def compliance_to_dict(
         data["derogations"] = derogations
         data["summary"]["derogated"] = len(derogations["derogated"])
         data["summary"]["derogation_notes"] = len(derogations["notes"])
+    if coverage:
+        # Présent seulement s'il y a quelque chose à dire (ex. IPv6 configuré, aucune règle IPv6 chargée).
+        data["coverage_notes"] = coverage
+        data["summary"]["coverage_notes"] = len(coverage)
     return data
 
 
@@ -472,11 +491,11 @@ def write_compliance_json(
     violations: list[Violation], compliant: bool, path: str,
     not_applicable: list[NotApplicable] | None = None,
     config_warnings: list[ConfigWarning] | None = None, source: dict | None = None,
-    derogations: dict | None = None,
+    derogations: dict | None = None, coverage: list[dict] | None = None,
 ) -> None:
     Path(path).write_text(
         json.dumps(compliance_to_dict(violations, compliant, not_applicable, config_warnings, source,
-                                      derogations),
+                                      derogations, coverage),
                    indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
@@ -488,6 +507,7 @@ def render_compliance_html(
     config_warnings: list[ConfigWarning] | None = None,
     source: dict | None = None,
     derogations: dict | None = None,
+    coverage: list[dict] | None = None,
 ) -> str:
     """Rend le rapport HTML de conformité, autonome (aucune ressource externe)."""
     template = _ENV.get_template("compliance.html.j2")
@@ -509,6 +529,7 @@ def render_compliance_html(
         no_model=CAUSE_NO_MODEL,
         source=source,
         derogations=derogations,
+        coverage=coverage or [],
         reactivated=_reactivation(derogations),
         config_warnings=sorted(warnings, key=lambda w: (not w.blocks_verdict, w.device, w.warning.line)),
         warning_status=_warning_status,
@@ -526,11 +547,11 @@ def write_compliance_html(
     violations: list[Violation], compliant: bool, rules_path: str, path: str,
     not_applicable: list[NotApplicable] | None = None,
     config_warnings: list[ConfigWarning] | None = None, source: dict | None = None,
-    derogations: dict | None = None,
+    derogations: dict | None = None, coverage: list[dict] | None = None,
 ) -> None:
     Path(path).write_text(
         render_compliance_html(violations, compliant, rules_path, not_applicable, config_warnings, source,
-                               derogations),
+                               derogations, coverage),
         encoding="utf-8",
     )
 

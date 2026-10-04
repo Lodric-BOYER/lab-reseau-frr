@@ -218,7 +218,7 @@ def flag_misplaced_subcommands(cfg: ParsedConfig) -> None:
 
 CHECKS: dict[str, Check] = {
     "eos_ospf_authentication_required": Check(_check_eos_ospf_authentication_required),
-    "eos_ospf6_authentication_required": Check(_check_eos_ospf6_authentication_required),
+    "eos_ospf6_authentication_required": Check(_check_eos_ospf6_authentication_required, ipv6=True),
     "eos_bgp_neighbor_password_required": Check(_check_eos_bgp_neighbor_password_required),
     "eos_bgp_neighbor_ttl_security_required": Check(_check_eos_bgp_neighbor_ttl_security_required),
     "eos_bgp_neighbor_maximum_routes_required": Check(_check_eos_bgp_neighbor_maximum_routes_required),

@@ -14,7 +14,7 @@ derogations:
       - {device: r4, object: eth2}
       - {device: r5, object: eth1}
     justification: "Lien r4-r5 (AS65002) en OSPFv3 sans authentification. Les configurations de r4 et r5 sont partagées par les trois labs et il n'existe aucun mécanisme OSPFv3 commun aux trois constructeurs : SR Linux 26.7.2 refuse l'authentification OSPFv3 (« Authentication keychain not supported on ospf-v3 »), EOS 4.34.8M n'a que l'IPsec, que FRR n'a pas. Les trois liens FRR-FRR de l'AS65001 sont authentifiés (RFC 7166)."
-    validated_by: "Lodric BOYER (à confirmer à la relecture de la phase B3)"
+    validated_by: "Lodric BOYER"
     validated_on: 2026-10-04
     expires: 2027-01-04
     references:

@@ -12,7 +12,7 @@ derogations:
     targets:
       - {device: r4, object: Ethernet2}
     justification: "Extrémité EOS (r4) du lien r4-r5 en OSPFv3 sans authentification : EOS 4.34.8M n'authentifie l'OSPFv3 que par IPsec (`ospfv3 authentication ipsec spi ...`), que FRR (r5) n'a pas. Aucun mécanisme commun à ce lien."
-    validated_by: "Lodric BOYER (à confirmer à la relecture de la phase B3)"
+    validated_by: "Lodric BOYER"
     validated_on: 2026-10-04
     expires: 2027-01-04
     references:
@@ -23,7 +23,7 @@ derogations:
     targets:
       - {device: r5, object: eth1}
     justification: "Extrémité FRR (r5) du lien r4-r5 en OSPFv3 sans authentification : EOS (r4) n'authentifie l'OSPFv3 que par IPsec et FRR 10.2.1 n'a pas d'IPsec (`ipv6 ospf6 authentication ipsec` est refusé par vtysh)."
-    validated_by: "Lodric BOYER (à confirmer à la relecture de la phase B3)"
+    validated_by: "Lodric BOYER"
     validated_on: 2026-10-04
     expires: 2027-01-04
     references:

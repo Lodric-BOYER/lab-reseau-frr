@@ -13,7 +13,7 @@ derogations:
     targets:
       - {device: r4, object: eth2}
     justification: "Extrémité FRR (r4) du lien r4-r5 en OSPFv3 sans authentification : SR Linux 26.7.2, de l'autre côté du lien, refuse l'authentification OSPFv3 (« Authentication keychain not supported on ospf-v3 »), et FRR n'a pas d'IPsec. Aucun mécanisme commun."
-    validated_by: "Lodric BOYER (à confirmer à la relecture de la phase B3)"
+    validated_by: "Lodric BOYER"
     validated_on: 2026-10-04
     expires: 2027-01-04
     references:
@@ -24,6 +24,6 @@ derogations:
     targets:
       - {device: r5, object: ethernet-1/1.0}
     justification: "Extrémité SR Linux (r5) du lien r4-r5 en OSPFv3 sans authentification : le schéma de SR Linux 26.7.2 n'offre que `authentication keychain` pour une interface OSPF, et la plateforme le refuse pour une instance ospf-v3 (« Authentication keychain not supported on ospf-v3 », constaté par `commit validate`)."
-    validated_by: "Lodric BOYER (à confirmer à la relecture de la phase B3)"
+    validated_by: "Lodric BOYER"
     validated_on: 2026-10-04
     expires: 2027-01-04

@@ -24,11 +24,16 @@ indentée serait lue au premier niveau et son interface paraîtrait sans authent
 """
 from __future__ import annotations
 
-import ipaddress
 import re
 
 from netcheck.confparse import ConfigNode, ParsedConfig
 from netcheck.drivers.bgp_neighbors import FRR_SYNTAX, BgpView
+from netcheck.drivers.ebgp_filters import (
+    DEFAULT_ROUTE,
+    default_route_violation,
+    reinjection_violation,
+    same_network,
+)
 from netcheck.model import DeviceState
 from netcheck.ruletypes import Check, Rule, Violation
 
@@ -266,26 +271,14 @@ def _route_map_prefix_lists(cfg: ParsedConfig, route_map: str) -> list[tuple[str
 
 
 def _prefix_list_networks(cfg: ParsedConfig, name: str, family: str = "ip") -> list[str]:
-    """Réseau (sans le 'le'/'ge' éventuel) de chaque entrée d'une prefix-list. IPv4 (`ip prefix-list`) : toute
-    entrée 'permit' ou 'deny', comme la v0.3.0 (comportement conservé : gel). IPv6 (`ipv6 prefix-list`) : les
-    seules entrées 'permit', qui sont celles qui AUTORISENT un préfixe."""
-    verbs = ("permit", "deny") if family == "ip" else ("permit",)
+    """Réseau (sans le 'le'/'ge' éventuel) de chaque entrée 'permit' d'une prefix-list, IPv4 (`ip
+    prefix-list`) ou IPv6 (`ipv6 prefix-list`). Seules les entrées 'permit' AUTORISENT un préfixe : un
+    'deny' est un filtre, pas une faute (Phase B4 : l'IPv4 est alignée sur l'IPv6 ; la v0.3.0 comptait
+    aussi les 'deny' IPv4 et signalait donc à tort `deny 0.0.0.0/0` ou `deny <notre préfixe>`, qui sont
+    précisément les bons filtres). L'ordre des entrées n'est pas simulé (premier correspondant) : un
+    'permit' est signalé même précédé d'un 'deny' plus large."""
     return [n.words[6] for n in cfg.top(family, "prefix-list", name)
-            if len(n.words) >= 7 and n.words[3] == "seq" and n.words[4].isdigit() and n.words[5] in verbs]
-
-
-def _same_network(family: str, a: str, b: str) -> bool:
-    """IPv4 : comparaison de texte, comme la v0.3.0. IPv6 : comparaison des réseaux (la compression de
-    l'écriture ne compte pas : `2001:db8:1:0::/48` est `2001:db8:1::/48`)."""
-    if family == "ip":
-        return a == b
-    try:
-        return ipaddress.ip_network(a, strict=False) == ipaddress.ip_network(b, strict=False)
-    except ValueError:
-        return a == b
-
-
-_DEFAULT_ROUTE = {"ip": "0.0.0.0/0", "ipv6": "::/0"}
+            if len(n.words) >= 7 and n.words[3] == "seq" and n.words[4].isdigit() and n.words[5] == "permit"]
 
 
 def _check_bgp_neighbor_no_default_route_policy(rule: Rule, device: DeviceState, cfg) -> list[Violation]:
@@ -306,12 +299,10 @@ def _check_bgp_neighbor_no_default_route_policy(rule: Rule, device: DeviceState,
         if route_map is None:
             continue
         for family, pl in _route_map_prefix_lists(config, route_map):
-            default = _DEFAULT_ROUTE[family]
             for network in _prefix_list_networks(config, pl, family):
-                if _same_network(family, network, default):
-                    violations.append(Violation(rule, device.name,
-                        f"prefix-list '{pl}' (politique d'entrée du voisin eBGP {bgp.label(ip)}) "
-                        f"autorise {default} : route par défaut acceptable depuis l'extérieur", ip))
+                if same_network(family, network, DEFAULT_ROUTE[family]):
+                    violations.append(
+                        default_route_violation(rule, device.name, bgp.label(ip), ip, family, pl))
     return violations
 
 
@@ -334,11 +325,9 @@ def _check_bgp_neighbor_no_own_prefixes_policy(rule: Rule, device: DeviceState, 
             continue
         for family, pl in _route_map_prefix_lists(config, route_map):
             for network in _prefix_list_networks(config, pl, family):
-                if any(_same_network(family, network, own) for own in own_networks):
-                    violations.append(Violation(rule, device.name,
-                        f"prefix-list '{pl}' (politique d'entrée du voisin eBGP {bgp.label(ip)}) "
-                        f"autorise {network}, que ce routeur annonce déjà lui-même : "
-                        f"risque de réinjection", ip))
+                if any(same_network(family, network, own) for own in own_networks):
+                    violations.append(
+                        reinjection_violation(rule, device.name, bgp.label(ip), ip, pl, network))
     return violations
 
 
@@ -349,7 +338,7 @@ CHECKS: dict[str, Check] = {
     "ospf_passive_on_interfaces":
         Check(_check_ospf_passive_on_interfaces, frozenset({"config", "interfaces"})),
     "ospf_authentication_required": Check(_check_ospf_authentication_required),
-    "ospf6_authentication_required": Check(_check_ospf6_authentication_required),
+    "ospf6_authentication_required": Check(_check_ospf6_authentication_required, ipv6=True),
     "bgp_neighbor_password_required": Check(_check_bgp_neighbor_password_required),
     "bgp_neighbor_maximum_prefix_required": Check(_check_bgp_neighbor_maximum_prefix_required),
     "bgp_neighbor_ttl_security_required": Check(_check_bgp_neighbor_ttl_security_required),

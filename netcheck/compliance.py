@@ -81,6 +81,24 @@ def implementers(kind: str) -> list[str]:
     return sorted(name for name in DRIVER_REGISTRY if resolve_check(kind, name) is not None)
 
 
+# Phase B4 : un audit ne doit pas se taire sur l'IPv6. Un évaluateur « IPv6 » (`Check.ipv6`, déclaré par son
+# driver) juge des objets propres à l'IPv6 (OSPFv3) ; si l'IPv6 est configuré sur un équipement et
+# qu'aucune règle de ce genre ne s'y applique, `check` le dit en information. (Les règles
+# `ebgp-pas-de-route-par-defaut` et `ebgp-pas-de-reinjection-de-prefixes-locaux` lisent les listes de
+# préfixes IPv6 sans en dépendre : elles ne comptent pas, car `security.yml` seul laissait
+# l'authentification OSPFv3 sans règle.)
+IPV6_RULES_FILE = "netcheck/rules/security-ipv6.yml"
+NOTE_IPV6_UNCOVERED = "ipv6-sans-regle"
+
+
+@dataclass(frozen=True)
+class CoverageNote:
+    """Une information sur ce que l'audit ne couvre pas (`kind`, équipements concernés, texte)."""
+    kind: str
+    devices: tuple[str, ...]
+    text: str
+
+
 @dataclass
 class ComplianceResult:
     """Ce que produit un audit : violations, règles non applicables, et avertissements d'analyse."""
@@ -94,6 +112,8 @@ class ComplianceResult:
     reactivated: list[derog.Derogated] = field(default_factory=list)
     derogation_notes: list[derog.DerogationNote] = field(default_factory=list)
     derogation_file: tuple[str, str] | None = None     # (chemin, SHA-256) du fichier utilisé
+    # Phase B4 : information de couverture (jamais un constat, jamais d'effet sur le verdict).
+    coverage_notes: list[CoverageNote] = field(default_factory=list)
 
     @property
     def unread_lines(self) -> list[ConfigWarning]:
@@ -233,6 +253,45 @@ def parse_device_config(state: DeviceState) -> ParsedConfig | None:
     return driver_cls().parse_config(state.running_config) if driver_cls is not None else None
 
 
+def _state_uses_ipv6(state: DeviceState) -> bool:
+    """L'état relevé contient-il de l'IPv6 ? (adresse, voisin OSPFv3, session BGP IPv6, route IPv6 hors
+    link-local)"""
+    return (
+        any(i.addresses6 or i.link_local6 for i in state.interfaces)
+        or bool(state.ospf6_neighbors)
+        or any(p.address_family == "ipv6" for p in state.bgp_peers)
+        or any(":" in r.prefix and not r.prefix.lower().startswith("fe80") for r in state.routes)
+    )
+
+
+def ipv6_coverage_notes(
+    rules: list[Rule], devices: dict[str, DeviceState], mgmt: set[str], mgmt_vrfs: set[str],
+) -> list[CoverageNote]:
+    """Phase B4 : « IPv6 configuré, aucune règle IPv6 chargée ». Un équipement audité qui utilise l'IPv6 (état
+    relevé, hors management, OU configuration auditée) sans qu'aucune règle à évaluateur IPv6 ne s'y
+    applique donne UNE note listant ces équipements. Information seulement."""
+    uncovered = []
+    for name, state in devices.items():
+        if not state.reachable or not any(rule.applies(name) for rule in rules):
+            continue
+        covered = any(
+            rule.applies(name) and (rule.drivers is None or state.driver in rule.drivers)
+            and getattr(resolve_check(rule.kind, state.driver), "ipv6", False)
+            for rule in rules)
+        if covered:
+            continue
+        driver_cls = DRIVER_REGISTRY.get(state.driver)
+        in_config = driver_cls is not None and driver_cls().config_uses_ipv6(state.running_config)
+        if in_config or _state_uses_ipv6(management.filtered(state, mgmt, mgmt_vrfs)):
+            uncovered.append(name)
+    if not uncovered:
+        return []
+    text = (f"IPv6 configuré ({', '.join(uncovered)}), aucune règle IPv6 chargée pour ces équipements : "
+            f"l'authentification OSPFv3 n'est pas auditée. Charge {IPV6_RULES_FILE} en plus du fichier de "
+            f"règles (check --rules est répétable).")
+    return [CoverageNote(NOTE_IPV6_UNCOVERED, tuple(uncovered), text)]
+
+
 def evaluate_config(
     rules: list[Rule],
     devices: dict[str, DeviceState],
@@ -294,6 +353,7 @@ def evaluate_config(
             config = config_of(name, state)
             if config is not None:
                 result.config_warnings += [ConfigWarning(name, w) for w in config.warnings]
+    result.coverage_notes = ipv6_coverage_notes(rules, devices, mgmt, mgmt_vrfs)
     if derogations is not None:
         audited = {name for name, state in devices.items() if state.reachable}
         outcome = derog.apply(result.violations, derogations, today, audited)
