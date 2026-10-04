@@ -4,22 +4,46 @@ Champs vérifiés sur le vrai lab (FRR 10.2.1), pas devinés : voir tests/fixtur
 """
 from __future__ import annotations
 
+import ipaddress
 import json
 import shlex
 
 from netcheck.confparse import ParsedConfig, parse_indented
 from netcheck.drivers import frr_rules
 from netcheck.drivers.base import Driver
-from netcheck.model import BgpPeer, BgpPrefix, DeviceState, Interface, NextHop, OspfNeighbor, Route
+from netcheck.drivers.sections import Sections, SectionUnavailable, json_object
+from netcheck.model import (
+    DEFAULT_VRF,
+    BgpPeer,
+    BgpPrefix,
+    DeviceState,
+    Interface,
+    NextHop,
+    OspfNeighbor,
+    Route,
+)
+
+# Commande logique -> commande vtysh, quand elle diffère du nom logique. Phase B2 : les tables de routage
+# sont lues pour TOUTES les VRF (`vrf all`, sortie {vrf: {préfixe: [...]}}) ; la commande OSPFv3 de FRR
+# s'appelle `ospf6`.
+_TRANSLATION = {
+    "show ip route json": "show ip route vrf all json",
+    "show ipv6 route json": "show ipv6 route vrf all json",
+    "show ipv6 ospf neighbor json": "show ipv6 ospf6 neighbor json",
+}
 
 
 class FrrDriver(Driver):
     REQUIRED_COMMANDS = [
         "show interface json",
         "show ip route json",
+        "show ipv6 route json",
         "show ip ospf neighbor json",
+        "show ipv6 ospf neighbor json",
         "show bgp ipv4 unicast summary json",
         "show bgp ipv4 unicast json",
+        "show bgp ipv6 unicast summary json",
+        "show bgp ipv6 unicast json",
         "show running-config",
     ]
 
@@ -43,7 +67,7 @@ class FrrDriver(Driver):
         return cfg
 
     def translate(self, command: str) -> str:
-        return f"vtysh -c {shlex.quote(command)}"
+        return f"vtysh -c {shlex.quote(_TRANSLATION.get(command, command))}"
 
     def clean_output(self, raw: str) -> str:
         # vtysh non-root avertit qu'il ne lit pas vtysh.conf : bruit sans conséquence (cf.
@@ -58,17 +82,41 @@ class FrrDriver(Driver):
         return out
 
     def parse(self, raw: dict[str, str], name: str, host: str) -> DeviceState:
+        s = Sections(raw)
+        interfaces = s.required("interfaces", "show interface json", self._parse_interfaces)
+        # Les routes sont lues pour toutes les VRF (`vrf all`). Une sortie au format d'avant la phase B2
+        # (celle de `show ip route json`, par préfixe et non par VRF) ne contient que la VRF « default » :
+        # la section « vrf » n'est alors pas relevée.
+        routes_v4, vrf_aware = self._read_routes(raw["show ip route json"])
+        s.collected.append("routes_v4")
+        routes_v6 = s.optional("routes_v6", "show ipv6 route json", self._parse_routes, [])
+        s.mark("vrf", vrf_aware,
+               "les routes ne sont lues que pour la VRF default (relevé d'avant la phase B2)")
+        ospf = s.required("ospf_v2", "show ip ospf neighbor json", self._parse_ospf)
+        ospf6 = s.optional("ospf_v3", "show ipv6 ospf neighbor json", self._parse_ospf6, [])
+        peers = s.required("bgp_v4", "show bgp ipv4 unicast summary json",
+                           lambda t: self._parse_bgp_summary(t, "ipv4"))
+        prefixes = self._parse_bgp_prefixes(raw["show bgp ipv4 unicast json"])
+        v6 = s.optional(
+            "bgp_v6", ("show bgp ipv6 unicast summary json", "show bgp ipv6 unicast json"),
+            lambda summary, table: (self._parse_bgp_summary(summary, "ipv6", strict=True),
+                                    self._parse_bgp_prefixes(table, strict=True)),
+            ([], []))
+        config = s.required("config", "show running-config", lambda t: t)
         return DeviceState(
             name=name,
             host=host,
             timestamp=self.now(),
             reachable=True,
-            interfaces=self._parse_interfaces(raw["show interface json"]),
-            routes=self._parse_routes(raw["show ip route json"]),
-            ospf_neighbors=self._parse_ospf(raw["show ip ospf neighbor json"]),
-            bgp_peers=self._parse_bgp_summary(raw["show bgp ipv4 unicast summary json"]),
-            bgp_prefixes=self._parse_bgp_prefixes(raw["show bgp ipv4 unicast json"]),
-            running_config=raw["show running-config"],
+            interfaces=interfaces,
+            routes=routes_v4 + routes_v6,
+            ospf_neighbors=ospf,
+            bgp_peers=peers + v6[0],
+            bgp_prefixes=prefixes + v6[1],
+            running_config=config,
+            ospf6_neighbors=ospf6,
+            collected=s.collected,
+            section_errors=s.errors,
         )
 
     # -- Interfaces -----------------------------------------------------------------------
@@ -77,8 +125,20 @@ class FrrDriver(Driver):
         data = json.loads(text)
         interfaces = []
         for ifname, attrs in data.items():
-            # Seules les adresses IPv4 nous intéressent (§4) ; une adresse IPv6 contient ':'.
-            v4 = [a["address"] for a in attrs.get("ipAddresses", []) if ":" not in a["address"]]
+            vrf = attrs.get("vrfName") or DEFAULT_VRF
+            # Le périphérique d'une VRF (`DEMO`) est listé comme une interface sans adresse : c'est la VRF
+            # elle-même, pas un port. Il est écarté ; la VRF existe par ses interfaces et ses routes.
+            if vrf != DEFAULT_VRF and ifname == vrf:
+                continue
+            v4, v6, link_local = [], [], None
+            for a in attrs.get("ipAddresses", []):
+                address = a["address"]
+                if ":" not in address:
+                    v4.append(address)
+                elif ipaddress.ip_interface(address).ip.is_link_local:
+                    link_local = address.split("/")[0]
+                else:
+                    v6.append(address)
             interfaces.append(Interface(
                 name=ifname,
                 description=attrs.get("description"),  # absente sur eth0/lo : reste à None
@@ -89,34 +149,52 @@ class FrrDriver(Driver):
                 # coupée (admin down) : jamais None pour ce driver, contrairement au champ
                 # par défaut du modèle qui reste optionnel pour un futur driver moins bavard.
                 is_loopback=attrs.get("type") == "Loopback",
+                addresses6=v6,
+                link_local6=link_local,
+                vrf=vrf,
             ))
         return interfaces
 
     # -- Routes -----------------------------------------------------------------------------
     @staticmethod
-    def _parse_routes(text: str) -> list[Route]:
-        data = json.loads(text)
+    def _read_routes(text: str) -> tuple[list[Route], bool]:
+        """(routes, la sortie était-elle par VRF ?). `vrf all` rend {vrf: {préfixe: [entrées]}} ; la sortie
+        d'une commande sans `vrf all` rend {préfixe: [entrées]} (VRF default seulement)."""
+        data = json_object(text)
+        if not isinstance(data, dict):
+            raise SectionUnavailable("sortie de routes inattendue")
+        by_vrf = bool(data) and all(isinstance(v, dict) for v in data.values())
+        tables = data if by_vrf else {DEFAULT_VRF: data}
         routes = []
-        for prefix, entries in data.items():
-            for e in entries:
-                nexthops = [
-                    NextHop(
-                        ip=nh.get("ip"),
-                        interface=nh.get("interfaceName"),
-                        directly_connected=nh.get("directlyConnected", False),
-                    )
-                    for nh in e.get("nexthops", [])
-                ]
-                routes.append(Route(
-                    prefix=prefix,
-                    protocol=e.get("protocol", "?"),
-                    metric=e.get("metric", 0),
-                    distance=e.get("distance", 0),
-                    # Absente (pas juste false) sur les chemins candidats non installés.
-                    selected=e.get("selected", False),
-                    nexthops=nexthops,
-                ))
-        return routes
+        for vrf, table in tables.items():
+            for prefix, entries in table.items():
+                for e in entries:
+                    nexthops = [
+                        NextHop(
+                            ip=nh.get("ip"),
+                            interface=nh.get("interfaceName"),
+                            directly_connected=nh.get("directlyConnected", False),
+                        )
+                        for nh in e.get("nexthops", [])
+                    ]
+                    routes.append(Route(
+                        prefix=prefix,
+                        protocol=e.get("protocol", "?"),
+                        metric=e.get("metric", 0),
+                        distance=e.get("distance", 0),
+                        # Absente (pas juste false) sur les chemins candidats non installés.
+                        selected=e.get("selected", False),
+                        nexthops=nexthops,
+                        vrf=vrf,
+                    ))
+        # Une table vide ({}) est celle d'un équipement sans route : relevée, vide. Faute de clé « VRF », on
+        # ne sait pas si les autres VRF ont été lues : on dit « par VRF » seulement si la sortie l'était
+        # vraiment.
+        return routes, by_vrf
+
+    @classmethod
+    def _parse_routes(cls, text: str) -> list[Route]:
+        return cls._read_routes(text)[0]
 
     # -- OSPF -------------------------------------------------------------------------------
     @staticmethod
@@ -132,10 +210,26 @@ class FrrDriver(Driver):
                 ))
         return neighbors
 
+    @staticmethod
+    def _parse_ospf6(text: str) -> list[OspfNeighbor]:
+        """`show ipv6 ospf6 neighbor json` : {"neighbors": [{neighborId, state, interfaceName, ...}]}."""
+        data = json_object(text)
+        if not isinstance(data, dict):
+            raise SectionUnavailable("sortie OSPFv3 inattendue")
+        return [
+            OspfNeighbor(router_id=e.get("neighborId", ""), state=e.get("state", ""),
+                         interface=e.get("interfaceName", ""))
+            for e in data.get("neighbors", [])
+        ]
+
     # -- BGP ----------------------------------------------------------------------------------
     @staticmethod
-    def _parse_bgp_summary(text: str) -> list[BgpPeer]:
-        peers = json.loads(text).get("peers", {})
+    def _parse_bgp_summary(text: str, family: str = "ipv4", strict: bool = False) -> list[BgpPeer]:
+        # Sans BGP dans cette famille, FRR répond `{}` ou `{"warning": "Default BGP instance not found"}` :
+        # une section relevée mais vide. `strict` (IPv6, facultative) refuse en plus une sortie qui n'est
+        # pas du JSON.
+        data = json_object(text) if strict else json.loads(text)
+        peers = data.get("peers", {})
         return [
             BgpPeer(
                 neighbor=ip,
@@ -143,13 +237,15 @@ class FrrDriver(Driver):
                 state=attrs.get("state", "absent"),
                 pfx_received=attrs.get("pfxRcd", 0),
                 pfx_sent=attrs.get("pfxSnt", 0),
+                address_family=family,
             )
             for ip, attrs in peers.items()
         ]
 
     @staticmethod
-    def _parse_bgp_prefixes(text: str) -> list[BgpPrefix]:
-        routes = json.loads(text).get("routes", {})
+    def _parse_bgp_prefixes(text: str, strict: bool = False) -> list[BgpPrefix]:
+        data = json_object(text) if strict else json.loads(text)
+        routes = data.get("routes", {})
         prefixes = []
         for prefix, paths in routes.items():
             for p in paths:

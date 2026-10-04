@@ -51,3 +51,45 @@ assertions:
     prefix: 192.168.2.0/24
     via: [r3, r4, r5]
     mode: all
+
+  # --- Phase B2 (v4) : double pile IPv6 (valeurs relevées sur le lab en double pile ; le lien local n'est jamais
+  # cité : il change à chaque démarrage). Les protocoles IPv6 sont normalisés « ospfv3 » côté SR Linux, « ospf6 »
+  # côté FRR (relevé en direct). ---
+
+  - id: ospf6-r5-voisin-srlinux
+    description: "r5 (SR Linux) a exactement 1 voisin OSPFv3 Full (r4) : l'instance OSPFv3 est lue à part de l'OSPFv2"
+    device: r5
+    type: ospf_neighbors
+    family: ipv6
+    count: 1
+
+  - id: bgp6-r3-vers-r4
+    description: "Session eBGP IPv6 r3 -> 2001:db8:34::3 Established, au moins 2 préfixes reçus"
+    device: r3
+    type: bgp_session
+    neighbor: "2001:db8:34::3"
+    min_prefixes_received: 2
+
+  - id: route6-r5-vers-as65001
+    description: "r5 (SR Linux) connaît l'agrégat 2001:db8:1::/48 (AS65001), via OSPFv3, sortie ethernet-1/1.0 (vers r4)"
+    device: r5
+    type: route_present
+    prefix: "2001:db8:1::/48"
+    protocol: ospfv3
+    interface: ethernet-1/1.0
+
+  - id: chemin6-r1-vers-lan-r5
+    description: "Le chemin IPv6 de r1 (FRR) vers 2001:db8:a2::/64 traverse r3, r4 (FRR) puis r5 (SR Linux), où le préfixe est directement connecté : le next-hop de lien local de r4 est résolu par (adresse, interface), jamais par l'adresse seule"
+    device: r1
+    type: path
+    prefix: "2001:db8:a2::/64"
+    via: [r3, r4, r5]
+    mode: all
+
+  - id: chemin6-r5-vers-lan-r1
+    description: "Le chemin IPv6 de r5 (SR Linux) vers 2001:db8:a1::/64 traverse r4, r3 puis r1 : le départ SR Linux nomme son next-hop par sous-interface (ethernet-1/1.0), l'interface de FRR s'appelle eth1"
+    device: r5
+    type: path
+    prefix: "2001:db8:a1::/64"
+    via: [r4, r3, r1]
+    mode: all

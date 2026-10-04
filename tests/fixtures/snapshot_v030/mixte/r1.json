@@ -1,0 +1,362 @@
+{
+  "name": "r1",
+  "host": "172.20.21.11",
+  "timestamp": "2026-10-03T21:46:51+00:00",
+  "reachable": true,
+  "error": null,
+  "interfaces": [
+    {
+      "name": "eth0",
+      "description": null,
+      "admin_up": true,
+      "oper_up": true,
+      "addresses": [
+        "172.20.21.11/24"
+      ],
+      "is_loopback": false
+    },
+    {
+      "name": "eth1",
+      "description": "vers-r2",
+      "admin_up": true,
+      "oper_up": true,
+      "addresses": [
+        "10.1.12.1/30"
+      ],
+      "is_loopback": false
+    },
+    {
+      "name": "eth2",
+      "description": "vers-r3",
+      "admin_up": true,
+      "oper_up": true,
+      "addresses": [
+        "10.1.13.1/30"
+      ],
+      "is_loopback": false
+    },
+    {
+      "name": "eth3",
+      "description": "LAN-pc1",
+      "admin_up": true,
+      "oper_up": true,
+      "addresses": [
+        "192.168.1.1/24"
+      ],
+      "is_loopback": false
+    },
+    {
+      "name": "lo",
+      "description": null,
+      "admin_up": true,
+      "oper_up": true,
+      "addresses": [
+        "10.1.255.1/32"
+      ],
+      "is_loopback": true
+    }
+  ],
+  "routes": [
+    {
+      "prefix": "0.0.0.0/0",
+      "protocol": "kernel",
+      "metric": 0,
+      "distance": 0,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": "172.20.21.1",
+          "interface": "eth0",
+          "directly_connected": false
+        }
+      ]
+    },
+    {
+      "prefix": "10.1.12.0/30",
+      "protocol": "ospf",
+      "metric": 10,
+      "distance": 110,
+      "selected": false,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": "eth1",
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "10.1.12.0/30",
+      "protocol": "connected",
+      "metric": 0,
+      "distance": 0,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": "eth1",
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "10.1.12.1/32",
+      "protocol": "local",
+      "metric": 0,
+      "distance": 0,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": "eth1",
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "10.1.13.0/30",
+      "protocol": "ospf",
+      "metric": 10,
+      "distance": 110,
+      "selected": false,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": "eth2",
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "10.1.13.0/30",
+      "protocol": "connected",
+      "metric": 0,
+      "distance": 0,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": "eth2",
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "10.1.13.1/32",
+      "protocol": "local",
+      "metric": 0,
+      "distance": 0,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": "eth2",
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "10.1.23.0/30",
+      "protocol": "ospf",
+      "metric": 20,
+      "distance": 110,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": "10.1.12.2",
+          "interface": "eth1",
+          "directly_connected": false
+        },
+        {
+          "ip": "10.1.13.2",
+          "interface": "eth2",
+          "directly_connected": false
+        }
+      ]
+    },
+    {
+      "prefix": "10.1.255.1/32",
+      "protocol": "ospf",
+      "metric": 0,
+      "distance": 110,
+      "selected": false,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": "lo",
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "10.1.255.1/32",
+      "protocol": "local",
+      "metric": 0,
+      "distance": 0,
+      "selected": false,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": "lo",
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "10.1.255.1/32",
+      "protocol": "connected",
+      "metric": 0,
+      "distance": 0,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": "lo",
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "10.1.255.2/32",
+      "protocol": "ospf",
+      "metric": 10,
+      "distance": 110,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": "10.1.12.2",
+          "interface": "eth1",
+          "directly_connected": false
+        }
+      ]
+    },
+    {
+      "prefix": "10.1.255.3/32",
+      "protocol": "ospf",
+      "metric": 10,
+      "distance": 110,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": "10.1.13.2",
+          "interface": "eth2",
+          "directly_connected": false
+        }
+      ]
+    },
+    {
+      "prefix": "10.2.0.0/16",
+      "protocol": "ospf",
+      "metric": 20,
+      "distance": 110,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": "10.1.13.2",
+          "interface": "eth2",
+          "directly_connected": false
+        }
+      ]
+    },
+    {
+      "prefix": "172.16.34.0/30",
+      "protocol": "ospf",
+      "metric": 20,
+      "distance": 110,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": "10.1.13.2",
+          "interface": "eth2",
+          "directly_connected": false
+        }
+      ]
+    },
+    {
+      "prefix": "172.20.21.0/24",
+      "protocol": "connected",
+      "metric": 0,
+      "distance": 0,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": "eth0",
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "172.20.21.11/32",
+      "protocol": "local",
+      "metric": 0,
+      "distance": 0,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": "eth0",
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "192.168.1.0/24",
+      "protocol": "ospf",
+      "metric": 10,
+      "distance": 110,
+      "selected": false,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": "eth3",
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "192.168.1.0/24",
+      "protocol": "connected",
+      "metric": 0,
+      "distance": 0,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": "eth3",
+          "directly_connected": true
+        }
+      ]
+    },
+    {
+      "prefix": "192.168.1.1/32",
+      "protocol": "local",
+      "metric": 0,
+      "distance": 0,
+      "selected": true,
+      "nexthops": [
+        {
+          "ip": null,
+          "interface": "eth3",
+          "directly_connected": true
+        }
+      ]
+    }
+  ],
+  "ospf_neighbors": [
+    {
+      "router_id": "10.1.255.2",
+      "state": "Full/-",
+      "interface": "eth1:10.1.12.1"
+    },
+    {
+      "router_id": "10.1.255.3",
+      "state": "Full/-",
+      "interface": "eth2:10.1.13.1"
+    }
+  ],
+  "bgp_peers": [],
+  "bgp_prefixes": [],
+  "running_config": "Building configuration...\n\nCurrent configuration:\n!\nfrr version 10.2.1_git\nfrr defaults traditional\nhostname r1\ndomainname localdomain\nlog syslog informational\nno ipv6 forwarding\n!\ninterface eth1\n description vers-r2\n ip address 10.1.12.1/30\n ip ospf area 0\n ip ospf authentication message-digest\n ip ospf message-digest-key 1 md5 lab-ospf-r1r2\n ip ospf network point-to-point\nexit\n!\ninterface eth2\n description vers-r3\n ip address 10.1.13.1/30\n ip ospf area 0\n ip ospf authentication message-digest\n ip ospf message-digest-key 1 md5 lab-ospf-r1r3\n ip ospf network point-to-point\nexit\n!\ninterface eth3\n description LAN-pc1\n ip address 192.168.1.1/24\n ip ospf area 0\n ip ospf passive\nexit\n!\ninterface lo\n ip address 10.1.255.1/32\n ip ospf area 0\n ip ospf passive\nexit\n!\nrouter ospf\n ospf router-id 10.1.255.1\nexit\n!\nend",
+  "driver": "frr"
+}

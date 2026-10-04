@@ -69,10 +69,11 @@ def cmd_diff(args: argparse.Namespace) -> int:
 
     inv = inventory.load(path=args.inventory)
     mgmt = set(inv.management_interfaces)
-    findings = diff.compare(before, after, management_interfaces=mgmt)
+    mgmt_vrfs = set(inv.management_vrfs)
+    findings = diff.compare(before, after, management_interfaces=mgmt, management_vrfs=mgmt_vrfs)
     after_results = None
     if expectation:
-        findings, after_results = expect.apply(findings, expectation, after, mgmt)
+        findings, after_results = expect.apply(findings, expectation, after, mgmt, mgmt_vrfs)
     verdict_label, code = diff.verdict(findings)
 
     report.print_terminal(findings, verdict_label, after_results=after_results)
@@ -144,7 +145,8 @@ def cmd_check(args: argparse.Namespace) -> int:
                 print(f"  {name:<8} INJOIGNABLE : {value}", file=sys.stderr)
 
     result = compliance.evaluate_config(
-        rules, devices, management_interfaces=set(inv.management_interfaces), offline=bool(args.config_dir))
+        rules, devices, management_interfaces=set(inv.management_interfaces), offline=bool(args.config_dir),
+        management_vrfs=set(inv.management_vrfs))
     # Une ligne de configuration non lue (ou un fichier non audité) donne au minimum le code 1 : jamais
     # « conforme » sur une configuration que l'audit n'a pas entièrement lue.
     warnings = result.config_warnings + file_warnings
@@ -210,15 +212,16 @@ def cmd_guard(args: argparse.Namespace) -> int:
 
     inv = inventory.load(path=args.inventory)
     mgmt = set(inv.management_interfaces)
+    mgmt_vrfs = set(inv.management_vrfs)
     stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     names = guard.SnapshotNames(f"guard_{stamp}_avant", f"guard_{stamp}_apres", f"guard_{stamp}_retour")
 
     def do_diff(before_name: str, after_name: str, use_expect: bool) -> guard.DiffResult:
         before, after = snapshot.load(before_name), snapshot.load(after_name)
-        findings = diff.compare(before, after, management_interfaces=mgmt)
+        findings = diff.compare(before, after, management_interfaces=mgmt, management_vrfs=mgmt_vrfs)
         after_results = None
         if use_expect and expectation:
-            findings, after_results = expect.apply(findings, expectation, after, mgmt)
+            findings, after_results = expect.apply(findings, expectation, after, mgmt, mgmt_vrfs)
         verdict_label, code = diff.verdict(findings)
         return guard.DiffResult(findings, verdict_label, code, after_results)
 
@@ -287,7 +290,8 @@ def cmd_assert(args: argparse.Namespace) -> int:
                 print(f"  {name:<8} INJOIGNABLE : {value}", file=sys.stderr)
 
     try:
-        results = assertions.evaluate(intent, devices, management_interfaces=set(inv.management_interfaces))
+        results = assertions.evaluate(intent, devices, management_interfaces=set(inv.management_interfaces),
+                                  management_vrfs=set(inv.management_vrfs))
     except ValueError as e:
         print(f"Erreur : {e}", file=sys.stderr)
         return 3

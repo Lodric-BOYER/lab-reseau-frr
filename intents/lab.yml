@@ -50,3 +50,56 @@ assertions:
     prefix: 192.168.2.0/24
     via: [r3, r4, r5]
     mode: all
+
+  # --- Phase B2 (v4) : double pile IPv6 et VRF de démonstration (valeurs relevées sur le lab en double pile ; le
+  # lien local n'est jamais cité : il change à chaque démarrage). ---
+
+  - id: ospf6-r1-voisins
+    description: "r1 a exactement 2 voisins OSPFv3 Full (r2 et r3)"
+    device: r1
+    type: ospf_neighbors
+    family: ipv6
+    count: 2
+
+  - id: bgp6-r3-vers-r4
+    description: "Session eBGP IPv6 r3 -> 2001:db8:34::3 Established, au moins 2 préfixes reçus"
+    device: r3
+    type: bgp_session
+    neighbor: "2001:db8:34::3"
+    min_prefixes_received: 2
+
+  - id: route6-r1-vers-lan-r5
+    description: "r1 connaît 2001:db8:a2::/64 (LAN de pc2), via OSPFv3, sortie eth2 (vers r3)"
+    device: r1
+    type: route_present
+    prefix: "2001:db8:a2::/64"
+    protocol: ospf6
+    interface: eth2
+
+  - id: route6-r4-sans-lan-r1-direct
+    description: "r4 n'a pas d'entrée EXACTE pour 2001:db8:1:12::/127 (il atteint l'AS65001 par l'agrégat 2001:db8:1::/48, comme en IPv4)"
+    device: r4
+    type: route_absent
+    prefix: "2001:db8:1:12::/127"
+
+  - id: chemin6-r1-vers-lan-r5
+    description: "Le chemin IPv6 de r1 vers 2001:db8:a2::/64 passe par r3 (OSPFv3), r4 (eBGP) puis r5, où le préfixe est directement connecté"
+    device: r1
+    type: path
+    prefix: "2001:db8:a2::/64"
+    via: [r3, r4, r5]
+    mode: all
+
+  - id: vrf-demo-r2-route-rejet
+    description: "r2 porte, dans la VRF DEMO, la route de rejet 2001:db8:99:9::/64 (statique)"
+    device: r2
+    type: route_present
+    vrf: DEMO
+    prefix: "2001:db8:99:9::/64"
+    protocol: static
+
+  - id: vrf-demo-r2-isolee-du-defaut
+    description: "La route de la VRF DEMO 2001:db8:99:9::/64 n'existe PAS dans la VRF default de r2 (une route = (vrf, préfixe))"
+    device: r2
+    type: route_absent
+    prefix: "2001:db8:99:9::/64"

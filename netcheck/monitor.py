@@ -166,10 +166,11 @@ def devices_from_collection(results: dict) -> tuple[dict[str, DeviceState], dict
 def evaluate(
     results: dict, baseline: dict[str, DeviceState], mgmt: set[str],
     intent: list[assertions.Assertion] | None, rules: list[compliance.Rule] | None,
+    mgmt_vrfs: set[str] | None = None,
 ) -> Evaluation:
     everything, reachable, unreachable = devices_from_collection(results)
 
-    findings = diff.compare(baseline, everything, management_interfaces=mgmt)
+    findings = diff.compare(baseline, everything, management_interfaces=mgmt, management_vrfs=mgmt_vrfs)
     diff_status, contributions = diff_outcome(findings)
     # Un équipement injoignable devient UNE contribution explicite (ÉCHEC, validé) ; le constat
     # « équipement injoignable » du diff, qui dit la même chose, est retiré de la liste d'alerte.
@@ -186,12 +187,14 @@ def evaluate(
     ev = Evaluation(OK, components, contributions, unreachable, findings, LABELS[diff_status])
 
     if intent is not None:
-        ev.assert_results = assertions.evaluate(intent, reachable, management_interfaces=mgmt)
+        ev.assert_results = assertions.evaluate(intent, reachable, management_interfaces=mgmt,
+                                              management_vrfs=mgmt_vrfs)
         ev.assert_label = assertions.verdict(ev.assert_results)[0]
         components["assert"], extra = assert_outcome(ev.assert_results)
         contributions += extra
     if rules is not None:
-        audit = compliance.evaluate_config(rules, reachable, management_interfaces=mgmt)
+        audit = compliance.evaluate_config(rules, reachable, management_interfaces=mgmt,
+                                            management_vrfs=mgmt_vrfs)
         ev.violations, ev.not_applicable = audit.violations, audit.not_applicable
         ev.config_warnings = audit.config_warnings
         ev.compliant = compliance.verdict(ev.violations, ev.config_warnings)[0]
@@ -688,7 +691,7 @@ def _run_locked(cfg: MonitorConfig, io: MonitorIO) -> int:
         print(f"Attention : {warning}")
 
     evaluation = evaluate(io.collect(), cfg.baseline, set(cfg.inventory.management_interfaces),
-                          cfg.intent, cfg.rules)
+                          cfg.intent, cfg.rules, set(cfg.inventory.management_vrfs))
     decision = decide(state, evaluation.status, now_iso, cfg.confirm)
 
     print(f"[{now_iso}] netcheck monitor : {LABELS[evaluation.status]} "

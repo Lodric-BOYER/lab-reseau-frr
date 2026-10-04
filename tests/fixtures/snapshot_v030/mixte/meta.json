@@ -1,0 +1,13 @@
+{
+  "name": "a8m-mixte",
+  "timestamp": "2026-10-03T21:46:55+00:00",
+  "devices": [
+    "r1",
+    "r2",
+    "r3",
+    "r4",
+    "r5"
+  ],
+  "errors": {},
+  "netcheck_version": "0.3.0"
+}

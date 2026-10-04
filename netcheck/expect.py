@@ -182,6 +182,7 @@ def apply(
     expectation: Expectation,
     devices_after: dict[str, DeviceState],
     management_interfaces: set[str] | None = None,
+    management_vrfs: set[str] | None = None,
 ) -> tuple[list[Finding], list[AssertionResult]]:
     """Marque PRÉVUS les constats couverts, ajoute les constats synthétiques (changement
     attendu absent, nombre différent, état attendu non respecté), évalue la section `after`.
@@ -208,7 +209,8 @@ def apply(
 
     results: list[AssertionResult] = []
     if expectation.after:
-        results = assertions.evaluate(expectation.after, devices_after, management_interfaces)
+        results = assertions.evaluate(expectation.after, devices_after, management_interfaces,
+                                       management_vrfs)
         for r in results:
             if r.status == Status.ECHEC:
                 out.append(Finding(Severity.CRITIQUE, CATEGORY_STATE, r.assertion.device,

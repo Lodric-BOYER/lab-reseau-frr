@@ -1,7 +1,8 @@
 """Driver Arista EOS (cEOS-lab) : commandes `| json` -> modèle normalisé (netcheck/model.py).
 
 Champs vérifiés EN DIRECT sur le lab cEOS (image ceos:4.34.8M, EOS 4.34.8M), pas devinés : voir
-tests/fixtures/ceos/ (nominal et quatre états dégradés capturés par les six commandes ci-dessous).
+tests/fixtures/ceos/ (nominal et quatre états dégradés capturés par les six commandes ci-dessous ;
+phase B2 : les relevés IPv6 et VRF, tests/fixtures/dualstack/).
 Points propres à EOS, constatés sur l'équipement :
 
 - Netmiko `device_type="arista_eos"`, identifiants par défaut de l'image admin / admin (lab).
@@ -9,11 +10,17 @@ Points propres à EOS, constatés sur l'équipement :
   Invalid input (privileged mode required) ». Le collecteur appelle donc la méthode `enable()`
   de Netmiko (NEEDS_ENABLE) -- aucun mot de passe `enable` n'est configuré, admin est privilège
   15 -- et jamais `send_command("enable")`.
-- Liste blanche EXACTE (ALLOWED_CLI) : seules ces six chaînes complètes, suffixe `| json`
+- Liste blanche EXACTE (ALLOWED_CLI) : seules ces douze chaînes complètes, suffixe `| json`
   compris, peuvent partir vers l'équipement. Un second pipe, une redirection, `tee`, un ajout
   (`>>`) ou toute variante d'espacement sont refusés avant l'envoi.
-- Tout se lit sous `vrfs.default` (netcheck ne regarde que la VRF par défaut). Le JSON EOS est
-  verbeux ; seuls les champs nécessaires au modèle sont lus.
+- OSPF et BGP se lisent sous `vrfs.default` ; les routes se lisent pour TOUTES les VRF (`vrf all`). Le JSON
+  EOS est verbeux ; seuls les champs nécessaires au modèle sont lus.
+- Phase B2, constaté sur cEOS 4.34.8M (lab double pile, plus une VRF temporaire `TMPVRF`) : `show interfaces
+  | json` ne dit ni la VRF ni l'IPv6 d'une interface. `show ipv6 interface | json` donne les adresses
+  (`address` + `subnet`, d'où la longueur du préfixe) et le lien local ; `show vrf | json` donne les
+  interfaces de chaque VRF. `show ip route | json` ne montre que la VRF default, `vrf all` donne une clé par
+  VRF. OSPFv3 : `show ospfv3 neighbor | json` (la syntaxe `show ipv6 ospf neighbor` existe aussi, ancienne,
+  non utilisée). Les types de route IPv6 sortent en minuscules (`ospf`, là où l'IPv4 dit `OSPF`).
 - ASN : chaîne ("65001") -> entier. adjacencyState OSPF : minuscules ("full") -> "Full/-" comme
   le format FRR ("Full/-"), le modèle testant `startswith("Full")`. Seul l'état `full` a été
   observé : les autres sont simplement mis en majuscule initiale, pas devinés.
@@ -36,16 +43,32 @@ import json
 from netcheck.confparse import ParsedConfig, parse_indented
 from netcheck.drivers import eos_rules
 from netcheck.drivers.base import Driver
-from netcheck.model import BgpPeer, BgpPrefix, DeviceState, Interface, NextHop, OspfNeighbor, Route
+from netcheck.drivers.sections import Sections, SectionUnavailable, json_object
+from netcheck.model import (
+    DEFAULT_VRF,
+    BgpPeer,
+    BgpPrefix,
+    DeviceState,
+    Interface,
+    NextHop,
+    OspfNeighbor,
+    Route,
+)
 
 # Commande logique du collecteur -> commande EOS réelle. Les noms logiques sont ceux de la liste
 # blanche du collecteur (inchangée par ce driver) : seule la traduction est propre à EOS.
 _COMMANDS = {
     "show interface json": "show interfaces | json",
-    "show ip route json": "show ip route | json",
+    "show ipv6 interface json": "show ipv6 interface | json",
+    "show vrf json": "show vrf | json",
+    "show ip route json": "show ip route vrf all | json",
+    "show ipv6 route json": "show ipv6 route vrf all | json",
     "show ip ospf neighbor json": "show ip ospf neighbor | json",
+    "show ipv6 ospf neighbor json": "show ospfv3 neighbor | json",
     "show bgp ipv4 unicast summary json": "show ip bgp summary | json",
     "show bgp ipv4 unicast json": "show ip bgp | json",
+    "show bgp ipv6 unicast summary json": "show ipv6 bgp summary | json",
+    "show bgp ipv6 unicast json": "show ipv6 bgp | json",
     "show running-config": "show running-config",
 }
 
@@ -55,7 +78,8 @@ _PROTOCOLS = {"connected": "connected", "static": "static", "dropRoute": "static
 
 
 def _protocol(route_type: str) -> str:
-    if route_type.startswith("OSPF"):   # "OSPF" ; les variantes externes n'ont pas été observées
+    # "OSPF" en IPv4, "ospf" en IPv6 ; les variantes externes : non observées
+    if route_type.lower().startswith("ospf"):
         return "ospf"
     return _PROTOCOLS.get(route_type, route_type.lower() or "?")
 
@@ -100,17 +124,41 @@ class EosDriver(Driver):
         return raw
 
     def parse(self, raw: dict[str, str], name: str, host: str) -> DeviceState:
+        s = Sections(raw)
+        # Les adresses IPv6 et la VRF d'une interface viennent de deux commandes de plus : sans elles,
+        # l'interface est lue comme avant la phase B2 (IPv4, VRF default).
+        v6_text = raw.get("show ipv6 interface json")
+        vrf_text = raw.get("show vrf json")
+        interfaces = s.required("interfaces", "show interface json",
+                                lambda t: self._parse_interfaces(t, v6_text, vrf_text))
+        routes_v4 = s.required("routes_v4", "show ip route json", self._parse_routes)
+        routes_v6 = s.optional("routes_v6", "show ipv6 route json", self._parse_routes, [])
+        s.optional("vrf", "show vrf json", self._vrf_members, {})
+        ospf = s.required("ospf_v2", "show ip ospf neighbor json", self._parse_ospf)
+        ospf6 = s.optional("ospf_v3", "show ipv6 ospf neighbor json", self._parse_ospf6, [])
+        peers = s.required("bgp_v4", "show bgp ipv4 unicast summary json",
+                           lambda t: self._parse_bgp_summary(t, "ipv4"))
+        prefixes = self._parse_bgp_prefixes(raw["show bgp ipv4 unicast json"])
+        v6 = s.optional(
+            "bgp_v6", ("show bgp ipv6 unicast summary json", "show bgp ipv6 unicast json"),
+            lambda summary, table: (self._parse_bgp_summary(summary, "ipv6", strict=True),
+                                    self._parse_bgp_prefixes(table, strict=True)),
+            ([], []))
+        config = s.required("config", "show running-config", lambda t: t)
         return DeviceState(
             name=name,
             host=host,
             timestamp=self.now(),
             reachable=True,
-            interfaces=self._parse_interfaces(raw["show interface json"]),
-            routes=self._parse_routes(raw["show ip route json"]),
-            ospf_neighbors=self._parse_ospf(raw["show ip ospf neighbor json"]),
-            bgp_peers=self._parse_bgp_summary(raw["show bgp ipv4 unicast summary json"]),
-            bgp_prefixes=self._parse_bgp_prefixes(raw["show bgp ipv4 unicast json"]),
-            running_config=raw["show running-config"],
+            interfaces=interfaces,
+            routes=routes_v4 + routes_v6,
+            ospf_neighbors=ospf,
+            bgp_peers=peers + v6[0],
+            bgp_prefixes=prefixes + v6[1],
+            running_config=config,
+            ospf6_neighbors=ospf6,
+            collected=s.collected,
+            section_errors=s.errors,
         )
 
     @staticmethod
@@ -120,7 +168,39 @@ class EosDriver(Driver):
 
     # -- Interfaces -----------------------------------------------------------------------
     @staticmethod
-    def _parse_interfaces(text: str) -> list[Interface]:
+    def _vrf_members(text: str) -> dict[str, str]:
+        """{interface: VRF} d'après `show vrf | json` (`vrfs.<nom>.interfaces`)."""
+        data = json_object(text)
+        if not isinstance(data, dict):
+            raise SectionUnavailable("sortie de `show vrf` inattendue")
+        return {ifname: vrf for vrf, attrs in data.get("vrfs", {}).items()
+                for ifname in attrs.get("interfaces", [])}
+
+    @staticmethod
+    def _ipv6_addresses(text: str) -> dict[str, tuple[list[str], str | None]]:
+        """{interface: (adresses globales en CIDR, lien local)} d'après `show ipv6 interface | json`."""
+        result = {}
+        for ifname, attrs in json_object(text).get("interfaces", {}).items():
+            globals_ = []
+            for a in attrs.get("addresses", []):
+                # `address` n'a pas de longueur ; elle est dans `subnet` ("2001:db8:34::2/127" pour
+                # l'adresse ::3).
+                length = (a.get("subnet") or "/128").rsplit("/", 1)[-1]
+                globals_.append(f"{a['address']}/{length}")
+            result[ifname] = (globals_, (attrs.get("linkLocal") or {}).get("address"))
+        return result
+
+    @classmethod
+    def _parse_interfaces(cls, text: str, v6_text: str | None = None, vrf_text: str | None = None
+                          ) -> list[Interface]:
+        try:
+            v6 = cls._ipv6_addresses(v6_text) if v6_text is not None else {}
+        except SectionUnavailable:
+            v6 = {}
+        try:
+            members = cls._vrf_members(vrf_text) if vrf_text is not None else {}
+        except SectionUnavailable:
+            members = {}
         interfaces = []
         for ifname, attrs in json.loads(text).get("interfaces", {}).items():
             addresses = []
@@ -129,6 +209,7 @@ class EosDriver(Driver):
                 address = primary.get("address")
                 if address and address != "0.0.0.0":
                     addresses.append(f"{address}/{primary.get('maskLen', 32)}")
+            addresses6, link_local = v6.get(ifname, ([], None))
             interfaces.append(Interface(
                 name=ifname,
                 description=attrs.get("description") or None,   # EOS écrit "" : le modèle veut None
@@ -136,33 +217,42 @@ class EosDriver(Driver):
                 oper_up=attrs.get("lineProtocolStatus") == "up",
                 addresses=addresses,
                 is_loopback=(attrs["hardware"] == "loopback") if "hardware" in attrs else None,
+                addresses6=addresses6,
+                link_local6=link_local,
+                vrf=members.get(ifname, DEFAULT_VRF),
             ))
         return interfaces
 
     # -- Routes -----------------------------------------------------------------------------
-    @classmethod
-    def _parse_routes(cls, text: str) -> list[Route]:
+    @staticmethod
+    def _parse_routes(text: str) -> list[Route]:
+        """Routes de toutes les VRF : `vrfs.<vrf>.routes` (la commande `vrf all`)."""
+        data = json_object(text)
+        if not isinstance(data, dict):
+            raise SectionUnavailable("sortie de routes inattendue")
         routes = []
-        for prefix, e in cls._default_vrf(text).get("routes", {}).items():
-            route_type = e.get("routeType", "")
-            if route_type == "dropRoute" or e.get("routeAction") == "drop":
-                # Trou noir (Null0) : aucun next-hop exploitable, même signature que FRR
-                # (NextHop sans ip ni interface). `directlyConnected: true` ne s'applique PAS ici.
-                nexthops = [NextHop(ip=None, interface=None, directly_connected=False)]
-            else:
-                nexthops = [
-                    NextHop(ip=via.get("nexthopAddr"), interface=via.get("interface"),
-                            directly_connected=bool(e.get("directlyConnected")))
-                    for via in e.get("vias", [])
-                ]
-            routes.append(Route(
-                prefix=prefix,
-                protocol=_protocol(route_type),
-                metric=e.get("metric", 0),
-                distance=e.get("preference", 0),
-                selected=True,   # la table EOS ne liste que les routes installées
-                nexthops=nexthops,
-            ))
+        for vrf, table in data.get("vrfs", {}).items():
+            for prefix, e in table.get("routes", {}).items():
+                route_type = e.get("routeType", "")
+                if route_type == "dropRoute" or e.get("routeAction") == "drop":
+                    # Trou noir (Null0) : aucun next-hop exploitable, même signature que FRR
+                    # (NextHop sans ip ni interface). `directlyConnected: true` ne s'applique PAS ici.
+                    nexthops = [NextHop(ip=None, interface=None, directly_connected=False)]
+                else:
+                    nexthops = [
+                        NextHop(ip=via.get("nexthopAddr"), interface=via.get("interface"),
+                                directly_connected=bool(e.get("directlyConnected")))
+                        for via in e.get("vias", [])
+                    ]
+                routes.append(Route(
+                    prefix=prefix,
+                    protocol=_protocol(route_type),
+                    metric=e.get("metric", 0),
+                    distance=e.get("preference", 0),
+                    selected=True,   # la table EOS ne liste que les routes installées
+                    nexthops=nexthops,
+                    vrf=vrf,
+                ))
         return routes
 
     # -- OSPF -------------------------------------------------------------------------------
@@ -180,10 +270,30 @@ class EosDriver(Driver):
                 ))
         return neighbors
 
+    @classmethod
+    def _parse_ospf6(cls, text: str) -> list[OspfNeighbor]:
+        """`show ospfv3 neighbor | json` : vrfs.default.addressFamily.ipv6.ospf3NeighborEntries."""
+        data = json_object(text)
+        if not isinstance(data, dict):
+            raise SectionUnavailable("sortie OSPFv3 inattendue")
+        entries = (data.get("vrfs", {}).get("default", {}).get("addressFamily", {}).get("ipv6", {})
+                   .get("ospf3NeighborEntries", []))
+        neighbors = []
+        for e in entries:
+            state = e.get("adjacencyState", "")
+            neighbors.append(OspfNeighbor(
+                router_id=e["routerId"],
+                state=f"{state[:1].upper()}{state[1:]}/{e.get('designatedRouter') or '-'}",
+                interface=e.get("interfaceName", ""),
+            ))
+        return neighbors
+
     # -- BGP ----------------------------------------------------------------------------------
     @classmethod
-    def _parse_bgp_summary(cls, text: str) -> list[BgpPeer]:
+    def _parse_bgp_summary(cls, text: str, family: str = "ipv4", strict: bool = False) -> list[BgpPeer]:
         peers = []
+        if strict:
+            json_object(text)
         for ip, attrs in cls._default_vrf(text).get("peers", {}).items():
             state = attrs.get("peerState", "absent")
             if attrs.get("peerStateIdleReason"):   # ex. "MaxPath" : affiché "Idle(MaxPath)" par la CLI
@@ -195,12 +305,15 @@ class EosDriver(Driver):
                 state=state,
                 pfx_received=attrs.get("prefixReceived", 0),
                 pfx_sent=attrs.get("prefixAdvertised", 0),
+                address_family=family,
             ))
         return peers
 
     @classmethod
-    def _parse_bgp_prefixes(cls, text: str) -> list[BgpPrefix]:
+    def _parse_bgp_prefixes(cls, text: str, strict: bool = False) -> list[BgpPrefix]:
         prefixes = []
+        if strict:
+            json_object(text)
         for prefix, entry in cls._default_vrf(text).get("bgpRouteEntries", {}).items():
             for path in entry.get("bgpRoutePaths", []):
                 tokens = (path.get("asPathEntry") or {}).get("asPath", "").split()

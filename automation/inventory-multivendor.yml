@@ -23,6 +23,9 @@ defaults:
 # Interfaces de management ignorées par netcheck (diff et conformité) : eth0 (r1-r4, kind
 # "linux") et mgmt0 (r5, kind "nokia_srlinux" -- nom différent, architecture SR Linux réelle).
 management_interfaces: [eth0, mgmt0]
+# VRF de management ignorées comme les interfaces ci-dessus (phase B2) : l'instance réseau mgmt de SR Linux (r5)
+# porte mgmt0 et ses routes ; sans cette ligne, elles apparaîtraient dans les relevés, diff et assertions.
+management_vrfs: [mgmt]
 
 # ospf_neighbors : nombre de voisins OSPF attendus en état Full
 # bgp_peers      : voisin BGP -> nombre minimal de préfixes reçus attendus

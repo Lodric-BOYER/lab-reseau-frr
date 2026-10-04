@@ -213,6 +213,7 @@ def evaluate_config(
     devices: dict[str, DeviceState],
     management_interfaces: set[str] | None = None,
     offline: bool = False,
+    management_vrfs: set[str] | None = None,
 ) -> ComplianceResult:
     """Applique chaque règle à chaque équipement concerné (rule.applies_to).
 
@@ -224,6 +225,7 @@ def evaluate_config(
     (cause « no_model » : un manque de données). La configuration de chaque équipement audité est
     analysée une fois ; toute ligne douteuse devient un `ConfigWarning` (voir `verdict()`)."""
     mgmt = set(management_interfaces or ())
+    mgmt_vrfs = set(management_vrfs or ())
     result = ComplianceResult()
     parsed: dict[str, ParsedConfig | None] = {}
 
@@ -251,7 +253,8 @@ def evaluate_config(
                     "lit le modèle collecté (interfaces) : indisponible hors ligne, seule la configuration "
                     "est lue", CAUSE_NO_MODEL))
                 continue
-            result.violations += check.fn(rule, management.filtered(state, mgmt), config_of(name, state))
+            result.violations += check.fn(rule, management.filtered(state, mgmt, mgmt_vrfs),
+                                           config_of(name, state))
 
     for name, state in devices.items():
         if state.reachable and any(rule.applies(name) for rule in rules):
@@ -265,10 +268,11 @@ def evaluate(
     rules: list[Rule],
     devices: dict[str, DeviceState],
     management_interfaces: set[str] | None = None,
+    management_vrfs: set[str] | None = None,
 ) -> tuple[list[Violation], list[NotApplicable]]:
     """Forme historique de `evaluate_config` : (violations, non_applicables). Elle ne rend PAS les
     avertissements d'analyse : un appelant qui produit un verdict doit utiliser `evaluate_config`."""
-    result = evaluate_config(rules, devices, management_interfaces)
+    result = evaluate_config(rules, devices, management_interfaces, management_vrfs=management_vrfs)
     return result.violations, result.not_applicable
 
 

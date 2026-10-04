@@ -38,16 +38,27 @@ d'architecture SR Linux (pas des choix arbitraires) :
   Vérifié en direct que la commande non restreinte ("info from running system") expose la clé
   privée TLS, le hash du mot de passe admin et la communauté SNMP en clair : jamais utilisée,
   au profit de ces deux sous-branches précises.
+- Phase B2 (constaté sur 26.7.2, lab double pile) : la table de routage de `network-instance default`
+  contient déjà `ipv6-unicast` (route-type `ospfv3`, next-hop de lien local `fe80::…` sur la sous-interface),
+  et la commande des voisins OSPF rend les instances OSPFv2 ET OSPFv3 : aucune commande IPv6 de plus. Pour
+  les VRF : le relevé d'interface ne dit pas à quelle instance réseau appartient une sous-interface ;
+  `info from state network-instance * interface *` le dit (la VRF de management `mgmt` y figure avec
+  mgmt0.0), et la table de routage se lit pour toutes les instances (`network-instance *`, une entrée par
+  instance). Une interface SR Linux est une interface physique qui porte des sous-interfaces : si
+  celles-ci sont dans des VRF différentes, l'interface est relevée une fois par VRF (même nom, VRF
+  différente). Aucune session BGP n'est relevée (section absente, pas vide).
 """
 from __future__ import annotations
 
+import ipaddress
 import json
 import re
 
 from netcheck.confparse import ParsedConfig, combine, make_warning, parse_braces, parse_set
 from netcheck.drivers import srlinux_rules
 from netcheck.drivers.base import Driver
-from netcheck.model import DeviceState, Interface, NextHop, OspfNeighbor, Route
+from netcheck.drivers.sections import Sections, SectionUnavailable, json_object
+from netcheck.model import DEFAULT_VRF, DeviceState, Interface, NextHop, OspfNeighbor, Route
 
 # Nom d'interface loopback SR Linux : motif exact tiré du schéma YANG de l'équipement (affiché
 # par sr_cli lui-même dans un message d'erreur de validation), pas une supposition de notre part.
@@ -70,6 +81,7 @@ _MARKER = re.compile(r"# --- (.+) ---")
 class SrlinuxDriver(Driver):
     REQUIRED_COMMANDS = [
         "show interface json",
+        "show vrf json",
         "show ip route json",
         "show ip ospf neighbor json",
         "show running-config",
@@ -80,7 +92,8 @@ class SrlinuxDriver(Driver):
 
     _TRANSLATION = {
         "show interface json": "info from state interface * | as json",
-        "show ip route json": "info from state network-instance default route-table | as json",
+        "show vrf json": "info from state network-instance * interface * | as json",
+        "show ip route json": "info from state network-instance * route-table | as json",
         "show ip ospf neighbor json": "show network-instance default protocols ospf neighbor | as json",
         "show running-config": "info from running interface *",
         "show ospf running-config": "info from running network-instance default protocols ospf",
@@ -138,39 +151,78 @@ class SrlinuxDriver(Driver):
 
     def parse(self, raw: dict[str, str], name: str, host: str) -> DeviceState:
         running_config = "\n".join(f"# --- {name} ---\n" + raw[command] for name, command, _ in _SECTIONS)
+        s = Sections(raw)
+        # La VRF d'une sous-interface vient d'une commande de plus ; sans elle, les interfaces sont lues
+        # comme avant la phase B2 (VRF default) et la section « vrf » n'est pas relevée.
+        members = s.optional("vrf", "show vrf json", self._vrf_members, {})
+        interfaces = s.required("interfaces", "show interface json",
+                               lambda t: self._parse_interfaces(t, members))
+        routes = s.required("routes_v4", "show ip route json", self._parse_routes)
+        s.collected.append("routes_v6")      # même commande : la table de routage contient les deux familles
+        ospf = s.required("ospf_v2", "show ip ospf neighbor json", self._parse_ospf)
+        s.collected.append("ospf_v3")        # même commande : les instances OSPFv2 et OSPFv3 y figurent
+        ospf6 = self._parse_ospf6(raw["show ip ospf neighbor json"])
+        s.mark("config", True)
         return DeviceState(
             name=name,
             host=host,
             timestamp=self.now(),
             reachable=True,
-            interfaces=self._parse_interfaces(raw["show interface json"]),
-            routes=self._parse_routes(raw["show ip route json"]),
-            ospf_neighbors=self._parse_ospf(raw["show ip ospf neighbor json"]),
+            interfaces=interfaces,
+            routes=routes,
+            ospf_neighbors=ospf,
             bgp_peers=[],
             bgp_prefixes=[],
             running_config=running_config,
+            ospf6_neighbors=ospf6,
+            collected=s.collected,
+            section_errors=s.errors,
         )
 
     # -- Interfaces -----------------------------------------------------------------------
     @staticmethod
-    def _parse_interfaces(text: str) -> list[Interface]:
+    def _vrf_members(text: str) -> dict[str, str]:
+        """{sous-interface: instance réseau} d'après `info from state network-instance * interface *`."""
+        data = json_object(text)
+        if not isinstance(data, dict):
+            raise SectionUnavailable("sortie des instances réseau inattendue")
+        return {i["name"]: ni["name"] for ni in data.get("network-instance", [])
+                for i in ni.get("interface", [])}
+
+    @staticmethod
+    def _parse_interfaces(text: str, members: dict[str, str] | None = None) -> list[Interface]:
+        members = members or {}
         data = json.loads(text)
         interfaces = []
         for attrs in data.get("interface", []):
-            addresses = [
-                a["ip-prefix"]
-                for sub in attrs.get("subinterface", [])
-                for a in sub.get("ipv4", {}).get("address", [])
-                if a.get("ip-prefix")
-            ]
-            interfaces.append(Interface(
-                name=attrs["name"],
-                description=attrs.get("description"),  # absente si jamais configurée
-                admin_up=attrs.get("admin-state") == "enable",
-                oper_up=attrs.get("oper-state") == "up",
-                addresses=addresses,
-                is_loopback=bool(_LOOPBACK_RE.match(attrs["name"])),
-            ))
+            # Une interface par VRF : ses sous-interfaces sont regroupées selon l'instance réseau qui les
+            # porte (un seul groupe, « default », quand rien ne dit le contraire, comme avant la phase B2).
+            groups: dict[str, dict] = {}
+            for sub in attrs.get("subinterface", []):
+                vrf = members.get(f"{attrs['name']}.{sub.get('index', 0)}", DEFAULT_VRF)
+                group = groups.setdefault(vrf, {"v4": [], "v6": [], "link_local": None})
+                group["v4"] += [a["ip-prefix"] for a in sub.get("ipv4", {}).get("address", [])
+                                 if a.get("ip-prefix")]
+                for a in sub.get("ipv6", {}).get("address", []):
+                    prefix = a.get("ip-prefix")
+                    if not prefix:
+                        continue
+                    if ipaddress.ip_interface(prefix).ip.is_link_local:
+                        group["link_local"] = prefix.split("/")[0]
+                    else:
+                        group["v6"].append(prefix)
+            for vrf, group in (groups or {DEFAULT_VRF: {"v4": [], "v6": [], "link_local": None}}).items():
+                interfaces.append(Interface(
+                    name=attrs["name"],
+                    description=attrs.get("description"),  # absente si jamais configurée
+                    admin_up=attrs.get("admin-state") == "enable",
+                    oper_up=attrs.get("oper-state") == "up",
+                    addresses=group["v4"],
+                    is_loopback=bool(_LOOPBACK_RE.match(attrs["name"])),
+                    addresses6=group["v6"],
+                    link_local6=group["link_local"],
+                    vrf=vrf,
+                ))
         return interfaces
 
     # -- Routes -----------------------------------------------------------------------------
@@ -191,38 +243,46 @@ class SrlinuxDriver(Driver):
 
     @staticmethod
     def _parse_routes(text: str) -> list[Route]:
-        data = json.loads(text)
-        groups_by_id = {g["index"]: g for g in data.get("next-hop-group", [])}
-        leaves_by_id = {n["index"]: n for n in data.get("next-hop", [])}
-
+        """Routes de toutes les instances réseau, IPv4 et IPv6. Deux formes : `network-instance *` rend
+        {"network-instance": [{"name": …, "route-table": {…}}]} ; une sortie de `network-instance default
+        route-table` (relevés d'avant la phase B2) rend la table seule, lue comme celle de « default »."""
+        data = json_object(text)
+        if not isinstance(data, dict):
+            raise SectionUnavailable("sortie de routes inattendue")
+        tables = ([(ni["name"], ni.get("route-table", {})) for ni in data["network-instance"]]
+                  if "network-instance" in data else [(DEFAULT_VRF, data)])
         routes = []
-        # IPv4 uniquement (cohérent avec le reste de netcheck, §4 du cahier des charges).
-        for r in data.get("ipv4-unicast", {}).get("route", []):
-            nexthops = SrlinuxDriver._resolve_nexthop_group(
-                r.get("next-hop-group"), groups_by_id, leaves_by_id)
-            for nh in nexthops:
-                nh.directly_connected = r.get("route-type") in ("local", "host")
-            routes.append(Route(
-                prefix=r.get("ipv4-prefix", ""),
-                protocol=r.get("route-type", "?"),
-                metric=r.get("metric", 0),
-                # "preference" est l'équivalent SR Linux de la distance administrative FRR
-                # (plus petit = préféré) : même rôle, nom différent.
-                distance=r.get("preference", 0),
-                selected=r.get("active", False),
-                nexthops=nexthops,
-            ))
+        for vrf, table in tables:
+            groups_by_id = {g["index"]: g for g in table.get("next-hop-group", [])}
+            leaves_by_id = {n["index"]: n for n in table.get("next-hop", [])}
+            for family_key, prefix_key in (("ipv4-unicast", "ipv4-prefix"), ("ipv6-unicast", "ipv6-prefix")):
+                for r in table.get(family_key, {}).get("route", []):
+                    nexthops = SrlinuxDriver._resolve_nexthop_group(
+                        r.get("next-hop-group"), groups_by_id, leaves_by_id)
+                    for nh in nexthops:
+                        nh.directly_connected = r.get("route-type") in ("local", "host")
+                    routes.append(Route(
+                        prefix=r.get(prefix_key, ""),
+                        protocol=r.get("route-type", "?"),
+                        metric=r.get("metric", 0),
+                        # "preference" est l'équivalent SR Linux de la distance administrative FRR
+                        # (plus petit = préféré) : même rôle, nom différent.
+                        distance=r.get("preference", 0),
+                        selected=r.get("active", False),
+                        nexthops=nexthops,
+                        vrf=vrf,
+                    ))
         return routes
 
     # -- OSPF -------------------------------------------------------------------------------
     @staticmethod
-    def _parse_ospf(text: str) -> list[OspfNeighbor]:
+    def _neighbors(text: str, version: str) -> list[OspfNeighbor]:
         neighbors = []
         for instance in json.loads(text).get("instances", []):
-            # Double pile (phase B) : la même commande rend les instances OSPFv2 ET OSPFv3. Le modèle de
-            # voisins OSPF est celui d'OSPFv2 (les voisins OSPFv3 auront leur propre champ) : sans ce filtre,
-            # un voisin OSPFv3 serait compté comme un second voisin OSPFv2 (relevé en direct sur 26.7.2).
-            if instance.get("version", "ospf-v2") != "ospf-v2":
+            # Double pile (phase B) : la même commande rend les instances OSPFv2 ET OSPFv3, avec leur
+            # `version` (relevé en direct sur 26.7.2). Un voisin OSPFv3 compté comme OSPFv2 faussait les
+            # adjacences.
+            if instance.get("version", "ospf-v2") != version:
                 continue
             for n in instance.get("neighbors_brief", []):
                 # SR Linix renvoie l'état en minuscules ("full") ; OspfNeighbor.is_full teste
@@ -235,3 +295,11 @@ class SrlinuxDriver(Driver):
                     interface=n.get("Interface-Name", ""),
                 ))
         return neighbors
+
+    @classmethod
+    def _parse_ospf(cls, text: str) -> list[OspfNeighbor]:
+        return cls._neighbors(text, "ospf-v2")
+
+    @classmethod
+    def _parse_ospf6(cls, text: str) -> list[OspfNeighbor]:
+        return cls._neighbors(text, "ospf-v3")

@@ -12,6 +12,7 @@ cd "$(dirname "$0")/.." || exit 1
 
 LAB=clab-frr-lab
 NC="netcheck/.venv/bin/python -m netcheck"
+NC_PY="netcheck/.venv/bin/python"
 HEALTH="automation/.venv/bin/python automation/health.py"
 JSON_DIR=/tmp/netcheck_integration
 mkdir -p "$JSON_DIR"
@@ -91,6 +92,31 @@ vt r3 "clear bgp ipv4 * soft out"
 wait_healthy && ok "retour à la normale (health.py)" || ko "health.py toujours KO après restauration"
 run_diff s5 2 ÉCHEC 'préfixe BGP perdu : 192.168.1.0/24'
 
+# ---------------------------------------------------------------- S6 : session BGP IPv6 coupée (phase B2)
+title "S6 : neighbor 2001:db8:34::2 shutdown sur r4 (IPv6 seul) -> ÉCHEC"
+$NC snapshot s6_avant --force >/dev/null
+vtconf r4 "conf t" "router bgp 65002" "neighbor 2001:db8:34::2 shutdown"
+sleep 5
+$NC snapshot s6_apres --force >/dev/null
+vtconf r4 "conf t" "router bgp 65002" "no neighbor 2001:db8:34::2 shutdown"
+wait_healthy && ok "retour à la normale (health.py)" || ko "health.py toujours KO après restauration"
+run_diff s6 2 ÉCHEC 'session BGP 2001:db8:34::'
+# La panne est propre à l'IPv6 : aucun constat ne parle de la session IPv4 ni d'un préfixe IPv4.
+grep -q 'session BGP 172.16.34' "$JSON_DIR/s6.json" && ko "la session IPv4 est signalée alors que seule l'IPv6 est coupée" \
+  || ok "aucun constat sur la session IPv4 (la panne est propre à l'IPv6)"
+
+# ---------------------------------------------------------------- S7 : voisin OSPFv3 perdu (phase B2)
+title "S7 : ipv6 ospf6 passive sur r1 eth2 (OSPFv3 seul) -> ÉCHEC"
+$NC snapshot s7_avant --force >/dev/null
+vtconf r1 "conf t" "interface eth2" "ipv6 ospf6 passive"
+sleep 8
+$NC snapshot s7_apres --force >/dev/null
+vtconf r1 "conf t" "interface eth2" "no ipv6 ospf6 passive"
+wait_healthy && ok "retour à la normale (health.py)" || ko "health.py toujours KO après restauration"
+run_diff s7 2 ÉCHEC '"category": "ospf6_neighbor"'
+grep -q 'voisin OSPF perdu' "$JSON_DIR/s7.json" && ko "un voisin OSPFv2 est signalé alors que seul l'OSPFv3 est touché" \
+  || ok "aucun voisin OSPFv2 signalé (la panne est propre à l'OSPFv3)"
+
 # ---------------------------------------------------------------- C1 : conformité nominale
 title "C1 : aucun changement -> conforme"
 out=$($NC check --json "$JSON_DIR/c1.json" 2>&1); code=$?
@@ -139,6 +165,31 @@ grep -q '"id": "chemin-r1-vers-lan-r5"' "$JSON_DIR/a2.json" && grep -q "trou noi
   || { ko "constat 'path' attendu manquant"; cat "$JSON_DIR/a2.json"; }
 grep -q '"id": "interface-r4-vers-r5"' "$JSON_DIR/a2.json" && ok "assertion 'interface_up' présente dans le rapport" \
   || ko "assertion 'interface_up' absente du rapport"
+
+# ---------------------------------------------------------------- A3 : coupure de l'IPv6 seul (phase B2)
+title "A3 : eBGP IPv6 coupé sur r4 -> ÉCHEC en IPv6, l'IPv4 reste OK (assert)"
+docker exec "$LAB-r4" vtysh -c "conf t" -c "router bgp 65002" -c "neighbor 2001:db8:34::2 shutdown" >/dev/null
+sleep 15
+out=$($NC assert --intent intents/lab.yml --json "$JSON_DIR/a3.json" 2>&1); code=$?
+docker exec "$LAB-r4" vtysh -c "conf t" -c "router bgp 65002" -c "no neighbor 2001:db8:34::2 shutdown" >/dev/null
+wait_healthy && ok "retour à la normale (health.py)" || ko "health.py toujours KO après restauration"
+
+[[ "$code" == "2" ]] && ok "code retour = 2" || { ko "code retour = $code (attendu 2)"; echo "$out"; }
+echo "$out" | grep -q "Verdict : ÉCHEC" && ok "verdict = ÉCHEC" || { ko "verdict inattendu"; echo "$out"; }
+for id in bgp6-r3-vers-r4 chemin6-r1-vers-lan-r5; do
+  $NC_PY - "$JSON_DIR/a3.json" "$id" ÉCHEC <<'PY' && ok "assertion IPv6 '$id' en ÉCHEC" || ko "assertion IPv6 '$id' pas en ÉCHEC"
+import json, sys
+results = {r["id"]: r["status"] for r in json.load(open(sys.argv[1]))["results"]}
+sys.exit(0 if results.get(sys.argv[2]) == sys.argv[3] else 1)
+PY
+done
+for id in bgp-r3-vers-r4 chemin-r1-vers-lan-r5 ospf6-r1-voisins vrf-demo-r2-route-rejet; do
+  $NC_PY - "$JSON_DIR/a3.json" "$id" OK <<'PY' && ok "assertion '$id' toujours OK (IPv4, OSPFv3, VRF intacts)" || ko "assertion '$id' pas OK"
+import json, sys
+results = {r["id"]: r["status"] for r in json.load(open(sys.argv[1]))["results"]}
+sys.exit(0 if results.get(sys.argv[2]) == sys.argv[3] else 1)
+PY
+done
 
 # ---------------------------------------------------------------- Guard : encadre S2 via --change
 title "Guard : encadre S2 (coût OSPF) via --change --yes"

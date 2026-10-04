@@ -36,12 +36,22 @@ from labtools import run_parallel  # noqa: E402  (import après modification de 
 # system" (sans restriction) expose la clé privée TLS, le hash du mot de passe admin et la
 # communauté SNMP en clair -- disproportionné pour ce qui est requis ici, donc jamais ajouté ;
 # seules les deux sous-branches précises le sont.
+#
+# Phase B2 (v4, IPv6 et VRF) : six noms logiques de plus, validés un par un avec la sortie réelle de chaque
+# driver. Trois traductions existantes sont élargies à toutes les VRF (routes IPv4 de FRR, d'EOS et de SR
+# Linux).
 ALLOWED_COMMANDS = {
     "show interface json",
+    "show ipv6 interface json",
+    "show vrf json",
     "show ip route json",
+    "show ipv6 route json",
     "show ip ospf neighbor json",
+    "show ipv6 ospf neighbor json",
     "show bgp ipv4 unicast summary json",
     "show bgp ipv4 unicast json",
+    "show bgp ipv6 unicast summary json",
+    "show bgp ipv6 unicast json",
     "show running-config",
     "show ospf running-config",
     "show system authentication",
@@ -152,6 +162,13 @@ def _converged(results: dict, routers: dict) -> bool:
             return False
         for ip, min_pfx in (expected.get("bgp_peers") or {}).items():
             peer = next((p for p in state.bgp_peers if p.neighbor == ip), None)
+            if peer is None or peer.state != "Established" or peer.pfx_received < min_pfx:
+                return False
+        # Phase B2 : mêmes critères pour la pile IPv6, quand l'inventaire les déclare (clés facultatives).
+        if sum(1 for n in state.ospf6_neighbors if n.is_full) < expected.get("ospf6_neighbors", 0):
+            return False
+        for ip, min_pfx in (expected.get("bgp6_peers") or {}).items():
+            peer = next((p for p in state.bgp_peers if p.neighbor == ip and p.address_family == "ipv6"), None)
             if peer is None or peer.state != "Established" or peer.pfx_received < min_pfx:
                 return False
     return True

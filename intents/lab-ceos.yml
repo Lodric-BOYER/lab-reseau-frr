@@ -84,3 +84,43 @@ assertions:
     prefix: 192.168.2.0/24
     via: [r3, r4, r5]
     mode: all
+
+  # --- Phase B2 (v4) : double pile IPv6 (valeurs relevées sur le lab en double pile, lien local jamais cité :
+  # il change à chaque démarrage). `family: ipv6` choisit OSPFv3 ; la famille d'une session ou d'une route se
+  # déduit de l'adresse ou du préfixe. ---
+
+  - id: bgp6-r3-vers-r4
+    description: "Session eBGP IPv6 r3 (FRR) -> 2001:db8:34::3 (r4, cEOS) Established, au moins 2 préfixes reçus"
+    device: r3
+    type: bgp_session
+    neighbor: "2001:db8:34::3"
+    min_prefixes_received: 2
+
+  - id: bgp6-r4-vers-r3
+    description: "Session eBGP IPv6 r4 (cEOS) -> 2001:db8:34::2 (r3, FRR) Established, au moins 2 préfixes reçus"
+    device: r4
+    type: bgp_session
+    neighbor: "2001:db8:34::2"
+    min_prefixes_received: 2
+
+  - id: ospf6-r4-voisin-r5
+    description: "r4 (cEOS) a exactement 1 voisin OSPFv3 Full (r5)"
+    device: r4
+    type: ospf_neighbors
+    family: ipv6
+    count: 1
+
+  - id: route6-r4-agregat-null0
+    description: "r4 (cEOS) porte l'agrégat 2001:db8:2::/48 en route statique de rejet (Null0), annoncé en eBGP"
+    device: r4
+    type: route_present
+    prefix: "2001:db8:2::/48"
+    protocol: static
+
+  - id: chemin6-r1-vers-lan-r5
+    description: "Le chemin IPv6 de r1 vers 2001:db8:a2::/64 passe par r3 (OSPFv3), r4 (cEOS, eBGP) puis r5, où le préfixe est directement connecté"
+    device: r1
+    type: path
+    prefix: "2001:db8:a2::/64"
+    via: [r3, r4, r5]
+    mode: all

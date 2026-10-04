@@ -4,6 +4,7 @@ Fixtures capturées sur le vrai lab cEOS (tests/fixtures/ceos/, image ceos:4.34.
 commandes du driver, via une vraie session Netmiko `arista_eos` : un état nominal et quatre états
 dégradés (OSPF tombé, BGP en Idle(MaxPath), BGP en Connect, interface coupée). Jamais inventées.
 """
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, call
 
@@ -26,6 +27,7 @@ RAW_FILES = {
     "show running-config": "running_config.txt",
 }
 MGMT = {"eth0", "Management0"}
+DUALSTACK = Path(__file__).resolve().parent / "fixtures" / "dualstack" / "ceos"
 
 
 def read(scenario: str, filename: str) -> str:
@@ -294,21 +296,64 @@ def test_path_to_a_covered_prefix_is_not_a_blackhole():
 # Liste blanche EXACTE de la commande CLI complète, `| json` compris
 # ------------------------------------------------------------------------------------------
 
+# Phase B2 : douze chaînes complètes (les six d'origine, dont les routes IPv4 élargies à toutes les VRF,
+# et six de plus
+# validées une par une avec leur sortie réelle : tests/fixtures/dualstack/ceos/).
 ALLOWED = [
-    "show interfaces | json", "show ip route | json", "show ip ospf neighbor | json",
-    "show ip bgp summary | json", "show ip bgp | json", "show running-config",
+    "show interfaces | json", "show ipv6 interface | json", "show vrf | json",
+    "show ip route vrf all | json", "show ipv6 route vrf all | json",
+    "show ip ospf neighbor | json", "show ospfv3 neighbor | json",
+    "show ip bgp summary | json", "show ip bgp | json",
+    "show ipv6 bgp summary | json", "show ipv6 bgp | json",
+    "show running-config",
 ]
+# Les anciennes chaînes que le driver n'envoie plus : refusées, car la liste exacte ne garde que ce qui part.
+RETIRED = ["show ip route | json"]
 
 
-def test_translate_gives_exactly_the_six_whitelisted_commands():
+def test_translate_gives_exactly_the_twelve_whitelisted_commands():
     driver = EosDriver()
     assert sorted(driver.translate(c) for c in driver.REQUIRED_COMMANDS) == sorted(ALLOWED)
     assert driver.ALLOWED_CLI == frozenset(ALLOWED)
+    assert len(ALLOWED) == 12
 
 
 @pytest.mark.parametrize("cli", ALLOWED)
-def test_the_six_commands_are_accepted(cli):
+def test_the_twelve_commands_are_accepted(cli):
     EosDriver().check_cli(cli)   # ne lève rien
+
+
+def _variants(cli: str) -> list[tuple[str, str]]:
+    """Les variantes que la v3 refusait pour chaque chaîne, appliquées à CHACUNE des douze (phase B2)."""
+    out = [
+        ("redirection", f"{cli} > /tmp/sortie"), ("ajout", f"{cli} >> /tmp/sortie"),
+        ("tee", f"{cli} | tee /tmp/sortie"), ("second pipe", f"{cli} | grep x"),
+        ("espace final", f"{cli} "), ("espace initial", f" {cli}"), ("casse", cli.upper()),
+        ("point-virgule", f"{cli}; configure terminal"), ("retour ligne", f"{cli}\nconfigure terminal"),
+        ("retour chariot", f"{cli}\rconfigure terminal"), ("esperluette", f"{cli} & reload"),
+        ("substitution", f"{cli} $(reload)"),
+    ]
+    if " | " in cli:
+        out += [("sans espaces autour du pipe", cli.replace(" | ", "|")),
+                ("double espace", cli.replace(" | ", " |  ")),
+                ("tee sans espace", cli.replace(" | ", "|tee /x|"))]
+    if "vrf all" in cli:
+        out += [("sans vrf all", cli.replace(" vrf all", "")),
+                ("une seule VRF", cli.replace("vrf all", "vrf DEMO"))]
+    return out
+
+
+@pytest.mark.parametrize(("label", "cli"), [(f"{base} :: {label}", v) for base in ALLOWED
+                                            for label, v in _variants(base)])
+def test_every_variant_of_each_new_command_is_refused(label, cli):
+    with pytest.raises(PermissionError):
+        EosDriver().check_cli(cli)
+
+
+@pytest.mark.parametrize("cli", RETIRED)
+def test_a_retired_command_is_refused(cli):
+    with pytest.raises(PermissionError):
+        EosDriver().check_cli(cli)
 
 
 @pytest.mark.parametrize(("label", "cli"), [
@@ -340,7 +385,7 @@ def test_the_six_commands_are_accepted(cli):
     ("show ip route avec filtre", "show ip route 10.0.0.0/8 | json"),
     ("vide", ""),
 ])
-def test_anything_but_the_exact_six_commands_is_refused(label, cli):
+def test_anything_but_the_exact_twelve_commands_is_refused(label, cli):
     with pytest.raises(PermissionError):
         EosDriver().check_cli(cli)
 
@@ -375,10 +420,13 @@ def test_collect_refuses_an_injected_command_before_connecting(monkeypatch, evil
 
 def test_the_logical_whitelist_of_the_collector_is_unchanged_by_the_eos_driver():
     assert set(EosDriver().REQUIRED_COMMANDS) <= collector.ALLOWED_COMMANDS
+    # Phase B2 : six noms logiques de plus (IPv6, VRF), les neuf d'avant inchangés.
     assert collector.ALLOWED_COMMANDS == {
         "show interface json", "show ip route json", "show ip ospf neighbor json",
         "show bgp ipv4 unicast summary json", "show bgp ipv4 unicast json", "show running-config",
         "show ospf running-config", "show system authentication", "show system banner",
+        "show ipv6 interface json", "show vrf json", "show ipv6 route json", "show ipv6 ospf neighbor json",
+        "show bgp ipv6 unicast summary json", "show bgp ipv6 unicast json",
     }
 
 
@@ -390,7 +438,8 @@ def _fake_connection():
     """Fausse session Netmiko qui répond, pour chaque commande EOS réelle, par la sortie réelle
     capturée sur le lab (tests/fixtures/ceos/r4/)."""
     conn = MagicMock()
-    by_cli = {EosDriver().translate(c): read("r4", RAW_FILES[c]) for c in EosDriver.REQUIRED_COMMANDS}
+    raw = json.loads((DUALSTACK / "r4.json").read_text(encoding="utf-8"))["commands"]
+    by_cli = {EosDriver().translate(c): raw[c] for c in EosDriver.REQUIRED_COMMANDS}
     conn.send_command.side_effect = lambda cli, **_kw: by_cli[cli]
     return conn
 
@@ -402,7 +451,7 @@ def test_collect_calls_netmiko_enable_before_any_command_and_never_sends_it(monk
               "password": "admin", "name": "r4", "driver": "eos"}
     result = collector.collect(router)
 
-    assert result.driver == "eos" and len(result.bgp_peers) == 1
+    assert result.driver == "eos" and len(result.bgp_peers) == 2   # IPv4 + IPv6 (phase B2)
     conn.enable.assert_called_once_with()
     names = [c[0] for c in conn.method_calls]
     assert names.index("enable") < names.index("send_command"), "enable() doit précéder toute commande"

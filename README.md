@@ -652,7 +652,7 @@ d'assertion que sur les autres labs, y compris `path`, qui traverse r4 : une rou
 
 **Liste blanche à deux niveaux.** La liste blanche *logique* du collecteur n'a pas changé. Le
 driver EOS ajoute une liste blanche en **correspondance exacte de la commande complète**, suffixe
-`| json` compris : seules six chaînes peuvent partir (`show interfaces | json`, `show ip route |
+`| json` compris : seules six chaînes pouvaient partir (douze depuis la phase B2, voir `netcheck/README.md`) (`show interfaces | json`, `show ip route |
 json`, `show ip ospf neighbor | json`, `show ip bgp summary | json`, `show ip bgp | json`, `show
 running-config`). Une redirection (`>`), un ajout (`>>`), `tee`, un second pipe, une variante
 d'espacement ou de casse sont refusés **avant la connexion**, un test par cas. `enable()` est la
@@ -724,13 +724,12 @@ Sur le lab FRR, la double pile ne ralentit pas l'IPv4 et l'IPv6 converge une sec
 déploiement dure environ 7 s de plus et l'IPv4 converge 3 à 4 s plus tard (cause non cherchée) ; sur le lab cEOS, le
 déploiement dure 4 à 9 s de plus. La RAM utilisée par WSL ne bouge pas de façon mesurable.
 
-**Ce que netcheck ne voit pas encore (phases B2 et B3)** : son modèle ne contient ni IPv6 ni VRF. Les interfaces d'une
-VRF sont vues (nom et adresse IPv4) **sans leur VRF**, et leurs routes sont invisibles (`show ip route json` ne
-montre que la VRF par défaut ; sur FRR, `show interface json` liste toutes les VRF mais ajoute le périphérique VRF
-comme une pseudo-interface). Les règles voient le voisin BGP IPv6 (mot de passe, GTSM, limite, route-maps) mais sont
-**silencieuses** sur trois défauts IPv6 : authentification OSPFv3 retirée, `::/0` autorisé en entrée, préfixe local
-autorisé en entrée. Les labs en double pile sont donc audités « conformes » **sans que ces trois points soient
-vérifiés** tant que B3 n'est pas faite. Une seule adaptation de code a été nécessaire en B1 : le driver SR Linux ne
+**Ce que netcheck voit depuis la phase B2** : le modèle contient l'IPv6 (adresses, routes, voisins OSPFv3, BGP
+`ipv6 unicast`) et la VRF de chaque interface, route et session ; `diff`, `assert` (dont `path` en IPv6) et leurs
+sections collectées sont décrits dans `netcheck/README.md`. **Ce que netcheck ne vérifie pas encore (phase B3)** : les
+règles voient le voisin BGP IPv6 (mot de passe, GTSM, limite, route-maps) mais sont **silencieuses** sur trois défauts
+IPv6 : authentification OSPFv3 retirée, `::/0` autorisé en entrée, préfixe local autorisé en entrée. Les labs en double
+pile sont donc audités « conformes » **sans que ces trois points soient vérifiés** tant que B3 n'est pas faite. Une seule adaptation de code a été nécessaire en B1 : le driver SR Linux ne
 compte que les instances OSPFv2 (`"version": "ospf-v2"`) dans ses voisins OSPF, sinon le voisin OSPFv3 de r5 était
 compté comme un second voisin OSPFv2.
 

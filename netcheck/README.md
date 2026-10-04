@@ -185,6 +185,65 @@ réponse, justification), validé, puis `tests/tools/golden.py replace` ne met �
 (tracées dans `meta.revisions`) ; `add` ajoute un cas nouveau sans jamais écraser (`--current-code` pour une
 capacité nouvelle, avec ses deux refus : pas d'écrasement, pas de code non commité).
 
+## Modèle étendu : IPv6, VRF et sections collectées (Phase B2, v4)
+
+**Ce qui est relevé en plus.** Adresses IPv6 des interfaces (globales dans `addresses6`, lien local à part dans
+`link_local6`), table de routage IPv6, voisins OSPFv3 (`ospf6_neighbors`, à part des voisins OSPFv2), sessions et
+préfixes BGP `ipv6 unicast` (`address_family`), et la **VRF** de chaque interface, route, session et préfixe BGP
+(champ `vrf`, défaut `default`). Une route est identifiée par **(vrf, préfixe)** : le même préfixe dans deux VRF
+est deux routes. Tout est relevé sur les trois labs en double pile (FRR, SR Linux, cEOS), sorties réelles dans
+`tests/fixtures/dualstack/`.
+
+**Commandes ajoutées à la liste blanche** (six noms logiques ; chacun validé avec la sortie réelle du driver avant
+d'être ajouté). Trois traductions existantes sont élargies à toutes les VRF.
+
+| Nom logique | FRR (`vtysh -c …`) | EOS (chaîne exacte) | SR Linux |
+|---|---|---|---|
+| `show interface json` | inchangée (contient déjà l'IPv6 et `vrfName`) | inchangée (sans IPv6 ni VRF) | inchangée (contient l'IPv6) |
+| `show ipv6 interface json` | : | `show ipv6 interface \| json` | : |
+| `show vrf json` | : | `show vrf \| json` | `info from state network-instance * interface * \| as json` |
+| `show ip route json` (élargie) | `show ip route vrf all json` | `show ip route vrf all \| json` | `info from state network-instance * route-table \| as json` |
+| `show ipv6 route json` | `show ipv6 route vrf all json` | `show ipv6 route vrf all \| json` | : (la table ci-dessus contient `ipv6-unicast`) |
+| `show ipv6 ospf neighbor json` | `show ipv6 ospf6 neighbor json` | `show ospfv3 neighbor \| json` | : (la commande des voisins OSPF rend les instances v2 et v3) |
+| `show bgp ipv6 unicast summary json`, `show bgp ipv6 unicast json` | idem | `show ipv6 bgp summary \| json`, `show ipv6 bgp \| json` | : (pas de BGP relevé) |
+
+L'EOS passe de six à **douze** chaînes exactes (`ALLOWED_CLI`) ; l'ancienne `show ip route | json` n'est plus
+autorisée. Chaque variante d'une chaîne (redirection, ajout, `tee`, second pipe, espaces, casse, `;`, retour à la
+ligne, `&`, substitution, `vrf all` retiré ou remplacé) est refusée avant la connexion : un test par chaîne et par
+variante.
+
+**Sections collectées.** Chaque `DeviceState` dit quelles sections ont été **réellement relevées** (`collected` :
+`interfaces`, `routes_v4`, `routes_v6`, `ospf_v2`, `ospf_v3`, `bgp_v4`, `bgp_v6`, `vrf`, `bgp_vrf`, `config`) et,
+pour une section non relevée, pourquoi (`section_errors`). Une section **relevée mais vide** (r2 n'a pas de BGP : FRR
+répond `{}` ou `{"warning": "Default BGP instance not found"}`) n'est pas une section **non relevée** (commande non
+exécutée, réponse qui n'est pas du JSON, driver qui ne la lit pas) : la première donne des listes vides, la seconde
+**NON ÉVALUABLE** (`assert`) ou un constat d'information « sections non comparées » (`diff`). Aucun driver ne relève
+encore le BGP des VRF (`bgp_vrf`) : une assertion sur une session BGP d'une VRF est NON ÉVALUABLE. SR Linux ne relève
+aucune session BGP (`bgp_v4`, `bgp_v6` absentes) : `bgp_session` sur r5 est NON ÉVALUABLE, jamais « aucune session ».
+
+**Compatibilité.** Un snapshot de la v0.3.0 (sans `collected` ni `vrf`) se charge : il est lu comme un relevé de la VRF
+`default` avec les sections de la v0.3.0 de son driver (test sur un vrai snapshot du lab mixte, de netcheck 0.3.0).
+Comparé à un snapshot récent, `diff` compare ce qui est comparable et dit en **un** constat d'information ce qu'il n'a
+pas pu comparer (IPv6, OSPFv3, VRF) : jamais « aucun changement » sur ce qu'il n'a pas vu.
+
+**`assert` et `diff`.** Paramètres `family` (`ipv4` | `ipv6` : OSPFv2 ou OSPFv3, famille de la table BGP ; déduite du
+préfixe pour les routes et `path`) et `vrf` (défaut `default`) ; voir le tableau du format d'intent. `path` reste dans
+la VRF de départ. Un next-hop IPv6 de **lien local** (`fe80::`) est résolu par la **paire (adresse, interface de
+sortie)** : l'équipement dont une interface porte cette adresse **et** est sur le même lien (une adresse de l'une dans
+un réseau de l'autre) ; l'adresse seule ne suffit jamais, la même `fe80::` pouvant exister sur plusieurs liens.
+Introuvable ou ambigu : NON ÉVALUABLE, avec la raison. Les routes de lien local (`fe80::/10`) ne sont pas comparées
+par `diff` (FRR n'en installe qu'une parmi celles des interfaces, au gré de leur ordre).
+
+**Management.** Les interfaces de management et leurs routes sont exclues comme avant ; `management_vrfs` (clé de
+l'inventaire, ex. `[mgmt]` pour l'instance réseau de gestion de SR Linux) exclut de même une VRF entière, ses
+interfaces, ses routes et ses sessions BGP, dans `diff`, `assert` et `check`. Sur FRR, le périphérique d'une VRF
+(`DEMO`), listé comme une interface sans adresse, n'est pas une interface du modèle.
+
+**Limites connues.** OSPF (v2 et v3) n'est relevé que pour la VRF `default`. Une interface SR Linux dont les
+sous-interfaces sont dans des VRF différentes est relevée une fois par VRF (même nom, VRF différente) ; une interface
+passe d'une VRF à l'autre en « VRF modifiée », pas en « disparue ». Les règles de conformité restent sur la
+configuration : aucune règle IPv6 avant la phase B3.
+
 ## Sécurité
 
 - **C1 (lecture seule), à deux niveaux.** (1) `collector.ALLOWED_COMMANDS` est la liste des
@@ -192,7 +251,7 @@ capacité nouvelle, avec ses deux refus : pas d'écrasement, pas de code non com
   `REQUIRED_COMMANDS` du driver avant même la connexion SSH, puis à nouveau avant l'envoi de
   chaque commande individuelle. (2) Depuis la Phase F, un driver peut déclarer `ALLOWED_CLI` : la
   liste des commandes CLI *réelles*, en **correspondance exacte** de la chaîne complète (le driver
-  EOS : six chaînes, suffixe `| json` compris). Le niveau 1 ne voit pas ce que `translate()`
+  EOS : douze chaînes depuis la phase B2, suffixe `| json` compris). Le niveau 1 ne voit pas ce que `translate()`
   fabrique ; le niveau 2 porte sur ce qui part réellement. Un driver ne peut donc jamais faire
   passer une commande de configuration, une redirection ou un second pipe.
 - **`monitor` ne modifie rien** : il n'importe ni `guard` ni `subprocess` (vérifié par un test
@@ -231,12 +290,12 @@ assertions:
 
 | `type` | Paramètres | Vérifie |
 |---|---|---|
-| `bgp_session` | `neighbor` ; `state` (défaut `Established`), `min_prefixes_received` | la session existe, dans l'état voulu, avec assez de préfixes |
-| `ospf_neighbors` | `count` ; `state` (défaut `Full`) | **exactement** `count` voisins dans cet état |
-| `route_present` | `prefix` ; `protocol`, `next_hop`, `interface` | route **sélectionnée** au préfixe EXACT (pas de LPM), avec les attributs donnés |
-| `route_absent` | `prefix` | aucune route sélectionnée à ce préfixe EXACT |
-| `interface_up` | `interface` | interface présente, administrativement et opérationnellement active |
-| `path` | `prefix`, `via` (suite d'équipements après `device`) ; `mode: all\|any` (défaut `all`) | le chemin logique calculé de saut en saut |
+| `bgp_session` | `neighbor` ; `state` (défaut `Established`), `min_prefixes_received`, `family`, `vrf` | la session existe (famille déduite de l'adresse du voisin si absente), dans l'état voulu, avec assez de préfixes |
+| `ospf_neighbors` | `count` ; `state` (défaut `Full`), `family: ipv6` (OSPFv3) | **exactement** `count` voisins dans cet état |
+| `route_present` | `prefix` ; `protocol`, `next_hop`, `interface`, `vrf` | route **sélectionnée** au préfixe EXACT (pas de LPM) dans la VRF, avec les attributs donnés (IPv4 ou IPv6, adresses comparées sans tenir compte de l'écriture) |
+| `route_absent` | `prefix` ; `vrf` | aucune route sélectionnée à ce préfixe EXACT dans la VRF |
+| `interface_up` | `interface` ; `vrf` | interface présente (dans la VRF si elle est donnée), administrativement et opérationnellement active |
+| `path` | `prefix`, `via` (suite d'équipements après `device`) ; `mode: all\|any` (défaut `all`), `vrf` | le chemin logique calculé de saut en saut (IPv4 ou IPv6, dans la VRF de départ) |
 
 Résultat par assertion : **OK**, **ÉCHEC** ou **NON ÉVALUABLE** (jamais un OK silencieux). Code
 retour : 0 tout OK, 2 au moins un ÉCHEC, 3 usage ; NON ÉVALUABLE ne change pas le code (mais
@@ -249,7 +308,7 @@ management exclues) ; arrêt quand le préfixe est directement connecté. Un **t
 route, ou route de rejet Null0 / `dropRoute`) est un fait observable : **ÉCHEC** avec « trou
 noir », jamais NON ÉVALUABLE. NON ÉVALUABLE est réservé aux limites de la méthode : boucle,
 profondeur maximale (16 sauts), next-hop inconnu, adresse portée par deux équipements, équipement
-injoignable. En ECMP, `mode: all` exige que toutes les branches soient conformes, `any` qu'une
+injoignable, section non relevée, next-hop de lien local introuvable ou ambigu (Phase B2). En ECMP, `mode: all` exige que toutes les branches soient conformes, `any` qu'une
 seule le soit ; l'échec montre le chemin calculé (« attendu r1 r3 r4 r5, obtenu … »).
 
 ### Expect : ce que l'intervention est censée changer (`diff|guard --expect f.yml`)
@@ -417,7 +476,7 @@ vit dans les drivers :
 | `configdir.py` | 153 | `check --config-dir` |
 
 Ajouter un 4e constructeur ne touche donc plus `compliance.py` : un `<constructeur>_rules.py`, un
-`parse_config` et deux lignes de registre (l'import et l'entrée de `drivers/registry.py`). Les tests passent de **695 (v0.3.0) à 1013**.
+`parse_config` et deux lignes de registre (l'import et l'entrée de `drivers/registry.py`). Les tests passent de **695 (v0.3.0) à 1326**.
 
 ## Reconnaissance du loopback (`is_loopback`)
 

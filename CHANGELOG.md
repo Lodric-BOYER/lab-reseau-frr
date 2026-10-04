@@ -53,6 +53,22 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   BGP IPv6 distincte avec le durcissement de l'IPv4) et r2 porte la VRF `DEMO`. `test_lab.sh` passe de 28 à 47
   contrôles, `test_lab_multivendor.sh` de 15 à 28, `test_lab_ceos.sh` de 26 à 44 ; les scénarios d'intégration
   restent verts. Mesures de convergence et de RAM (3 démarrages à froid par lab) dans le README.
+- **Phase B2, modèle étendu : IPv6, VRF et sections collectées.** Le modèle contient les adresses IPv6 (globales
+  et lien local), les routes IPv6, les voisins OSPFv3 et le BGP `ipv6 unicast`, et un champ `vrf` sur les interfaces,
+  routes, sessions et préfixes BGP (identité d'une route = (vrf, préfixe)). Les trois drivers les lisent, sur les
+  sorties réelles des trois labs en double pile (`tests/fixtures/dualstack/`, dont une VRF temporaire relevée sur
+  cEOS puis retirée avec preuve). Six noms logiques de plus à la liste blanche et douze chaînes exactes pour EOS,
+  chacune avec le refus de ses variantes.
+- **Sections collectées** : chaque relevé dit ce qu'il contient ; une section relevée mais vide n'est pas une
+  section non relevée. `assert` rend NON ÉVALUABLE (avec la raison) quand il lui manque une section, `diff` ne
+  déclare jamais « aucun changement » sur une section relevée d'un seul côté. Un snapshot de la v0.3.0 se charge
+  (lu comme la VRF `default`, sections de la v0.3.0), test sur un vrai snapshot.
+- **`assert` en IPv6 et par VRF** : paramètres `family` et `vrf`, `path` en IPv6 dans la VRF de départ. Un next-hop
+  de lien local est résolu par la paire (adresse, interface de sortie) sur le même lien, jamais par l'adresse seule ;
+  introuvable ou ambigu : NON ÉVALUABLE. Dix-sept intents IPv6 et VRF de plus (`intents/*.yml`), un scénario de coupure
+  de l'IPv6 seul (eBGP, OSPFv3) rouge en `diff` et en `assert` dans `tests/integration.sh`.
+- **`management_vrfs`** (inventaire) : une VRF de management (`mgmt` sur SR Linux) est exclue comme `eth0` ou
+  `Management0`, dans `diff`, `assert` et `check`.
 - **`netcheck check --config-dir <dossier> [--driver …]`** : audit de fichiers de configuration, sans aucun
   équipement. Deux dispositions (`dossier/<équipement>.<ext>`, `dossier/<équipement>/<fichier>`), driver
   déduit de l'inventaire ou donné, option répétable (lab mixte : `configs` puis `configs-multivendor`).
@@ -73,6 +89,10 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
 
 ### Modifié
 
+- **Phase B2 : trois traductions élargies à toutes les VRF** (routes IPv4 de FRR, d'EOS et de SR Linux) ; l'ancienne
+  chaîne EOS `show ip route | json` n'est plus autorisée. Le BGP de SR Linux, jamais relevé, est maintenant une
+  section absente : une assertion `bgp_session` sur r5 est NON ÉVALUABLE (elle disait « aucune session »).
+  Le périphérique d'une VRF FRR n'est plus une interface du modèle.
 - **Refus au chargement** d'une règle dont `drivers:` cite un driver qui n'implémente pas son `kind`
   (elle ne vérifierait rien sur cet équipement). Les règles de la v0.3.0 se chargent sans modification.
 - **Verdict et structure incertaine.** Un avertissement d'analyse peut bloquer le verdict sans retirer
@@ -153,8 +173,10 @@ Défauts communs à FRR et EOS, sur les peer groups (relevés sur r3 et r4, mesu
 - **OSPFv3 sans authentification sur le lien r4–r5** des trois labs (dérogation technique : SR Linux refuse
   l'authentification OSPFv3 par keychain, EOS n'a que l'IPsec, FRR utilise la RFC 7166). Mécanisme de dérogation
   et règle d'audit prévus en phase B3.
-- Double pile (B1) : netcheck ne voit pas encore IPv6 ni les VRF (phase B2) ; les règles sont silencieuses sur
-  l'authentification OSPFv3, `::/0` autorisé en entrée et un préfixe local autorisé en entrée (phase B3).
+- Double pile : les règles de conformité sont silencieuses sur l'authentification OSPFv3, `::/0` autorisé en
+  entrée et un préfixe local autorisé en entrée (phase B3). Le BGP des VRF n'est relevé par aucun driver (section
+  `bgp_vrf`) ; OSPF n'est relevé que pour la VRF `default` ; les routes de lien local ne sont pas comparées par
+  `diff`.
 - Une keychain SR Linux sans aucune clé n'est pas détectée (comportement de la v0.3.0, conservé) :
   amélioration prévue en phase E.
 

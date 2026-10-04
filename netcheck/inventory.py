@@ -25,6 +25,8 @@ INVENTORY_PATH = REPO_ROOT / "automation" / "inventory.yml"
 class Inventory:
     routers: dict[str, dict]
     management_interfaces: list[str] = field(default_factory=list)
+    # Phase B2 : VRF de management (ex. `mgmt` sur SR Linux), exclues comme les interfaces de management.
+    management_vrfs: list[str] = field(default_factory=list)
 
 
 def _resolve_credential(kind: str, driver_name: str, fallback: str) -> str:
@@ -59,4 +61,5 @@ def load(only: list[str] | None = None, path: Path | str | None = None) -> Inven
     if only and set(only) - set(routers):
         raise SystemExit(f"Routeur(s) inconnu(s) : {', '.join(sorted(set(only) - set(routers)))}")
 
-    return Inventory(routers=routers, management_interfaces=data.get("management_interfaces", []))
+    return Inventory(routers=routers, management_interfaces=data.get("management_interfaces", []),
+                     management_vrfs=data.get("management_vrfs", []))
