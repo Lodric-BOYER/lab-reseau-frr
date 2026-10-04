@@ -36,6 +36,9 @@ MAX_SECRET_FILE_BYTES = 4096
 # court pour être expurgé par valeur. Jamais la longueur exacte ni la valeur : seul le seuil figure ici.
 SHORT_SECRET_NOTE = (f"expurgation par valeur inactive pour ce secret (moins de {MIN_REGISTERED_LENGTH} "
                      "caractères), seule la protection SecretStr s'applique")
+# Source affichée quand une clé est configurée ET qu'un mot de passe est aussi fourni :
+# « mot de passe ignoré : clé configurée (r1, r2) ». Le mot de passe n'est alors ni lu ni demandé à Vault.
+PASSWORD_IGNORED = "clé configurée"
 
 
 class CredentialError(Exception):
@@ -133,6 +136,21 @@ def resolve(kind: str, driver: str, fallback: str | None, device: str = "?",
                           "ni valeur dans l'inventaire")
 
 
+def _password_configured(driver: str, router: dict, env: dict) -> bool:
+    """Un mot de passe est-il fourni quelque part ? Réponse par la seule PRÉSENCE des réglages : variable
+    posée, variable de fichier posée (le fichier n'est pas lu), Vault configuré (jamais contacté, voir
+    `NETCHECK_VAULT_ADDR`), valeur d'inventaire. Rien n'est résolu : quand une clé est configurée, le mot de
+    passe n'est ni lu, ni demandé à Vault ; on dit seulement qu'il est ignoré."""
+    from netcheck import vault  # import tardif : vault importe ce module
+    for provider, var in _candidates("PASS", driver):
+        if provider == "vault":
+            if env.get(vault.ENV_ADDR):
+                return True
+        elif env.get(var):
+            return True
+    return bool(router.get("password"))
+
+
 def resolve_device(router: dict, environ: dict | None = None) -> dict:
     """Ajoute à un routeur de l'inventaire son identité résolue : `username` (str) et, soit `password`
     (SecretStr), soit (phase C4, une clé est configurée) `key_file` et `key_passphrase`. Le mot de passe n'est
@@ -145,8 +163,11 @@ def resolve_device(router: dict, environ: dict | None = None) -> dict:
     key = sshkeys.resolve_key(driver, router.get("key_file"), name, env)
     if key is not None:
         without_password = {k: v for k, v in router.items() if k != "password"}
+        sources = {"username": user_src.label, "key": key.path}
+        if _password_configured(driver, router, env):
+            sources["password_ignored"] = PASSWORD_IGNORED
         return {**without_password, "username": user, "key_file": key.path, "key_passphrase": key.passphrase,
-                "credential_sources": {"username": user_src.label, "key": key.path}}
+                "credential_sources": sources}
     password, pass_src = resolve("PASS", driver, router.get("password"), name, environ)
     return {**router, "username": user, "password": SecretStr(password, pass_src.label),
             "credential_sources": {"username": user_src.label, "password": pass_src.label}}
@@ -156,7 +177,8 @@ def describe_sources(routers: dict) -> dict[str, dict[str, list[str]]] | None:
     """{« utilisateur » | « mot de passe » | « clé » | « bastion » : {source : [équipements]}} pour les
     rapports ; None si aucun routeur n'a d'identité résolue (mode hors ligne). Jamais une valeur.
     « clé : /chemin (r1, r2) » ; « bastion : jump@hôte (clé /chemin) »."""
-    out: dict[str, dict[str, list[str]]] = {"utilisateur": {}, "mot de passe": {}, "clé": {}}
+    out: dict[str, dict[str, list[str]]] = {
+        "utilisateur": {}, "mot de passe": {}, "clé": {}, "mot de passe ignoré": {}}
     seen = False
     short = []
     bastions: dict[str, list[str]] = {}
@@ -168,6 +190,8 @@ def describe_sources(routers: dict) -> dict[str, dict[str, list[str]]] | None:
         out["utilisateur"].setdefault(sources["username"], []).append(name)
         if "key" in sources:
             out["clé"].setdefault(sources["key"], []).append(name)
+            if "password_ignored" in sources:
+                out["mot de passe ignoré"].setdefault(sources["password_ignored"], []).append(name)
         else:
             out["mot de passe"].setdefault(sources["password"], []).append(name)
         bastion = router.get("bastion")
@@ -178,6 +202,8 @@ def describe_sources(routers: dict) -> dict[str, dict[str, list[str]]] | None:
             short.append(name)
     if not out["clé"]:
         del out["clé"]              # pas de clé : la forme des rapports d'avant C4 est inchangée
+    if not out["mot de passe ignoré"]:
+        del out["mot de passe ignoré"]
     if bastions:
         out["bastion"] = bastions
     if short:

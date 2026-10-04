@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 
 import pytest
 from sshd_fake import make_key
@@ -182,7 +183,11 @@ def test_a_configured_key_means_no_password_ever(tmp_path):
         environ={"LAB_PASS": "lab-pass-from-LAB_PASS", "NETCHECK_PASS": "var-pass-xyz"},
     )
     assert "password" not in router  # ni résolu, ni présenté : jamais en repli
-    assert router["credential_sources"] == {"username": "inventaire", "key": str(path)}
+    assert router["credential_sources"] == {
+        "username": "inventaire",
+        "key": str(path),
+        "password_ignored": "clé configurée",
+    }
     assert INVENTORY_PASSWORD not in repr(router)
 
 
@@ -337,7 +342,9 @@ def test_snapshot_says_key_and_bastion_and_leaks_nothing(monkeypatch, tmp_path, 
     captured = capsys.readouterr()
     assert f"clé : {router_key} (r1)" in captured.out
     assert "bastion : jump@192.0.2.2 (clé " + str(bastion_key) + ")" in captured.out
-    assert "mot de passe" not in captured.out  # aucun mot de passe : la clé est l'authentification
+    assert "Identifiants, mot de passe :" not in captured.out  # aucun mot de passe utilisé : la clé seule
+    # celui de l'inventaire est dit ignoré
+    assert "mot de passe ignoré : clé configurée (r1)" in captured.out
     assert used == ["bastion", "key_file"]  # le collecteur reçoit la clé et le bastion, pas de mot de passe
     written = "".join(p.read_text(encoding="utf-8") for p in (tmp_path / "snaps" / "s").iterdir())
     everything = captured.out + captured.err + written
@@ -367,17 +374,28 @@ def _write_key(path, kind, passphrase=None, fmt="OpenSSH"):
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric import ec, rsa
 
-    private = (rsa.generate_private_key(65537, 2048) if kind == "rsa"
-               else ec.generate_private_key(ec.SECP256R1()))
-    encryption = (serialization.BestAvailableEncryption(passphrase.encode()) if passphrase
-                  else serialization.NoEncryption())
+    private = (
+        rsa.generate_private_key(65537, 2048) if kind == "rsa" else ec.generate_private_key(ec.SECP256R1())
+    )
+    encryption = (
+        serialization.BestAvailableEncryption(passphrase.encode())
+        if passphrase
+        else serialization.NoEncryption()
+    )
     layout = getattr(serialization.PrivateFormat, fmt)
     path.write_bytes(private.private_bytes(serialization.Encoding.PEM, layout, encryption))
     path.chmod(0o600)
 
 
-@pytest.mark.parametrize(("kind", "fmt"), [("rsa", "OpenSSH"), ("rsa", "TraditionalOpenSSL"),
-                                           ("ecdsa", "OpenSSH"), ("ecdsa", "TraditionalOpenSSL")])
+@pytest.mark.parametrize(
+    ("kind", "fmt"),
+    [
+        ("rsa", "OpenSSH"),
+        ("rsa", "TraditionalOpenSSL"),
+        ("ecdsa", "OpenSSH"),
+        ("ecdsa", "TraditionalOpenSSL"),
+    ],
+)
 @pytest.mark.parametrize("passphrase", [None, PASSPHRASE])
 def test_rsa_and_ecdsa_keys_load_too_with_or_without_a_passphrase(kind, fmt, passphrase, tmp_path):
     path = tmp_path / f"id_{kind}"
@@ -397,7 +415,144 @@ def test_passphrase_variable_beats_file_at_the_same_level(tmp_path):
 @pytest.mark.parametrize("value", ["5", "''", "[a]", "true"])
 def test_a_router_key_file_that_is_not_a_path_is_a_usage_error(value, tmp_path):
     path = tmp_path / "inv.yml"
-    path.write_text("lab: true\ndefaults: {device_type: linux, username: u, password: pw-long-enough}\n"
-                    f"routers:\n  r1: {{host: 192.0.2.1, key_file: {value}}}\n", encoding="utf-8")
+    path.write_text(
+        "lab: true\ndefaults: {device_type: linux, username: u, password: pw-long-enough}\n"
+        f"routers:\n  r1: {{host: 192.0.2.1, key_file: {value}}}\n",
+        encoding="utf-8",
+    )
     with pytest.raises(ValueError, match="key_file"):
         inventory.load(path=path)
+
+
+# --- Clé configurée ET mot de passe fourni : « mot de passe ignoré : clé configurée » ------------------
+
+
+@pytest.mark.parametrize(
+    ("label", "environ", "router_extra"),
+    [
+        ("variable NETCHECK_PASS", {"NETCHECK_PASS": "var-pass-xyz"}, {"password": None}),
+        ("variable du driver", {"NETCHECK_FRR_PASS": "var-pass-xyz"}, {"password": None}),
+        # un fichier de mot de passe introuvable ne fait pas échouer : il n'est pas lu, seule sa présence
+        # compte
+        ("fichier NETCHECK_PASS_FILE", {"NETCHECK_PASS_FILE": "/nonexistent/pass"}, {"password": None}),
+        ("fichier du driver", {"NETCHECK_FRR_PASS_FILE": "/nonexistent/pass"}, {"password": None}),
+        ("LAB_PASS", {"LAB_PASS": "lab-pass-xyz"}, {"password": None}),
+        ("Vault configuré", {"NETCHECK_VAULT_ADDR": "https://vault.invalid:8200"}, {"password": None}),
+        ("inventaire", {}, {}),
+    ],
+)
+def test_a_password_provided_anywhere_is_reported_as_ignored_when_a_key_is_configured(
+    label, environ, router_extra, tmp_path, monkeypatch
+):
+    from netcheck import vault
+
+    monkeypatch.setattr(vault, "lookup", lambda *a, **k: pytest.fail("Vault ne doit pas être interrogé"))
+    path = _key(tmp_path)
+    router = {k: v for k, v in _router(key_file=str(path), **router_extra).items() if v is not None}
+    env = {"NETCHECK_USER": "netops", **environ}  # identifiant fourni : aucun besoin de Vault
+    resolved = credentials.resolve_device(router, environ=env)
+    assert "password" not in resolved
+    described = credentials.describe_sources({"r1": resolved})
+    assert described["mot de passe ignoré"] == {"clé configurée": ["r1"]}
+    assert "mot de passe" not in credentials.format_sources(described)[0]
+    assert "mot de passe ignoré : clé configurée (r1)" in credentials.format_sources(described)
+
+
+def test_no_password_line_when_a_key_is_configured_and_no_password_exists_anywhere(tmp_path):
+    path = _key(tmp_path)
+    router = {k: v for k, v in _router(key_file=str(path)).items() if k != "password"}
+    described = credentials.describe_sources({"r1": credentials.resolve_device(router, environ={})})
+    assert "mot de passe ignoré" not in described
+    assert not any(line.startswith("mot de passe") for line in credentials.format_sources(described))
+
+
+def test_the_ignored_line_never_appears_without_a_key():
+    described = credentials.describe_sources({"r1": credentials.resolve_device(_router(), environ={})})
+    assert "mot de passe ignoré" not in described and "mot de passe" in described
+
+
+def test_vault_is_never_asked_for_the_password_when_a_key_is_configured(tmp_path, monkeypatch):
+    from netcheck import vault
+
+    asked = []
+
+    def spy(kind, driver, env):
+        asked.append(kind)
+
+    monkeypatch.setattr(vault, "lookup", spy)
+    path = _key(tmp_path)
+    env = {"NETCHECK_VAULT_ADDR": "https://vault.invalid:8200"}
+    # identifiant de l'inventaire : Vault peut encore être consulté pour l'utilisateur (ordre de C3), jamais
+    # pour le mot de passe
+    credentials.resolve_device(_router(key_file=str(path)), environ=env)
+    assert asked == ["USER"]
+    # sans clé, le mot de passe est bien demandé : la différence vient de la clé
+    asked.clear()
+    credentials.resolve_device(_router(), environ=env)
+    assert asked == ["USER", "PASS"]
+
+
+def test_vault_is_not_contacted_at_all_when_a_key_and_a_user_are_given(tmp_path, monkeypatch):
+    from netcheck import vault
+
+    monkeypatch.setattr(vault, "lookup", lambda *a, **k: pytest.fail("Vault contacté"))
+    path = _key(tmp_path)
+    env = {"NETCHECK_VAULT_ADDR": "https://vault.invalid:8200", "NETCHECK_USER": "netops"}
+    resolved = credentials.resolve_device(_router(key_file=str(path)), environ=env)
+    assert resolved["credential_sources"]["password_ignored"] == "clé configurée"
+
+
+# --- Contournement du bug paramiko 5.0.0 : une clé chiffrée de CHAQUE type se charge ------------------
+
+
+def _encrypted_key(path, kind):
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
+
+    private = {
+        "rsa": lambda: rsa.generate_private_key(65537, 2048),
+        "ecdsa": lambda: ec.generate_private_key(ec.SECP256R1()),
+        "ed25519": ed25519.Ed25519PrivateKey.generate,
+    }[kind]()
+    path.write_bytes(
+        private.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.OpenSSH,
+            serialization.BestAvailableEncryption(PASSPHRASE.encode()),
+        )
+    )
+    path.chmod(0o600)
+
+
+@pytest.mark.parametrize("kind", ["rsa", "ecdsa", "ed25519"])
+def test_an_encrypted_key_of_each_type_loads_as_the_right_paramiko_class(kind, tmp_path):
+    import paramiko
+
+    from netcheck import sshkeys
+
+    path = tmp_path / f"id_{kind}"
+    _encrypted_key(path, kind)
+    expected = {"rsa": paramiko.RSAKey, "ecdsa": paramiko.ECDSAKey, "ed25519": paramiko.Ed25519Key}[kind]
+    loaded = sshkeys.load_private_key(sshkeys.KeySpec(str(path), SecretStr(PASSPHRASE, "test")), "clé de r1")
+    assert isinstance(loaded, expected)
+
+
+@pytest.mark.parametrize("kind", ["rsa", "ecdsa", "ed25519"])
+def test_an_encrypted_key_of_each_type_with_a_wrong_or_missing_passphrase_is_refused(kind, tmp_path):
+    from netcheck import sshkeys
+
+    path = tmp_path / f"id_{kind}"
+    _encrypted_key(path, kind)
+    with pytest.raises(CredentialError, match="phrase secrète incorrecte") as wrong:
+        wrong_spec = sshkeys.KeySpec(str(path), SecretStr("mauvaise-phrase-1", "test"))
+        sshkeys.load_private_key(wrong_spec, "clé de r1")
+    assert PASSPHRASE not in str(wrong.value) and "mauvaise-phrase-1" not in str(wrong.value)
+    with pytest.raises(CredentialError, match="protégée par une phrase secrète"):
+        sshkeys.load_private_key(sshkeys.KeySpec(str(path), None), "clé de r1")
+
+
+def test_the_buggy_paramiko_from_path_api_is_not_used():
+    from netcheck import sshkeys
+
+    source = Path(sshkeys.__file__).read_text()
+    assert ".from_path(" not in source and "from_private_key_file(" in source
