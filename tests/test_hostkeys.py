@@ -410,7 +410,7 @@ def test_lab_inventories_of_the_repository_are_marked_lab():
 def test_ignore_is_not_an_accepted_value(capsys):
     with pytest.raises(SystemExit) as exit_info:
         cli.build_parser().parse_args(["snapshot", "x", "--host-keys", "ignore"])
-    assert exit_info.value.code == 2
+    assert exit_info.value.code == 3   # erreur d'usage de netcheck (2 = ÉCHEC)
     assert "ignore" in capsys.readouterr().err
 
 

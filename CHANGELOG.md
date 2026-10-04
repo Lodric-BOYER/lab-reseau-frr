@@ -217,6 +217,17 @@ Défauts communs à FRR et EOS, sur les peer groups (relevés sur r3 et r4, mesu
 - **`remote-as external|internal` ignoré (FRR)** : un voisin `external` n'était jamais audité. EOS refuse
   ces deux formes (`% Invalid input`, relevé sur cEOS 4.34.8M).
 
+Phase C1 :
+
+- **Option invalide : code 3, plus le 2 d'argparse (depuis la v0.1.0).** `netcheck --bogus`, un argument manquant, une
+  valeur hors choix (`--host-keys ignore`) sortaient en code 2, le code par défaut d'argparse, or 2 veut dire ÉCHEC
+  (`diff`, `check`, `assert`, `monitor`) : un pipeline ou `monitor.sh` prenait une faute de frappe pour une panne.
+  Toute erreur d'analyse de la ligne de commande sort maintenant en code 3 (erreur d'usage), sur la sortie d'erreur,
+  pour chaque sous-commande ; `--help` reste à 0. Un test par sous-commande, plus un test sur le processus réel.
+- **Mutations : le bytecode périmé ne peut plus fausser un résultat.** Le harnais de mutation (hors dépôt) positionne
+  `PYTHONDONTWRITEBYTECODE=1`, purge les `__pycache__` après chaque mutation et exige un passage à vide vert avant et
+  après ; les 39 mutations de C1 ont été rejouées ainsi : toutes détectées.
+
 Phase B4 :
 
 - **`deny` IPv4 d'une prefix-list lu comme une autorisation (FRR).** `ebgp-pas-de-route-par-defaut` et

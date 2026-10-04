@@ -29,7 +29,19 @@ from netcheck import (
 )
 
 DEFAULT_RULES_PATH = Path(__file__).resolve().parent / "rules" / "default.yml"
+EXIT_USAGE = 3   # erreur d'usage : même code que guard.EXIT_USAGE et monitor.EXIT_USAGE
 REPORTS_DIR = inventory.REPO_ROOT / "reports"  # journaux de guard ; ignoré par Git (C4)
+
+
+class _Parser(argparse.ArgumentParser):
+    """argparse sort en code 2 sur toute option invalide, or 2 veut dire ÉCHEC pour netcheck (diff, check,
+    assert, monitor) : un pipeline ou un planificateur prendrait une faute de frappe pour une panne. Toute
+    erreur d'analyse de la ligne de commande sort donc en code 3, comme les autres erreurs d'usage.
+    Les sous-parseurs héritent de cette classe (`add_subparsers` réutilise le type du parseur parent)."""
+
+    def error(self, message: str):
+        self.print_usage(sys.stderr)
+        self.exit(EXIT_USAGE, f"{self.prog} : erreur : {message}\n")
 
 
 def _load_expectation(path: str | None) -> expect.Expectation | None:
@@ -449,7 +461,7 @@ def _add_expect_arg(sub_parser: argparse.ArgumentParser) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="python -m netcheck", description=__doc__)
+    p = _Parser(prog="python -m netcheck", description=__doc__)
     sub = p.add_subparsers(dest="command", required=True)
 
     p_snap = sub.add_parser("snapshot", help="capture l'état de tous les équipements (ou -d)")

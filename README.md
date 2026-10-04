@@ -422,6 +422,11 @@ lu.
    l'ancienne entrée (`ssh-keygen -R 192.0.2.10 -f ~/.netcheck/known_hosts`) et épinglez la nouvelle.
 4. **`monitor` planifié** : `automation/monitor.sh` lance netcheck avec le `HOME` du planificateur, donc
    `~/.netcheck/known_hosts` ; sinon ajoutez `--known-hosts /chemin/known_hosts` aux arguments.
+   **Après un redéploiement du lab, les clés des conteneurs changent : relancez `lab-access/pin_hostkeys.sh`**
+   (et reprenez une référence si le lab a changé). Sans cela, `monitor` passe en **ÉCHEC** (code 2, « équipement
+   injoignable » : le détail, « clé d'hôte CHANGÉE », est dans le rapport local). C'est voulu : un changement de
+   clé doit alerter, jamais être accepté en silence. Constaté en direct sur le lab FRR (clé de r1 changée : ÉCHEC,
+   r1 injoignable ; clés réépinglées : OK) et rejoué par le scénario H1 des trois scripts d'intégration.
 
 **Limite.** `automation/labtools.py` (scripts `health.py`, `backup.py`, `drift.py`, hors netcheck) garde
 `AutoAddPolicy` : la vérification ne concerne que `netcheck`.
@@ -435,6 +440,9 @@ lu.
 | `snapshot` | tout OK | au moins un équipement injoignable | — | snapshot existant sans `--force` |
 | `assert` | tout OK | — | au moins un ÉCHEC | intent invalide |
 | `monitor` | statut OK | statut ATTENTION | statut ÉCHEC | refusé ou erreur interne (4 : verrou tenu) |
+
+**Une option invalide ou un argument manquant sort en code 3 pour toutes les commandes** (jamais le 2 d'argparse :
+ici, 2 veut dire ÉCHEC, et un pipeline ou `monitor.sh` prendrait une faute de frappe pour une panne).
 
 `guard` a ses propres codes 4 à 6 (annulation réussie, annulation échouée, interrompu) : voir
 « [Changements attendus et retour arrière](#changements-attendus-et-retour-arrière-v3) ».
@@ -1124,6 +1132,11 @@ exécuter du code toutes les 5 minutes) : le fichier est lu comme du texte, seul
 ignorée. Il doit appartenir à l'utilisateur, être un **fichier régulier** (pas un lien) et n'être
 lisible que par lui (**0600**, ou 0400) : sinon refus avec un message clair (code 3). Une
 `NETCHECK_WEBHOOK_URL` déjà exportée l'emporte sur le fichier.
+
+**Clés d'hôte.** `monitor` vérifie les clés SSH comme les autres commandes (`~/.netcheck/known_hosts` du
+planificateur, ou `--known-hosts`). Sur le lab, **après chaque redéploiement, relancez
+`lab-access/pin_hostkeys.sh`** : les clés des conteneurs ont changé et `monitor` passerait en ÉCHEC (voir
+[Clés d'hôte SSH et migration](#clés-dhôte-ssh-et-migration-v4-phase-c1)). C'est le comportement voulu.
 
 À taper vous-même (rien de tout cela n'est fait par le dépôt, et aucun `sudo` n'est nécessaire) :
 

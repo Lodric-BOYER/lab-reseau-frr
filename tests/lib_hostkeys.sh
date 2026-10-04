@@ -11,6 +11,7 @@
 c1_hostkeys_scenarios() {
   local lab="$1" inv="$2" ip1="$3" ip2="$4"
   local kh="$NETCHECK_KNOWN_HOSTS" out code
+  local MON_INV=(-i "$inv") ip1_name="r${ip1##*.1}"   # 172.20.20.11 -> r1
   title "H1 : clés d'hôte -- strict par défaut, clé changée refusée, accept-new réservé au lab"
 
   # (a) épinglage : relu depuis les conteneurs ; refuse deux routeurs qui annoncent la même clé.
@@ -64,7 +65,18 @@ c1_hostkeys_scenarios() {
 
   # (f) il n'existe pas de mode « ignore ».
   $NC snapshot c1_ignore --force -i "$inv" --host-keys ignore >/dev/null 2>&1; code=$?
-  [[ "$code" == "2" ]] && ok "--host-keys ignore : refusé par la CLI (code 2)" || ko "--host-keys ignore : code $code"
+  [[ "$code" == "3" ]] && ok "--host-keys ignore : refusé par la CLI (code 3, erreur d'usage)" || ko "--host-keys ignore : code $code"
+
+  # (h) monitor : une clé changée (cas d'un lab redéployé sans réépinglage) est un ÉCHEC, jamais un silence.
+  #     --dry-run : rien n'est envoyé, aucun état ni rapport écrit. Référence = le relevé de (e), juste pris.
+  out=$(unset NETCHECK_WEBHOOK_URL; NETCHECK_KNOWN_HOSTS="$tampered" $NC monitor --baseline c1_new2 \
+        --dry-run "${MON_INV[@]}" 2>&1); code=$?
+  [[ "$code" == "2" && "$out" == *'"severity": "INJOIGNABLE"'* && "$out" == *"$ip1_name"* ]] \
+    && ok "monitor : clé d'hôte changée -> ÉCHEC (code 2), $ip1_name signalé injoignable" \
+    || { ko "monitor, clé changée : code $code (attendu 2)"; echo "$out" | tail -15; }
+  out=$(unset NETCHECK_WEBHOOK_URL; $NC monitor --baseline c1_new2 --dry-run "${MON_INV[@]}" 2>&1); code=$?
+  [[ "$code" == "0" ]] && ok "monitor : clés épinglées (relancer pin_hostkeys.sh après un déploiement) -> OK, code 0" \
+    || { ko "monitor, clés épinglées : code $code (attendu 0)"; echo "$out" | tail -15; }
 
   # (g) le ~/.ssh/known_hosts de l'utilisateur n'est jamais lu : même rempli, il ne suffit pas.
   local fake_home="$JSON_DIR/c1_home"
