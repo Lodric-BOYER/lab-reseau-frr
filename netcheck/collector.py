@@ -12,6 +12,7 @@ from pathlib import Path
 
 from netmiko import ConnectHandler
 
+from netcheck import hostkeys
 from netcheck.drivers.base import Driver
 from netcheck.drivers.registry import DRIVER_REGISTRY
 from netcheck.model import DeviceState
@@ -89,6 +90,31 @@ def _ensure_allowed(commands) -> None:
         raise PermissionError(f"commande(s) hors liste blanche : {sorted(unknown)}")
 
 
+def _connect(router: dict):
+    """Ouvre la session SSH en vérifiant la clé d'hôte (phase C1).
+
+    `ssh_strict=True` donne `RejectPolicy` : une clé absente du fichier known_hosts DÉDIÉ est refusée.
+    `system_host_keys` reste à False : le ~/.ssh/known_hosts de l'utilisateur n'est jamais lu. En mode
+    accept-new, le premier contact est enregistré avant, puis la connexion est quand même stricte."""
+    policy = hostkeys.current()
+    host, port = router["host"], int(router.get("port", 22))
+    hostkeys.check_file(policy.path)
+    hostkeys.learn(host, port, policy)
+    try:
+        return ConnectHandler(
+            device_type=router["device_type"], host=host, port=port,
+            username=router["username"], password=router["password"],
+            timeout=10, conn_timeout=10,
+            ssh_strict=True, system_host_keys=False,
+            alt_host_keys=True, alt_key_file=str(policy.path),
+        )
+    except Exception as e:  # noqa: BLE001 -- on ne remplace que les refus de clé d'hôte
+        explained = hostkeys.explain(e, host, policy)
+        if explained is None:
+            raise
+        raise hostkeys.HostKeyError(explained) from e
+
+
 def collect(router: dict, driver: Driver | None = None) -> DeviceState:
     """Se connecte à un équipement, exécute les commandes du driver, renvoie l'état normalisé.
 
@@ -112,11 +138,7 @@ def collect(router: dict, driver: Driver | None = None) -> DeviceState:
     for command in driver.REQUIRED_COMMANDS:
         driver.check_cli(driver.translate(command))
 
-    conn = ConnectHandler(
-        device_type=router["device_type"], host=router["host"],
-        username=router["username"], password=router["password"],
-        timeout=10, conn_timeout=10,
-    )
+    conn = _connect(router)
     try:
         if driver.NEEDS_ENABLE:
             conn.enable()   # méthode Netmiko, jamais send_command("enable")

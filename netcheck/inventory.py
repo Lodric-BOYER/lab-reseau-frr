@@ -27,6 +27,8 @@ class Inventory:
     management_interfaces: list[str] = field(default_factory=list)
     # Phase B2 : VRF de management (ex. `mgmt` sur SR Linux), exclues comme les interfaces de management.
     management_vrfs: list[str] = field(default_factory=list)
+    # Phase C1 : `lab: true` dans le fichier. Seul un inventaire de lab peut utiliser --host-keys accept-new.
+    lab: bool = False
 
 
 def _resolve_credential(kind: str, driver_name: str, fallback: str) -> str:
@@ -61,5 +63,9 @@ def load(only: list[str] | None = None, path: Path | str | None = None) -> Inven
     if only and set(only) - set(routers):
         raise SystemExit(f"Routeur(s) inconnu(s) : {', '.join(sorted(set(only) - set(routers)))}")
 
+    lab = data.get("lab", False)
+    if not isinstance(lab, bool):
+        raise SystemExit(f"Inventaire {path} : « lab » doit valoir true ou false (reçu : {lab!r})")
+
     return Inventory(routers=routers, management_interfaces=data.get("management_interfaces", []),
-                     management_vrfs=data.get("management_vrfs", []))
+                     management_vrfs=data.get("management_vrfs", []), lab=lab)

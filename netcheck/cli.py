@@ -20,6 +20,7 @@ from netcheck import (
     diff,
     expect,
     guard,
+    hostkeys,
     inventory,
     monitor,
     report,
@@ -38,8 +39,27 @@ def _load_expectation(path: str | None) -> expect.Expectation | None:
     return expect.load_expect(path) if path else None
 
 
+def _setup_host_keys(args: argparse.Namespace, inv: inventory.Inventory) -> bool:
+    """Pose la politique de clés d'hôte du processus (phase C1), AVANT toute connexion. Renvoie False
+    (message sur stderr) si elle est refusée : accept-new sur un inventaire non marqué `lab: true`,
+    ou mode inconnu dans NETCHECK_HOST_KEYS. accept-new prévient à chaque usage."""
+    try:
+        policy = hostkeys.configure(getattr(args, "host_keys", None), getattr(args, "known_hosts", None),
+                                    inv.lab)
+    except hostkeys.HostKeyError as e:
+        print(f"Erreur : {e}", file=sys.stderr)
+        return False
+    if policy.mode == "accept-new":
+        print("Avertissement : --host-keys accept-new enregistre sans la vérifier la clé de tout équipement "
+              "inconnu (premier contact). Réservé au lab.", file=sys.stderr)
+    hostkeys.set_policy(policy)
+    return True
+
+
 def cmd_snapshot(args: argparse.Namespace) -> int:
     inv = inventory.load(args.devices, path=args.inventory)
+    if not _setup_host_keys(args, inv):
+        return 3
     results = collector.collect_all(inv.routers)
 
     try:
@@ -150,6 +170,8 @@ def cmd_check(args: argparse.Namespace) -> int:
             return 3
     else:
         inv = inventory.load(path=args.inventory)
+        if not _setup_host_keys(args, inv):
+            return 3
         results = collector.collect_all(inv.routers)
         devices = {}
         for name, (ok, value) in results.items():
@@ -208,6 +230,9 @@ def cmd_guard(args: argparse.Namespace) -> int:
     except (ValueError, OSError) as e:
         print(f"Erreur : {e}", file=sys.stderr)
         return guard.EXIT_USAGE
+    inv = inventory.load(path=args.inventory)
+    if not _setup_host_keys(args, inv):
+        return guard.EXIT_USAGE
 
     # --- Les deux scripts sont affichés ENSEMBLE, une seule confirmation, rien d'exécuté avant.
     print("Scripts qui vont être exécutés (contenu affiché en clair : c'est votre fichier local) :")
@@ -229,7 +254,6 @@ def cmd_guard(args: argparse.Namespace) -> int:
             print("Annulé : rien n'a été exécuté.")
             return guard.EXIT_USAGE
 
-    inv = inventory.load(path=args.inventory)
     mgmt = set(inv.management_interfaces)
     mgmt_vrfs = set(inv.management_vrfs)
     stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
@@ -300,6 +324,8 @@ def cmd_assert(args: argparse.Namespace) -> int:
             print(f"Erreur : {e}", file=sys.stderr)
             return 3
     else:
+        if not _setup_host_keys(args, inv):
+            return 3
         results = collector.collect_all(inv.routers)
         devices = {}
         for name, (ok, value) in results.items():
@@ -348,6 +374,8 @@ def cmd_monitor(args: argparse.Namespace) -> int:
         inv = inventory.load(path=args.inventory)
     except Exception as e:  # noqa: BLE001 -- toute erreur de chargement est un refus, code 3
         print(f"Erreur : {webhook.redact(str(e), url)}", file=sys.stderr)
+        return monitor.EXIT_USAGE
+    if not _setup_host_keys(args, inv):
         return monitor.EXIT_USAGE
 
     webhook_format, format_warning = webhook.resolve_format(url, args.webhook_format)
@@ -398,6 +426,20 @@ def _add_inventory_arg(sub_parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_host_keys_args(sub_parser: argparse.ArgumentParser) -> None:
+    """--host-keys / --known-hosts (phase C1) : à toute sous-commande qui ouvre une connexion SSH.
+    Il n'existe pas de valeur « ignore » : argparse la refuse."""
+    sub_parser.add_argument(
+        "--host-keys", choices=hostkeys.MODES, default=None,
+        help="vérification des clés d'hôte SSH : strict (défaut ; la clé doit figurer dans le known_hosts "
+             "dédié) ou accept-new (premier contact enregistré ; RÉSERVÉ au lab, refusé si l'inventaire ne "
+             f"déclare pas `lab: true`) ; défaut aussi via {hostkeys.ENV_MODE}")
+    sub_parser.add_argument(
+        "--known-hosts", metavar="FICHIER", default=None,
+        help=f"fichier known_hosts dédié (défaut : {hostkeys.ENV_KNOWN_HOSTS}, sinon "
+             "~/.netcheck/known_hosts) ; le ~/.ssh/known_hosts de l'utilisateur n'est jamais lu")
+
+
 def _add_expect_arg(sub_parser: argparse.ArgumentParser) -> None:
     """--expect : changements prévus (Phase D1) -- un constat prévu n'est plus une alerte, un
     changement prévu mais absent en devient une. Voir netcheck/expect.py pour le format."""
@@ -415,6 +457,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_snap.add_argument("-d", "--devices", nargs="+", help="équipements ciblés (défaut : tous)")
     p_snap.add_argument("--force", action="store_true", help="écraser un snapshot existant")
     _add_inventory_arg(p_snap)
+    _add_host_keys_args(p_snap)
     p_snap.set_defaults(func=cmd_snapshot)
 
     p_list = sub.add_parser("list", help="liste les snapshots existants")
@@ -454,6 +497,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_check.add_argument("--json", help="écrire les non-conformités au format JSON dans ce fichier")
     p_check.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
     _add_inventory_arg(p_check)
+    _add_host_keys_args(p_check)
     p_check.set_defaults(func=cmd_check)
 
     p_guard = sub.add_parser(
@@ -487,6 +531,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_guard.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
     _add_expect_arg(p_guard)
     _add_inventory_arg(p_guard)
+    _add_host_keys_args(p_guard)
     p_guard.set_defaults(func=cmd_guard)
 
     p_assert = sub.add_parser("assert", help="vérifie l'état attendu (Phase C, --intent)")
@@ -495,6 +540,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_assert.add_argument("--json", help="écrire les résultats au format JSON dans ce fichier")
     p_assert.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
     _add_inventory_arg(p_assert)
+    _add_host_keys_args(p_assert)
     p_assert.set_defaults(func=cmd_assert)
 
     p_monitor = sub.add_parser(
@@ -521,6 +567,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run", action="store_true",
         help="affiche le message qui serait envoyé ; n'envoie rien, n'écrit ni état ni rapport")
     _add_inventory_arg(p_monitor)
+    _add_host_keys_args(p_monitor)
     p_monitor.set_defaults(func=cmd_monitor)
 
     return p

@@ -9,6 +9,10 @@
 # emplacements autorisés à les contenir (C11), l'autre étant les variables d'environnement
 # (NETCHECK_EOS_USER / NETCHECK_EOS_PASS, prioritaires sur les variables génériques : voir
 # netcheck/inventory.py). Sur un vrai déploiement, surcharger par l'environnement.
+# Inventaire de LAB (phase C1) : seul un inventaire qui le déclare permet `--host-keys accept-new`
+# (premier contact enregistré sans vérification). Ne jamais mettre `lab: true` sur un vrai réseau.
+lab: true
+
 defaults:
   device_type: linux      # Netmiko se connecte au shell Alpine, puis lance vtysh
   username: netops

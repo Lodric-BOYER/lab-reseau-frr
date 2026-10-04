@@ -14,6 +14,10 @@
 # Sur un inventaire mixte, NETCHECK_USER/PASS s'applique à TOUS les routeurs (y compris r5) --
 # pour cibler un seul driver, utiliser la variable spécifique, ex. NETCHECK_SRLINUX_USER/PASS
 # pour ne surcharger que r5 sans toucher aux identifiants FRR de r1-r4.
+# Inventaire de LAB (phase C1) : seul un inventaire qui le déclare permet `--host-keys accept-new`
+# (premier contact enregistré sans vérification). Ne jamais mettre `lab: true` sur un vrai réseau.
+lab: true
+
 defaults:
   device_type: linux      # Netmiko se connecte au shell Alpine, puis lance vtysh
   username: netops

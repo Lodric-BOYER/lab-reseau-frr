@@ -1,4 +1,8 @@
 # Inventaire du lab. Identifiants surchargeables via les variables LAB_USER / LAB_PASS.
+# Inventaire de LAB (phase C1) : seul un inventaire qui le déclare permet `--host-keys accept-new`
+# (premier contact enregistré sans vérification). Ne jamais mettre `lab: true` sur un vrai réseau.
+lab: true
+
 defaults:
   device_type: linux      # Netmiko se connecte au shell Alpine, puis lance vtysh
   username: netops
