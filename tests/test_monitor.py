@@ -935,11 +935,13 @@ def test_cli_refuses_an_unsafe_webhook_url_without_quoting_it(lab, monkeypatch, 
     assert webhook.ENV_VAR in captured.err
 
 
-def test_cli_unexpected_error_is_code_3_never_the_attention_code_1(lab, monkeypatch, capsys):
+def test_cli_unexpected_error_is_the_internal_code_never_the_attention_code_1(lab, monkeypatch, capsys):
     def boom(*_a, **_k):
         raise RuntimeError("panne inattendue")
     monkeypatch.setattr(collector, "collect_all", boom)
-    assert _cli() == monitor.EXIT_USAGE
+    code = _cli()
+    assert code == cli.EXIT_INTERNAL == 70    # ni 0/1/2 (statut), ni 3 (refus d'usage), ni 4 (verrou)
+    assert code not in (0, 1, 2, monitor.EXIT_USAGE, monitor.EXIT_LOCKED)
     assert "Erreur interne" in capsys.readouterr().err
 
 

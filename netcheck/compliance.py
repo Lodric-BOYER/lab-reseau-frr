@@ -30,8 +30,6 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from netcheck import derogations as derog
 from netcheck import management
 from netcheck.confparse import ParsedConfig
@@ -48,6 +46,7 @@ from netcheck.ruletypes import (
     Violation,
 )
 from netcheck.secrets import mask_secrets
+from netcheck.usage import load_yaml
 
 KNOWN_SEVERITIES = {"critique", "haute", "moyenne", "basse"}
 KNOWN_DRIVERS = set(DRIVER_REGISTRY)  # Phase D2 : validation du champ optionnel "drivers"
@@ -148,10 +147,7 @@ def load_rule_files(paths: list[str | Path]) -> list[Rule]:
 def load_rules(path: str | Path) -> list[Rule]:
     """Charge et valide rules/default.yml (ou un autre fichier de règles)."""
     path = Path(path)
-    try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except yaml.YAMLError as e:
-        raise ValueError(f"{path} : fichier YAML invalide ou refusé : {e}") from e
+    data = load_yaml(path, "fichier de règles")
 
     if not data:
         return []

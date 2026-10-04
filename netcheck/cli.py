@@ -5,11 +5,11 @@ Sept sous-commandes : snapshot, list, diff, check, guard, assert, monitor.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import sys
+import traceback
 from datetime import date, datetime
 from pathlib import Path
-
-import yaml
 
 from netcheck import (
     assertions,
@@ -27,11 +27,15 @@ from netcheck import (
     report,
     secrets,
     snapshot,
+    usage,
     webhook,
 )
 
 DEFAULT_RULES_PATH = Path(__file__).resolve().parent / "rules" / "default.yml"
 EXIT_USAGE = 3   # erreur d'usage : même code que guard.EXIT_USAGE et monitor.EXIT_USAGE
+# Défaut interne de netcheck (sysexits EX_SOFTWARE) : distinct de 0 à 6, que les sous-commandes se partagent.
+# Python sortirait sinon en code 1 sur une exception non gérée, lu à tort comme « ATTENTION ».
+EXIT_INTERNAL = 70
 REPORTS_DIR = inventory.REPO_ROOT / "reports"  # journaux de guard ; ignoré par Git (C4)
 
 
@@ -46,20 +50,60 @@ class _Parser(argparse.ArgumentParser):
         self.exit(EXIT_USAGE, f"{self.prog} : erreur : {message}\n")
 
 
+@contextlib.contextmanager
+def _loading():
+    """Chargement d'un fichier fourni par l'opérateur : les ValueError et OSError de lecture ou de validation
+    sont des erreurs d'usage (code 3). Seul ce bloc les convertit : une ValueError levée ailleurs reste un
+    défaut interne (code 70), pas une faute de l'opérateur."""
+    try:
+        yield
+    except usage.UsageError:
+        raise
+    except (ValueError, OSError) as e:
+        raise usage.UsageError(str(e)) from None
+
+
 def _load_expectation(path: str | None) -> expect.Expectation | None:
-    """Charge --expect s'il est fourni. Lève ValueError/OSError : l'appelant renvoie le code 3,
-    avant toute action sur le réseau (un fichier d'attentes invalide ne doit jamais être
-    découvert après l'exécution d'un script de changement)."""
-    return expect.load_expect(path) if path else None
+    """Charge --expect s'il est fourni. Erreur d'usage (code 3) avant toute action sur le réseau : un
+    fichier d'attentes invalide ne doit jamais être découvert après l'exécution d'un script de changement."""
+    with _loading():
+        return expect.load_expect(path) if path else None
+
+
+def _load_snapshot(name: str) -> dict:
+    """snapshot.load pour les sous-commandes : un snapshot absent ou corrompu est une erreur d'usage."""
+    try:
+        return snapshot.load(name)
+    except FileNotFoundError as e:
+        raise usage.UsageError(str(e)) from None
+
+
+def _check_outputs(args: argparse.Namespace) -> None:
+    """--json / --html vérifiés AVANT toute action : un fichier de rapport impossible à écrire ne doit pas se
+    découvrir à la fin (pour guard : après l'exécution du changement)."""
+    for option in ("json", "html"):
+        target = getattr(args, option, None)
+        if target:
+            usage.check_output_path(target, f"--{option}")
+
+
+def _refuse_host_key_options_offline(args: argparse.Namespace, offline: bool, why: str) -> None:
+    if offline and (getattr(args, "host_keys", None) or getattr(args, "known_hosts", None)):
+        raise usage.UsageError(f"--host-keys et --known-hosts n'ont de sens qu'avec une collecte en direct "
+                               f"(pas avec {why})")
 
 
 def _setup_host_keys(args: argparse.Namespace, inv: inventory.Inventory) -> bool:
     """Pose la politique de clés d'hôte du processus (phase C1), AVANT toute connexion. Renvoie False
     (message sur stderr) si elle est refusée : accept-new sur un inventaire non marqué `lab: true`,
-    ou mode inconnu dans NETCHECK_HOST_KEYS. accept-new prévient à chaque usage."""
+    mode inconnu dans NETCHECK_HOST_KEYS, known_hosts existant mais inutilisable (dossier, droits trop
+    larges). accept-new prévient à chaque usage. Appelée avant chaque collecte en direct : c'est aussi là que
+    l'inventaire est vérifié « collectable » (hôte, device_type, driver connu)."""
+    inventory.check_collectable(inv)
     try:
         policy = hostkeys.configure(getattr(args, "host_keys", None), getattr(args, "known_hosts", None),
                                     inv.lab)
+        hostkeys.preflight(policy)
     except hostkeys.HostKeyError as e:
         print(f"Erreur : {e}", file=sys.stderr)
         return False
@@ -71,6 +115,7 @@ def _setup_host_keys(args: argparse.Namespace, inv: inventory.Inventory) -> bool
 
 
 def cmd_snapshot(args: argparse.Namespace) -> int:
+    snapshot.snapshot_dir(args.name)   # nom invalide refusé avant toute connexion
     inv = inventory.load(args.devices, path=args.inventory)
     if not _setup_host_keys(args, inv):
         return 3
@@ -82,6 +127,9 @@ def cmd_snapshot(args: argparse.Namespace) -> int:
     except FileExistsError as e:
         print(f"Erreur : {e}", file=sys.stderr)
         return 3
+    except OSError as e:
+        raise usage.UsageError(f"snapshot '{args.name}' non écrit ({e.strerror or e.__class__.__name__})") \
+            from None
 
     print(f"Snapshot '{args.name}' écrit dans {out_dir.relative_to(inventory.REPO_ROOT)}")
     for line in credentials.format_sources(credential_info or {}):
@@ -97,13 +145,10 @@ def cmd_snapshot(args: argparse.Namespace) -> int:
 
 
 def cmd_diff(args: argparse.Namespace) -> int:
-    try:
-        expectation = _load_expectation(args.expect)
-        before = snapshot.load(args.before)
-        after = snapshot.load(args.after)
-    except (FileNotFoundError, ValueError, OSError) as e:
-        print(f"Erreur : {e}", file=sys.stderr)
-        return 3
+    _check_outputs(args)
+    expectation = _load_expectation(args.expect)
+    before = _load_snapshot(args.before)
+    after = _load_snapshot(args.after)
 
     inv = inventory.load(path=args.inventory, resolve_credentials=False)   # hors ligne : aucun identifiant
     mgmt = set(inv.management_interfaces)
@@ -127,49 +172,53 @@ def cmd_diff(args: argparse.Namespace) -> int:
 def _today(value: str | None) -> date:
     """La date du jour pour les dérogations : `--today AAAA-MM-JJ` (audit « à la date du », reproductible) ou
     l'horloge. C'est le SEUL endroit qui appelle l'horloge ; le moteur reçoit la date en paramètre."""
-    return date.fromisoformat(value) if value else date.today()
+    if not value:
+        return date.today()
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise usage.UsageError(f"--today : date AAAA-MM-JJ attendue (reçu : {value!r})") from None
 
 
 def cmd_check(args: argparse.Namespace) -> int:
+    if getattr(args, "today", None) and not getattr(args, "derogations", None):
+        raise usage.UsageError("--today n'a de sens qu'avec --derogations")
+    if args.config_dir and args.snapshot:
+        raise usage.UsageError("--config-dir et --snapshot s'excluent (deux sources différentes)")
+    if args.driver and not args.config_dir:
+        raise usage.UsageError("--driver n'a de sens qu'avec --config-dir")
+    _refuse_host_key_options_offline(args, bool(args.config_dir or args.snapshot),
+                                     "--config-dir ni --snapshot")
+    _check_outputs(args)
+
     rule_files = [args.rules] if isinstance(args.rules, str) else (args.rules or [DEFAULT_RULES_PATH])
     rules_path = ", ".join(str(p) for p in rule_files)
-    try:
+    with _loading():
         rules = compliance.load_rule_files(rule_files)
+        if not rules:
+            raise usage.UsageError(f"aucune règle dans {rules_path} : rien ne serait audité")
         today = _today(getattr(args, "today", None))
         derogation_file = getattr(args, "derogations", None)
         derogation_set = derogations.load(derogation_file, rules, today) if derogation_file else None
-    except ValueError as e:
-        print(f"Erreur : {e}", file=sys.stderr)
-        return 3
-    if getattr(args, "today", None) and not derogation_file:
-        print("Erreur : --today n'a de sens qu'avec --derogations", file=sys.stderr)
-        return 3
-
-    if args.config_dir and args.snapshot:
-        print("Erreur : --config-dir et --snapshot s'excluent (deux sources différentes)", file=sys.stderr)
-        return 3
-    if args.driver and not args.config_dir:
-        print("Erreur : --driver n'a de sens qu'avec --config-dir", file=sys.stderr)
-        return 3
 
     source = None
     credential_info = None
     file_warnings: list[compliance.ConfigWarning] = []
     if args.config_dir:
         # Hors ligne : on ne lit que des fichiers. L'inventaire sert à déduire le driver de chaque
-        # équipement ; sans lui, --driver est obligatoire.
+        # équipement ; sans lui, --driver est obligatoire. Avec --driver, un inventaire ABSENT est toléré ;
+        # un inventaire présent mais invalide reste une erreur (jamais ignoré en silence).
         try:
             inv = inventory.load(path=args.inventory, resolve_credentials=False)
-        except (OSError, KeyError, TypeError, yaml.YAMLError) as e:
-            if not args.driver:
-                print(f"Erreur : inventaire illisible ({e.__class__.__name__}) : donnez --driver",
-                      file=sys.stderr)
-                return 3
+        except usage.UsageError as e:
+            inventory_file = Path(args.inventory) if args.inventory else inventory.INVENTORY_PATH
+            if not args.driver or inventory_file.exists():
+                raise usage.UsageError(f"{e}{'' if args.driver else ' : donnez --driver'}") from None
             inv = inventory.Inventory(routers={})
         try:
             drivers = {n: r.get("driver", "frr") for n, r in inv.routers.items()}
             loaded = configdir.load(args.config_dir, drivers, args.driver)
-        except configdir.ConfigDirError as e:
+        except (configdir.ConfigDirError, OSError) as e:
             print(f"Erreur : {e}", file=sys.stderr)
             return 3
         if not loaded.devices:
@@ -181,11 +230,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         source = loaded.source_info(args.config_dir, args.driver)
     elif args.snapshot:
         inv = inventory.load(path=args.inventory, resolve_credentials=False)
-        try:
-            devices = snapshot.load(args.snapshot)
-        except FileNotFoundError as e:
-            print(f"Erreur : {e}", file=sys.stderr)
-            return 3
+        devices = _load_snapshot(args.snapshot)
     else:
         inv = inventory.load(path=args.inventory)
         if not _setup_host_keys(args, inv):
@@ -199,9 +244,13 @@ def cmd_check(args: argparse.Namespace) -> int:
             else:
                 print(f"  {name:<8} INJOIGNABLE : {value}", file=sys.stderr)
 
-    result = compliance.evaluate_config(
-        rules, devices, management_interfaces=set(inv.management_interfaces), offline=bool(args.config_dir),
-        management_vrfs=set(inv.management_vrfs), derogations=derogation_set, today=today)
+    try:
+        result = compliance.evaluate_config(
+            rules, devices, management_interfaces=set(inv.management_interfaces),
+            offline=bool(args.config_dir), management_vrfs=set(inv.management_vrfs),
+            derogations=derogation_set, today=today)
+    except ValueError as e:   # défaut d'une règle de l'opérateur invisible au chargement (paramètre manquant)
+        raise usage.UsageError(str(e)) from None
     derogation_info = report.derogation_data(result)
     coverage = report.coverage_data(result)
     # Une ligne de configuration non lue (ou un fichier non audité) donne au minimum le code 1 : jamais
@@ -234,10 +283,19 @@ def cmd_guard(args: argparse.Namespace) -> int:
     rollback_script = Path(args.rollback) if args.rollback else None
 
     # --- Tout ce qui peut être refusé l'est ICI, avant la moindre action (code 3) -----------
+    script_texts: dict[Path, str] = {}
     for label, script in (("changement", change_script), ("annulation", rollback_script)):
-        if script is not None and not script.is_file():
+        if script is None:
+            continue
+        if not script.is_file():
             print(f"Erreur : script de {label} introuvable : {script}", file=sys.stderr)
             return guard.EXIT_USAGE
+        try:
+            script_texts[script] = script.read_text(encoding="utf-8", errors="replace")
+        except OSError as e:
+            reason = e.strerror or e.__class__.__name__
+            raise usage.UsageError(f"script de {label} {script} illisible ({reason})") from None
+    _check_outputs(args)
     if args.rollback_on is not None and rollback_script is None:
         print("Erreur : --rollback-on n'a de sens qu'avec --rollback", file=sys.stderr)
         return guard.EXIT_USAGE
@@ -264,13 +322,17 @@ def cmd_guard(args: argparse.Namespace) -> int:
             print("      (aucun --rollback : pas de retour arrière automatique)")
             continue
         print("--- contenu ---")
-        print(script.read_text(encoding="utf-8", errors="replace").rstrip())
+        print(script_texts[script].rstrip())
         print("---------------")
     if rollback_script is not None:
         print(f"\nRetour arrière si : verdict >= {rollback_on.upper()} (--rollback-on), ou script de "
               f"changement en échec/bloqué. Délai par script : {args.script_timeout}s.")
     if not args.yes:
-        reply = input("\nConfirmer l'exécution de ces scripts ? [o/N] ").strip().lower()
+        try:
+            reply = input("\nConfirmer l'exécution de ces scripts ? [o/N] ").strip().lower()
+        except EOFError:   # cron, pipeline : personne ne peut répondre
+            raise usage.UsageError("confirmation impossible (entrée standard fermée) : ajoutez --yes pour "
+                                   "exécuter sans confirmation") from None
         if reply not in ("o", "oui", "y", "yes"):
             print("Annulé : rien n'a été exécuté.")
             return guard.EXIT_USAGE
@@ -334,20 +396,17 @@ def cmd_guard(args: argparse.Namespace) -> int:
 def cmd_assert(args: argparse.Namespace) -> int:
     """Vérifie l'état attendu (Phase C, SPEC_v3 §6, O2) : en direct ou hors ligne (--snapshot),
     identique aux autres sous-commandes de collecte/lecture."""
-    try:
+    _refuse_host_key_options_offline(args, bool(args.snapshot), "--snapshot")
+    _check_outputs(args)
+    with _loading():
         intent = assertions.load_intent(args.intent)
-    except ValueError as e:
-        print(f"Erreur : {e}", file=sys.stderr)
-        return 3
+        if not intent:
+            raise usage.UsageError(f"aucune assertion dans {args.intent} : rien ne serait vérifié")
 
     inv = inventory.load(path=args.inventory, resolve_credentials=not args.snapshot)
     credential_info = None
     if args.snapshot:
-        try:
-            devices = snapshot.load(args.snapshot)
-        except FileNotFoundError as e:
-            print(f"Erreur : {e}", file=sys.stderr)
-            return 3
+        devices = _load_snapshot(args.snapshot)
     else:
         if not _setup_host_keys(args, inv):
             return 3
@@ -362,10 +421,9 @@ def cmd_assert(args: argparse.Namespace) -> int:
 
     try:
         results = assertions.evaluate(intent, devices, management_interfaces=set(inv.management_interfaces),
-                                  management_vrfs=set(inv.management_vrfs))
-    except ValueError as e:
-        print(f"Erreur : {e}", file=sys.stderr)
-        return 3
+                                      management_vrfs=set(inv.management_vrfs))
+    except ValueError as e:   # paramètre manquant dans une assertion de l'opérateur
+        raise usage.UsageError(str(e)) from None
     verdict_label, code = assertions.verdict(results)
 
     report.print_assert_terminal(results, verdict_label, credentials=credential_info)
@@ -389,9 +447,15 @@ def cmd_monitor(args: argparse.Namespace) -> int:
     url = None
     try:
         url = webhook.from_environment()   # ne cite jamais l'URL dans ses erreurs
-        baseline = snapshot.load(args.baseline)
+        if args.state_file:
+            usage.check_output_path(args.state_file, "--state-file", create_parents=True)
+        baseline = _load_snapshot(args.baseline)
         intent = assertions.load_intent(args.intent) if args.intent else None
+        if intent is not None and not intent:
+            raise ValueError(f"aucune assertion dans {args.intent} : rien ne serait vérifié")
         rules = compliance.load_rule_files(args.rules) if args.rules else None
+        if rules is not None and not rules:
+            raise ValueError(f"aucune règle dans {', '.join(args.rules)} : rien ne serait audité")
         derogation_set = None
         if args.derogations:
             if rules is None:
@@ -425,10 +489,11 @@ def cmd_monitor(args: argparse.Namespace) -> int:
         return monitor.run_monitor(cfg, io)
     except Exception as e:  # noqa: BLE001
         # Une exception Python non gérée sortirait en code 1, lu à tort comme « ATTENTION » par un
-        # planificateur : un monitor qui n'a pas pu conclure doit le dire (code 3), sans alerte.
+        # planificateur : un monitor qui n'a pas pu conclure doit le dire, sans alerte. Code 70 (défaut
+        # interne), distinct du code 3 (refus d'usage) : l'opérateur n'y peut rien, il faut le signaler.
         print(f"Erreur interne : monitor n'a pas pu conclure ({type(e).__name__}) : "
               f"{webhook.redact(str(e), url)}", file=sys.stderr)
-        return monitor.EXIT_USAGE
+        return EXIT_INTERNAL
 
 
 def cmd_list(_args: argparse.Namespace) -> int:
@@ -603,10 +668,16 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)
-    except credentials.CredentialError as e:
-        # Identifiant introuvable ou fichier de secret refusé : avant toute connexion, sans valeur.
-        print(f"Erreur : {secrets.mask_secrets(str(e))}", file=sys.stderr)
+    except (usage.UsageError, credentials.CredentialError) as e:
+        # Faute de l'opérateur (fichier absent ou invalide, option incohérente, identifiant introuvable ou
+        # fichier de secret refusé) : avant toute action, UNE ligne claire, jamais de traceback ni de valeur.
+        print(f"Erreur : {secrets.mask_secrets(' '.join(str(e).split()))}", file=sys.stderr)
         return EXIT_USAGE
+    except Exception as e:  # noqa: BLE001 -- dernier filet : un défaut de netcheck n'est jamais un code 0/1/2
+        trace = secrets.mask_secrets(traceback.format_exc().rstrip())
+        print(f"Erreur interne de netcheck ({type(e).__name__}) : ce n'est pas une erreur d'usage, merci de "
+              f"signaler ce défaut. Code {EXIT_INTERNAL}.\n{trace}", file=sys.stderr)
+        return EXIT_INTERNAL
 
 
 if __name__ == "__main__":

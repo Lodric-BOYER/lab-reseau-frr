@@ -15,9 +15,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import yaml
-
 from netcheck import credentials
+from netcheck.drivers.registry import DRIVER_REGISTRY
+from netcheck.usage import UsageError, load_yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 INVENTORY_PATH = REPO_ROOT / "automation" / "inventory.yml"
@@ -31,6 +31,7 @@ class Inventory:
     management_vrfs: list[str] = field(default_factory=list)
     # Phase C1 : `lab: true` dans le fichier. Seul un inventaire de lab peut utiliser --host-keys accept-new.
     lab: bool = False
+    source: str = ""   # fichier d'origine, pour les messages
 
 
 def load(only: list[str] | None = None, path: Path | str | None = None,
@@ -45,22 +46,71 @@ def load(only: list[str] | None = None, path: Path | str | None = None,
     aucun identifiant n'est résolu, aucun fichier de secret n'est lu, un fichier de secret absent n'y est
     donc jamais une erreur."""
     path = Path(path) if path else INVENTORY_PATH
-    data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
-    defaults = data.get("defaults", {})
+    data = load_yaml(path, "inventaire")
+    if not isinstance(data, dict):
+        raise UsageError(f"Inventaire {path} : un objet YAML est attendu (clés `routers`, `defaults`…)")
+    defaults = data.get("defaults") or {}
+    if not isinstance(defaults, dict):
+        raise UsageError(f"Inventaire {path} : `defaults` doit être un objet (clé: valeur)")
+    declared = data.get("routers")
+    if not isinstance(declared, dict) or not declared:
+        raise UsageError(f"Inventaire {path} : `routers` doit être un objet non vide (un routeur par clé)")
 
     routers = {}
-    for name, attrs in data["routers"].items():
+    for name, attrs in declared.items():
+        if not isinstance(name, str):
+            raise UsageError(f"Inventaire {path} : nom de routeur {name!r} invalide "
+                             "(mettez-le entre guillemets)")
+        if attrs is not None and not isinstance(attrs, dict):
+            raise UsageError(f"Inventaire {path} : routeur {name} : un objet (clé: valeur) est attendu")
         if only and name not in only:
             continue
         r = {**defaults, **(attrs or {}), "name": name}
+        _check_router(r, path)
         routers[name] = credentials.resolve_device(r) if resolve_credentials else r
 
     if only and set(only) - set(routers):
-        raise SystemExit(f"Routeur(s) inconnu(s) : {', '.join(sorted(set(only) - set(routers)))}")
+        raise UsageError(f"Routeur(s) inconnu(s) : {', '.join(sorted(set(only) - set(routers)))} "
+                         f"(inventaire {path} : {', '.join(declared)})")
 
     lab = data.get("lab", False)
     if not isinstance(lab, bool):
-        raise SystemExit(f"Inventaire {path} : « lab » doit valoir true ou false (reçu : {lab!r})")
+        raise UsageError(f"Inventaire {path} : « lab » doit valoir true ou false (reçu : {lab!r})")
+    lists = {}
+    for key in ("management_interfaces", "management_vrfs"):
+        value = data.get(key) or []
+        if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+            raise UsageError(f"Inventaire {path} : `{key}` doit être une liste de noms")
+        lists[key] = value
 
-    return Inventory(routers=routers, management_interfaces=data.get("management_interfaces", []),
-                     management_vrfs=data.get("management_vrfs", []), lab=lab)
+    return Inventory(routers=routers, management_interfaces=lists["management_interfaces"],
+                     management_vrfs=lists["management_vrfs"], lab=lab, source=str(path))
+
+
+def _check_router(router: dict, path: Path) -> None:
+    """Types des champs d'un routeur. Aucun message ne cite une valeur d'identifiant : l'inventaire peut
+    contenir un mot de passe."""
+    name = router["name"]
+    for key in ("username", "password"):
+        if key in router and not isinstance(router[key], str):
+            raise UsageError(f"Inventaire {path} : routeur {name} : `{key}` doit être du texte "
+                             "(entre guillemets : « 12345678 » sans guillemets est un nombre)")
+    if "port" in router:
+        port = router["port"]
+        if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
+            raise UsageError(f"Inventaire {path} : routeur {name} : `port` doit être un entier de 1 à 65535")
+
+
+def check_collectable(inv: Inventory) -> None:
+    """Avant une collecte en direct : un routeur sans `host` ni `device_type`, ou dont le driver est inconnu,
+    est une erreur d'usage (code 3), pas un équipement « injoignable » (code 1 ou 2). Séparé de `load` : les
+    commandes hors ligne n'ont besoin d'aucun de ces champs."""
+    for name, router in inv.routers.items():
+        for key in ("host", "device_type"):
+            if not isinstance(router.get(key), str) or not router[key].strip():
+                raise UsageError(f"Inventaire {inv.source} : routeur {name} : `{key}` manque "
+                                 "(ou n'est pas du texte)")
+        driver = router.get("driver", "frr")
+        if driver not in DRIVER_REGISTRY:
+            raise UsageError(f"Inventaire {inv.source} : routeur {name} : driver {driver!r} inconnu "
+                             f"(disponibles : {', '.join(sorted(DRIVER_REGISTRY))})")

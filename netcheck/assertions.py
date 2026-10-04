@@ -30,10 +30,9 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from netcheck import management
 from netcheck.model import DEFAULT_VRF, DeviceState, Interface, Route
+from netcheck.usage import load_yaml
 
 KNOWN_TYPES = {
     "bgp_session",
@@ -80,10 +79,7 @@ class AssertionResult:
 def load_intent(path: str | Path) -> list[Assertion]:
     """Charge et valide un fichier d'intent (intents/*.yml)."""
     path = Path(path)
-    try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except yaml.YAMLError as e:
-        raise ValueError(f"{path} : fichier YAML invalide ou refusé : {e}") from e
+    data = load_yaml(path, "fichier d'intent")
 
     if not data:
         return []

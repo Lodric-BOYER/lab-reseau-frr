@@ -31,12 +31,11 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from netcheck import assertions
 from netcheck.assertions import Assertion, AssertionResult, Status
 from netcheck.diff import FINDING_CATEGORIES, Finding, Severity
 from netcheck.model import DeviceState
+from netcheck.usage import load_yaml
 
 # Catégories synthétiques produites par apply() -- jamais ciblables par un critère.
 CATEGORY_MISSING = "expected_change_missing"
@@ -87,10 +86,7 @@ def load_expect(path: str | Path) -> Expectation:
     """Charge et valide un fichier --expect. Lève ValueError (message qui nomme le critère
     fautif) -- l'appelant renvoie alors le code 3, AVANT toute action sur le réseau."""
     path = Path(path)
-    try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except yaml.YAMLError as e:
-        raise ValueError(f"{path} : fichier YAML invalide ou refusé : {e}") from e
+    data = load_yaml(path, "fichier d'attentes")
 
     if not isinstance(data, dict):
         raise ValueError(f"{path} : un fichier --expect est un objet avec 'findings' et/ou 'after'")

@@ -233,6 +233,27 @@ Défauts communs à FRR et EOS, sur les peer groups (relevés sur r3 et r4, mesu
 - **`remote-as external|internal` ignoré (FRR)** : un voisin `external` n'était jamais audité. EOS refuse
   ces deux formes (`% Invalid input`, relevé sur cEOS 4.34.8M).
 
+Erreurs d'usage hors argparse (après la phase C2) :
+
+- **Une erreur d'usage sortait en code 1 (ATTENTION / injoignable) ou en traceback, jamais en code 3, depuis la
+  v0.1.0.** Un balayage de chaque sous-commande les ramène toutes à : code 3, UNE ligne `Erreur : …` sur stderr, aucune
+  trace, avant toute connexion. Cas : `-d` inconnu et inventaire absent, dossier, YAML invalide, sans `routers`, avec
+  `host`/`device_type` manquant, driver inconnu, mot de passe numérique, `port` hors bornes ; `--rules`, `--intent`,
+  `--derogations`, `--expect` absents, dossiers, non UTF-8 ou invalides ; snapshot absent ou corrompu ; `--today` mal
+  formé ; options incohérentes ; `--json`/`--html`/`--state-file` impossibles à écrire (contrôlé **avant** le script de
+  changement pour `guard`, qui le découvrait à la fin) ; `known_hosts` dossier ou modifiable par d'autres ; `guard`
+  sans `--yes` et sans entrée standard (EOFError). `tests/test_cli_usage_errors.py` : un test paramétré par cas (141
+  tests), plus le processus réel ; 67 mutations, toutes détectées.
+- **Un message d'erreur YAML ne cite plus le fichier** : PyYAML recopie la ligne fautive, qui peut être un mot de passe
+  d'inventaire. Seules la ligne, la colonne et le type du problème sont affichés.
+- **Défaut interne : code 70** (avec la trace, expurgée des secrets connus), plus le code 1 de Python ni le 3 de
+  `monitor`. **Comportement modifié pour `monitor`** : son erreur interne sortait en 3, elle sort en 70 (3 reste le refus
+  d'usage). Avec le catalogue de codes de `guard` (0 à 6) et le verrou de `monitor` (4), 70 ne collisionne avec rien.
+- **Nom de snapshot** : lettres, chiffres, `.`, `-`, `_` à l'écriture. `snapshot ../x --force` écrivait hors de
+  `snapshots/`. La lecture d'un snapshot par chemin reste permise.
+- **Refus d'un audit qui ne lit rien** : fichier de règles ou d'intent vide (zéro règle, zéro assertion) sort en code 3 au
+  lieu d'un « conforme » sur rien, comme `--config-dir` sans configuration lisible l'était déjà.
+
 Phase C1 :
 
 - **Option invalide : code 3, plus le 2 d'argparse (depuis la v0.1.0).** `netcheck --bogus`, un argument manquant, une

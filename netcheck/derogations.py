@@ -47,9 +47,8 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from netcheck.ruletypes import Rule, Violation
+from netcheck.usage import UsageError, parse_yaml
 
 SUPPORTED_VERSION = 1
 MAX_VALIDITY_DAYS = 365
@@ -139,12 +138,14 @@ def load(path: str | Path, rules: list[Rule], today: date) -> DerogationSet:
     try:
         content = path.read_bytes()
     except OSError as e:
-        raise ValueError(f"{path} : fichier de dérogations illisible : {e.strerror or e}") from e
+        reason = e.strerror or e.__class__.__name__
+        raise UsageError(f"{path} : fichier de dérogations illisible ({reason})") from None
     sha256 = hashlib.sha256(content).hexdigest()
     try:
-        data = yaml.safe_load(content.decode("utf-8"))
-    except (yaml.YAMLError, UnicodeDecodeError) as e:
-        raise ValueError(f"{path} : fichier YAML invalide ou refusé : {e}") from e
+        text = content.decode("utf-8")
+    except UnicodeDecodeError:
+        raise UsageError(f"{path} : fichier de dérogations qui n'est pas du texte UTF-8") from None
+    data = parse_yaml(text, path)
 
     if not isinstance(data, dict) or set(data) - {"version", "derogations"}:
         raise ValueError(f"{path} : attendu un objet avec les seules clés « version » et « derogations »")

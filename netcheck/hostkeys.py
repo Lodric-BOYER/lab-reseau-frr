@@ -109,6 +109,16 @@ def check_file(path: Path) -> None:
             f"Corrigez avec : chmod 600 {path}")
 
 
+def preflight(policy: HostKeyPolicy) -> None:
+    """Avant toute connexion : un known_hosts qui EXISTE mais est inutilisable (dossier, droits trop
+    larges) est une erreur de configuration, pas une panne de chaque équipement. Un fichier absent reste un
+    refus par équipement (clé inconnue) : c'est aussi le cas normal d'un premier contact en accept-new."""
+    path = policy.path
+    if path.is_dir():
+        raise HostKeyError(f"{path} est un dossier : un fichier known_hosts est attendu")
+    check_file(path)
+
+
 _lock = threading.Lock()
 
 

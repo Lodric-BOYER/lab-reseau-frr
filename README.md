@@ -486,10 +486,26 @@ FRR n'écrase pas le `NETCHECK_SRLINUX_PASS_FILE` de r5 (la garantie de la v0.3 
 | `check` | conforme | non-conformité(s) moyenne/basse | non-conformité critique/haute | règles ou équipement introuvable |
 | `snapshot` | tout OK | au moins un équipement injoignable | — | snapshot existant sans `--force` |
 | `assert` | tout OK | — | au moins un ÉCHEC | intent invalide |
-| `monitor` | statut OK | statut ATTENTION | statut ÉCHEC | refusé ou erreur interne (4 : verrou tenu) |
+| `monitor` | statut OK | statut ATTENTION | statut ÉCHEC | refusé (4 : verrou tenu) |
 
 **Une option invalide ou un argument manquant sort en code 3 pour toutes les commandes** (jamais le 2 d'argparse :
 ici, 2 veut dire ÉCHEC, et un pipeline ou `monitor.sh` prendrait une faute de frappe pour une panne).
+
+**Toute erreur d'usage sort en code 3, avec UNE ligne sur la sortie d'erreur (`Erreur : …`), jamais de trace.** C'est
+une faute de l'opérateur, vue avant la moindre connexion : inventaire absent, illisible, mal formé (YAML invalide,
+`routers` vide, `host` ou `device_type` manquant, driver inconnu, mot de passe écrit sans guillemets et lu comme un
+nombre, `port` hors 1-65535) ; équipement inconnu avec `-d` ; fichier de règles, d'intent, de dérogations ou
+d'attentes (`--expect`) absent, dossier, illisible, invalide, ou **vide** (zéro règle ou zéro assertion : rien ne serait
+audité) ; snapshot absent ou corrompu ; nom de snapshot invalide (lettres, chiffres, `.`, `-`, `_`) ; options
+incohérentes (`--config-dir` avec `--snapshot`, `--driver` sans `--config-dir`, `--today` sans `--derogations`,
+`--host-keys`/`--known-hosts` avec une source hors ligne) ; fichier de sortie (`--json`, `--html`, `--state-file`) dans
+un dossier absent ou non inscriptible, **vérifié avant le changement pour `guard`** ; `known_hosts` qui existe mais est
+un dossier ou modifiable par d'autres comptes ; `guard` sans `--yes` quand l'entrée standard est fermée (cron). Un
+message d'erreur YAML donne la ligne et la colonne, **jamais l'extrait** : un inventaire peut contenir un mot de passe.
+
+**Un défaut interne de netcheck sort en code 70** (avec la trace, expurgée des secrets connus), jamais en 0, 1 ou 2 :
+Python sortirait en code 1, lu à tort comme ATTENTION. 70 est distinct des codes d'usage (3) et de ceux de `guard` (0 à 6).
+Si vous le voyez, ce n'est pas votre configuration : signalez-le.
 
 `guard` a ses propres codes 4 à 6 (annulation réussie, annulation échouée, interrompu) : voir
 « [Changements attendus et retour arrière](#changements-attendus-et-retour-arrière-v3) ».
@@ -1043,11 +1059,13 @@ verrou et ses rapports dans `reports/` (ignoré par Git).
 | Code | Situation |
 |---|---|
 | **0 / 1 / 2** | statut global OK / ATTENTION / ÉCHEC |
-| **3** | refusé **avant toute collecte** (référence, intent ou règles introuvables ou invalides, `--confirm` < 1, `NETCHECK_WEBHOOK_URL` invalide) ou erreur interne : monitor n'a pas pu conclure, aucune alerte, état inchangé |
+| **3** | refusé **avant toute collecte** (référence, intent ou règles introuvables ou invalides, `--confirm` < 1, `NETCHECK_WEBHOOK_URL` invalide, fichier d'état inscriptible nulle part) |
 | **4** | exécution **ignorée** : une exécution précédente tient encore le verrou |
+| **70** | défaut interne : monitor n'a pas pu conclure, aucune alerte, état inchangé |
 
 Une exception Python non gérée sortirait en code 1, que le planificateur lirait à tort comme
-« ATTENTION » : toute erreur interne est donc convertie en code 3 avec un message.
+« ATTENTION » : toute erreur interne est donc convertie en code 70 avec un message, distinct du code 3 (refus
+d'usage, que l'opérateur corrige) : le 70 se signale, il ne se corrige pas dans la configuration.
 
 ### Anti-bruit : une alerte seulement quand le statut change
 

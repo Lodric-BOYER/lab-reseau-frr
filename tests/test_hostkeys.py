@@ -18,6 +18,7 @@ import pytest
 from netmiko.exceptions import NetmikoAuthenticationException
 
 from netcheck import cli, collector, hostkeys, inventory
+from netcheck.usage import UsageError
 
 PACKAGE = Path(hostkeys.__file__).resolve().parent
 
@@ -398,7 +399,7 @@ def _inventory_file(tmp_path, lab=None) -> str:
 def test_inventory_lab_flag(tmp_path):
     assert inventory.load(path=_inventory_file(tmp_path)).lab is False
     assert inventory.load(path=_inventory_file(tmp_path, "true")).lab is True
-    with pytest.raises(SystemExit, match="lab"):
+    with pytest.raises(UsageError, match="lab"):
         inventory.load(path=_inventory_file(tmp_path, '"oui"'))
 
 
