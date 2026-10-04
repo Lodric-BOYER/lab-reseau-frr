@@ -14,6 +14,18 @@ c1_hostkeys_scenarios() {
   local MON_INV=(-i "$inv") ip1_name="r${ip1##*.1}"   # 172.20.20.11 -> r1
   title "H1 : clés d'hôte -- strict par défaut, clé changée refusée, accept-new réservé au lab"
 
+  # (0) Le lab doit être stable avant de prendre la référence de monitor : juste après un démarrage à froid, une
+  #     session BGP peut encore recevoir ses préfixes (cEOS : 1 -> 2 sur r3), et monitor le signalerait à raison.
+  #     On attend que deux relevés espacés soient identiques (au plus ~2 minutes).
+  local stable=1
+  for _ in $(seq 1 12); do
+    $NC snapshot c1_wait_a --force -i "$inv" >/dev/null 2>&1; sleep 5
+    $NC snapshot c1_wait_b --force -i "$inv" >/dev/null 2>&1
+    if $NC diff c1_wait_a c1_wait_b -i "$inv" >/dev/null 2>&1; then stable=0; break; fi
+  done
+  [[ "$stable" == "0" ]] && ok "lab stable : deux relevés espacés identiques (référence de monitor fiable)" \
+    || ko "lab jamais stable : la référence de monitor serait fausse"
+
   # (a) épinglage : relu depuis les conteneurs ; refuse deux routeurs qui annoncent la même clé.
   bash lab-access/pin_hostkeys.sh "$lab" >"$JSON_DIR/c1_pin.txt" 2>&1 \
     && ok "pin_hostkeys.sh : 5 clés d'hôte distinctes épinglées depuis les conteneurs" \
