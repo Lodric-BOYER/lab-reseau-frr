@@ -120,6 +120,10 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   le JSON et le HTML de `check` et `assert`, dans `meta.json`, dans le journal de `guard` et dans `summary.json` de
   `monitor`. Test sentinelle sur toutes les sorties, tous les fichiers écrits, les journaux et les alertes.
   `inventory.load(resolve_credentials=False)` : les commandes hors ligne ne résolvent aucun identifiant.
+- **Note d'information sur les mots de passe de moins de 8 caractères** (après C2) : « expurgation par valeur
+  inactive pour ce secret (moins de 8 caractères), seule la protection `SecretStr` s'applique », avec les équipements
+  concernés, à côté des sources (ligne `remarque` ; clé `remarque` des `credential_sources`). Ni avertissement ni effet
+  sur le code retour ; jamais la longueur exacte ni la valeur. `SecretStr.redactable` (booléen).
 
 ### Modifié
 

@@ -190,8 +190,9 @@ def test_describe_and_format_sources_group_routers_by_source():
     assert described["mot de passe"] == {"variable NETCHECK_PASS": ["r1", "r2"], "inventaire": ["r3"]}
     assert described["utilisateur"] == {"inventaire": ["r1", "r2", "r3"]}
     lines = credentials.format_sources(described)
-    assert lines == ["utilisateur : inventaire (r1, r2, r3)",
-                     "mot de passe : variable NETCHECK_PASS (r1, r2) ; inventaire (r3)"]
+    assert lines[:2] == ["utilisateur : inventaire (r1, r2, r3)",
+                         "mot de passe : variable NETCHECK_PASS (r1, r2) ; inventaire (r3)"]
+    assert lines[2].startswith("remarque : ") and lines[2].endswith("(r3)")   # « netops » : trop court
     assert credentials.describe_sources({"r1": _router()}) is None     # hors ligne : rien à dire
 
 
@@ -270,3 +271,71 @@ def test_offline_commands_ignore_the_secret_configuration(monkeypatch, tmp_path,
     code = cli.main(["check", "--config-dir", configs, "--driver", "frr", "-i", inv])
     assert code in (0, 1, 2)                                   # un verdict, pas une erreur d'identifiant
     assert "NETCHECK_PASS_FILE" not in capsys.readouterr().err
+
+
+# -- Note d'information : mot de passe trop court pour l'expurgation par valeur ---------------------------
+
+NOTE = ("expurgation par valeur inactive pour ce secret (moins de 8 caractères), "
+        "seule la protection SecretStr s'applique")
+
+
+def _routers_with_passwords(**passwords: str) -> dict:
+    return {name: credentials.resolve_device(_router(name=name), environ={"NETCHECK_PASS": value})
+            for name, value in passwords.items()}
+
+
+def test_a_short_password_gets_an_information_note_listing_the_devices():
+    routers = _routers_with_passwords(r1="netops", r2="long-enough-pw", r3="a")
+    described = credentials.describe_sources(routers)
+    assert described["remarque"] == {NOTE: ["r1", "r3"]}
+    assert credentials.format_sources(described)[-1] == f"remarque : {NOTE} (r1, r3)"
+
+
+@pytest.mark.parametrize(("password", "expected"), [("a" * 7, True), ("a" * 8, False)])
+def test_the_note_threshold_is_exactly_eight_characters(password, expected):
+    described = credentials.describe_sources(_routers_with_passwords(r1=password))
+    assert ("remarque" in described) is expected
+
+
+def test_no_note_when_every_password_is_long_enough():
+    routers = _routers_with_passwords(r1="long-enough-pw", r2="another-long-pw")
+    assert "remarque" not in credentials.describe_sources(routers)
+
+
+def test_the_note_never_reveals_the_length_or_the_value():
+    described = credentials.describe_sources(_routers_with_passwords(r1="zq9", r2="zq9wxyz"))
+    short = credentials.format_sources(described)
+    assert [ln for ln in short if ln.startswith("remarque")] == [f"remarque : {NOTE} (r1, r2)"]
+    text = "\n".join(short)
+    assert "zq9" not in text
+    # Même texte pour 2 et 7 caractères : rien n'en dépend.
+    one = credentials.describe_sources(_routers_with_passwords(r1="zq9"))["remarque"]
+    other = credentials.describe_sources(_routers_with_passwords(r1="zq9wxyz"))["remarque"]
+    assert one == other
+
+
+def test_secretstr_redactable_is_a_boolean_without_the_length():
+    assert SecretStr("x" * 8).redactable is True and SecretStr("x" * 7).redactable is False
+
+
+def _fake_collect(monkeypatch):
+    from netcheck.model import DeviceState
+    state = DeviceState(name="r1", host="192.0.2.1", timestamp="2026-01-01T00:00:00+00:00", reachable=True)
+    monkeypatch.setattr(collector, "collect_all", lambda *_a, **_k: {"r1": (True, state)})
+
+
+@pytest.mark.parametrize(("password", "note"), [("netops", True), ("long-enough-password", False)])
+def test_snapshot_prints_the_note_without_changing_the_exit_code(password, note, monkeypatch, tmp_path,
+                                                                 capsys):
+    _fake_collect(monkeypatch)
+    monkeypatch.setattr(snapshot, "SNAPSHOTS_DIR", tmp_path / "snaps")
+    monkeypatch.setattr(inventory, "REPO_ROOT", tmp_path)   # cmd_snapshot : chemin relatif à la racine
+    monkeypatch.setenv("NETCHECK_PASS", password)
+    code = cli.main(["snapshot", "s", "-i", _inventory_file(tmp_path)])
+    captured = capsys.readouterr()
+    assert code == 0                                    # ni un avertissement ni une erreur : code inchangé
+    assert (NOTE in captured.out) is note
+    assert password not in captured.out + captured.err
+    assert NOTE not in captured.err                     # jamais sur stderr (cron)
+    meta = (tmp_path / "snaps" / "s" / "meta.json").read_text(encoding="utf-8")
+    assert (NOTE in meta) is note and password not in meta

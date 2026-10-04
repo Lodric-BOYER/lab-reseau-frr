@@ -474,7 +474,12 @@ FRR n'écrase pas le `NETCHECK_SRLINUX_PASS_FILE` de r5 (la garantie de la v0.3 
   réussite puis avec une exception qui recopie le mot de passe. La valeur n'apparaît nulle part : sorties, journaux,
   snapshots, rapports JSON et HTML, état et rapports de `monitor`, journal de `guard`, alerte webhook.
 - **Limites.** Les valeurs de **moins de 8 caractères** ne sont pas retirées des textes par valeur (« admin » ou
-  « netops » effaceraient ces mots partout, jusque dans « network-admin ») : seul `SecretStr` les protège. Seule la
+  « netops » effaceraient ces mots partout, jusque dans « network-admin ») : seul `SecretStr` les protège. Quand un
+  mot de passe résolu est dans ce cas, une **note d'information** (ni avertissement ni effet sur le code retour,
+  jamais la longueur exacte ni la valeur) le dit avec les équipements concernés : « expurgation par valeur inactive
+  pour ce secret (moins de 8 caractères), seule la protection SecretStr s'applique » ; elle accompagne les sources
+  (ligne `remarque`, clé `remarque` des `credential_sources` du JSON, de `meta.json`, du journal de `guard` et de
+  `summary.json`). Les mots de passe des images de lab (« netops », « admin ») la déclenchent. Seule la
   valeur exacte est cherchée (pas sa forme en base64 ou en pourcentage). Les mots de passe par défaut des images de
   lab restent en clair dans `automation/inventory*.yml` (C11) ; sur un vrai réseau, utilisez une variable ou un fichier.
 

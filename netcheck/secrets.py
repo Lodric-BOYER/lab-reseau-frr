@@ -139,6 +139,12 @@ class SecretStr:
     def reveal(self) -> str:
         return self._value
 
+    @property
+    def redactable(self) -> bool:
+        """Vrai si la valeur est assez longue (MIN_REGISTERED_LENGTH) pour être retirée des textes par valeur.
+        Un booléen : ni la longueur ni la valeur ne sortent d'ici."""
+        return len(self._value) >= MIN_REGISTERED_LENGTH
+
     def __setattr__(self, name, value):
         raise AttributeError("SecretStr est immuable")
 

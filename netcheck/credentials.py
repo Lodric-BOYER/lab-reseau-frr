@@ -25,9 +25,13 @@ import stat
 from dataclasses import dataclass
 from pathlib import Path
 
-from netcheck.secrets import SecretStr
+from netcheck.secrets import MIN_REGISTERED_LENGTH, SecretStr
 
 MAX_SECRET_FILE_BYTES = 4096
+# Information (pas un avertissement, aucun effet sur le code retour) quand un mot de passe résolu est trop
+# court pour être expurgé par valeur. Jamais la longueur exacte ni la valeur : seul le seuil figure ici.
+SHORT_SECRET_NOTE = (f"expurgation par valeur inactive pour ce secret (moins de {MIN_REGISTERED_LENGTH} "
+                     "caractères), seule la protection SecretStr s'applique")
 
 
 class CredentialError(Exception):
@@ -122,6 +126,7 @@ def describe_sources(routers: dict) -> dict[str, dict[str, list[str]]] | None:
     routeur n'a d'identité résolue (mode hors ligne). Jamais une valeur."""
     out: dict[str, dict[str, list[str]]] = {"utilisateur": {}, "mot de passe": {}}
     seen = False
+    short = []
     for name, router in sorted(routers.items()):
         sources = router.get("credential_sources")
         if not sources:
@@ -129,6 +134,13 @@ def describe_sources(routers: dict) -> dict[str, dict[str, list[str]]] | None:
         seen = True
         out["utilisateur"].setdefault(sources["username"], []).append(name)
         out["mot de passe"].setdefault(sources["password"], []).append(name)
+        password = router.get("password")
+        if isinstance(password, SecretStr) and not password.redactable:
+            short.append(name)
+    if short:
+        # Même forme que les sources : le terminal, le JSON, le HTML, meta.json, le journal de guard et le
+        # summary.json de monitor la portent sans plomberie. Information : aucun effet sur le code retour.
+        out["remarque"] = {SHORT_SECRET_NOTE: short}
     return out if seen else None
 
 
