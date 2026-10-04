@@ -12,7 +12,9 @@ reste lisible ("password ****") sans jamais exposer la valeur réelle.
 """
 from __future__ import annotations
 
+import hmac
 import re
+import threading
 
 # Un motif par famille de secret rencontrée dans les configurations FRR et SR Linux de ce
 # projet (Phase A/B). Chaque motif capture le mot-clé (groupe 1) et remplace tout le motif par
@@ -87,9 +89,100 @@ _WEBHOOK_URL_PATTERNS = [
 WEBHOOK_URL_MASK = "<url de webhook masquée>"
 
 
+# Phase C2 : les secrets d'ACCÈS (mot de passe d'un équipement, phrase de passe d'une clé, jeton) ne sont
+# pas des lignes de configuration : aucun motif ne les reconnaît. Ils sont donc portés par SecretStr, et
+# leur valeur est inscrite dans un registre : tout texte publié (rapport, alerte, message d'erreur) en est
+# débarrassé, même si une bibliothèque a recopié le mot de passe dans son message d'exception.
+# Seuil : une valeur plus courte que MIN_REGISTERED_LENGTH n'est pas retirée des textes (« admin »,
+# « netops » effaceraient ces mots partout, y compris dans « network-admin ») ; SecretStr la protège.
+MIN_REGISTERED_LENGTH = 8
+REDACTED = "****"
+_known_values: set[str] = set()
+_known_lock = threading.Lock()
+
+
+def register_value(value: str) -> None:
+    """Inscrit une valeur secrète : redact_known() la retirera de tout texte. Sans effet si trop courte."""
+    if len(value) >= MIN_REGISTERED_LENGTH:
+        with _known_lock:
+            _known_values.add(value)
+
+
+def forget_all_values() -> None:
+    """Vide le registre (tests uniquement : un processus netcheck n'oublie jamais un secret)."""
+    with _known_lock:
+        _known_values.clear()
+
+
+def redact_known(text: str) -> str:
+    """Remplace chaque valeur inscrite par '****' (la plus longue d'abord : l'une peut contenir l'autre)."""
+    with _known_lock:
+        values = sorted(_known_values, key=len, reverse=True)
+    for value in values:
+        text = text.replace(value, REDACTED)
+    return text
+
+
+class SecretStr:
+    """Une valeur secrète qui ne s'affiche, ne se formate et ne se sérialise jamais par accident.
+
+    `str()`, `repr()`, f-string, `json.dumps`, `yaml.dump`, `pickle` et `copy` ne donnent jamais la valeur :
+    la seule porte est `.reveal()`, appelée en un seul endroit (l'ouverture de la connexion). `source` dit
+    d'où vient le secret (« variable NETCHECK_PASS », « fichier /chemin », « inventaire »), pas sa valeur."""
+    __slots__ = ("_value", "source")
+
+    def __init__(self, value: str, source: str = "?"):
+        object.__setattr__(self, "_value", value)
+        object.__setattr__(self, "source", source)
+        register_value(value)
+
+    def reveal(self) -> str:
+        return self._value
+
+    def __setattr__(self, name, value):
+        raise AttributeError("SecretStr est immuable")
+
+    def __repr__(self) -> str:
+        return f"SecretStr({REDACTED}, source={self.source!r})"
+
+    def __str__(self) -> str:
+        return REDACTED
+
+    def __format__(self, spec: str) -> str:
+        return format(REDACTED, spec)
+
+    def __bool__(self) -> bool:
+        return bool(self._value)
+
+    def __eq__(self, other) -> bool:
+        # Comparaison à temps constant ; accepte une str (tests et anciens appelants comparent des str).
+        if isinstance(other, SecretStr):
+            other = other._value
+        if not isinstance(other, str):
+            return NotImplemented
+        return hmac.compare_digest(self._value.encode(), other.encode())
+
+    __hash__ = None  # type: ignore[assignment]  # modifiable par comparaison : jamais une clé de dictionnaire
+
+    def __reduce__(self):
+        raise TypeError("SecretStr ne se sérialise pas (pickle, copy)")
+
+    def __copy__(self):
+        return self
+
+    def __deepcopy__(self, memo):
+        return self
+
+
+def reveal(value) -> str:
+    """La valeur en clair d'un SecretStr, ou la str telle quelle (anciens appelants et tests)."""
+    return value.reveal() if isinstance(value, SecretStr) else value
+
+
 def mask_secrets(text: str) -> str:
     """Remplace la valeur de chaque secret reconnu par '****', partout où le motif apparaît
     (une ligne de config isolée, ou un bloc plus large comme un diff unifié multi-lignes)."""
+    text = redact_known(text)
     for pattern in _SECRET_PATTERNS:
         text = pattern.sub(lambda m: f"{m.group(1)} ****", text)
     for pattern in _WEBHOOK_URL_PATTERNS:

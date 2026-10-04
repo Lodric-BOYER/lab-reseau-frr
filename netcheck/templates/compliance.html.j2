@@ -33,6 +33,7 @@
 
 <h1>Rapport de conformité netcheck</h1>
 <p class="meta">Généré le {{ generated_at }} — règles : <code>{{ rules_path }}</code></p>
+{% if credentials %}<p class="meta">Identifiants :{% for kind, by_source in credentials.items() %}{% if by_source %} {{ kind }} ← {% for src, names in by_source.items() %}{{ src }} ({{ names|join(", ") }}){% if not loop.last %} ; {% endif %}{% endfor %}{% if not loop.last %} —{% endif %}{% endif %}{% endfor %}</p>{% endif %}
 <p class="verdict-{{ {'CONFORME': 'conforme', 'NON CONFORME': 'non-conforme'}.get(status, 'analyse-incomplete') }}">
   <strong>{{ status }}</strong>
 </p>

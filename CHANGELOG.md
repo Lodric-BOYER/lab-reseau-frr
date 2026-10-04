@@ -109,8 +109,24 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   cuite dans l'image) : l'épinglage ne distinguait pas r1 de r3 et en compromettre un permettait d'usurper les autres.
   Après : 5 empreintes différentes sur le lab FRR, et des clés nouvelles à chaque déploiement.
 
+- **Phase C2, identifiants : fichiers 0600, `SecretStr`, source dans les rapports** (`netcheck/credentials.py`,
+  `netcheck/secrets.py`). `NETCHECK_<DRIVER>_USER_FILE` / `_PASS_FILE` et `NETCHECK_USER_FILE` / `_PASS_FILE` désignent un
+  fichier de secret (une ligne, droits 0600 ou 0400, propriétaire courant, pas de lien symbolique) ; un fichier désigné
+  mais refusé est une erreur (code 3), jamais un repli. Ordre : variable de driver, fichier de driver, variable
+  générique, fichier générique, `LAB_*`, inventaire (le niveau « driver » passe avant le générique, fichier ou non).
+  Le mot de passe d'un routeur est un `SecretStr` (jamais affiché ni sérialisé) inscrit dans un registre qui expurge
+  tout texte publié, y compris l'exception d'une bibliothèque qui le recopierait ; seuil de 8 caractères.
+  La **source** de chaque identifiant (variable, fichier, inventaire, jamais la valeur) est dite sur le terminal, dans
+  le JSON et le HTML de `check` et `assert`, dans `meta.json`, dans le journal de `guard` et dans `summary.json` de
+  `monitor`. Test sentinelle sur toutes les sorties, tous les fichiers écrits, les journaux et les alertes.
+  `inventory.load(resolve_credentials=False)` : les commandes hors ligne ne résolvent aucun identifiant.
+
 ### Modifié
 
+- **Phase C2 : le mot de passe d'un routeur de l'inventaire est un `SecretStr`** (compare égal à la `str`
+  correspondante ; `.reveal()` donne la valeur). `inventory.load()` résout les identifiants avec la source de chacun
+  (`credential_sources`) ; un identifiant absent partout est une erreur claire (code 3) au lieu d'une `KeyError`.
+  Les messages d'erreur de collecte passent par `redact_known`.
 - **INCOMPATIBLE, phase C1 : netcheck vérifie les clés d'hôte, strict par défaut.** Jusqu'ici netcheck acceptait
   n'importe quelle clé d'hôte (Netmiko `ssh_strict=False`, soit `AutoAddPolicy`, jamais surchargé) : une
   interposition sur le réseau de management était invisible. Maintenant, un équipement dont la clé est absente du

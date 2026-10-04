@@ -15,7 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SNAPSHOTS_DIR = REPO_ROOT / "snapshots"
 
 
-def save(name: str, results: dict, force: bool = False) -> Path:
+def save(name: str, results: dict, force: bool = False, credentials: dict | None = None) -> Path:
     """Écrit un snapshot à partir du résultat de collector.collect_all().
 
     results : {équipement: (True, DeviceState) ou (False, message d'erreur)}.
@@ -46,6 +46,8 @@ def save(name: str, results: dict, force: bool = False) -> Path:
         "errors": errors,
         "netcheck_version": __version__,
     }
+    if credentials:
+        meta["credential_sources"] = credentials   # d'où viennent les identifiants (jamais une valeur)
     (out_dir / "meta.json").write_text(
         json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8",
     )

@@ -16,6 +16,7 @@ from netcheck import hostkeys
 from netcheck.drivers.base import Driver
 from netcheck.drivers.registry import DRIVER_REGISTRY
 from netcheck.model import DeviceState
+from netcheck.secrets import redact_known, reveal
 
 # automation/ n'est pas un paquet Python (pas de __init__.py) : on réutilise run_parallel tel
 # quel en ajoutant son dossier à sys.path, sans dupliquer sa logique (C2 : rien n'y est modifié).
@@ -103,7 +104,7 @@ def _connect(router: dict):
     try:
         return ConnectHandler(
             device_type=router["device_type"], host=host, port=port,
-            username=router["username"], password=router["password"],
+            username=router["username"], password=reveal(router["password"]),
             timeout=10, conn_timeout=10,
             ssh_strict=True, system_host_keys=False,
             alt_host_keys=True, alt_key_file=str(policy.path),
@@ -168,8 +169,12 @@ def collect_all(routers: dict, driver: Driver | None = None, workers: int = 5) -
     (comportement historique, lab mono-constructeur).
 
     Un équipement injoignable ne bloque pas les autres (réutilise run_parallel de labtools).
+
+    Point de passage unique de TOUS les messages d'erreur de collecte (terminal, snapshot, monitor, alertes) :
+    une bibliothèque qui recopierait un mot de passe dans son exception ne le publie jamais (phase C2).
     """
-    return run_parallel(lambda r: collect(r, driver), routers, workers=workers)
+    results = run_parallel(lambda r: collect(r, driver), routers, workers=workers)
+    return {name: (ok, value if ok else redact_known(value)) for name, (ok, value) in results.items()}
 
 
 def _converged(results: dict, routers: dict) -> bool:

@@ -23,6 +23,7 @@ from rich.table import Table
 
 from netcheck import __version__
 from netcheck.assertions import AssertionResult, Status
+from netcheck.credentials import format_sources
 from netcheck.diff import Finding, Severity
 from netcheck.ruletypes import CAUSE_NO_MODEL, CAUSE_NOT_IMPLEMENTED, ConfigWarning, NotApplicable, Violation
 from netcheck.secrets import mask_secrets
@@ -304,6 +305,12 @@ def write_html(
 # Conformité (netcheck check) : mêmes principes, vocabulaire de gravité différent (§5.4)
 # ------------------------------------------------------------------------------------------
 
+def _print_credentials(console: Console, credentials: dict | None) -> None:
+    """Phase C2 : d'où vient chaque identifiant (variable, fichier, inventaire) ; jamais une valeur."""
+    for line in format_sources(credentials or {}):
+        console.print(f"Identifiants, {escape(line)}")
+
+
 def print_compliance_terminal(
     violations: list[Violation], compliant: bool,
     not_applicable: list[NotApplicable] | None = None,
@@ -312,12 +319,14 @@ def print_compliance_terminal(
     source: dict | None = None,
     derogations: dict | None = None,
     coverage: list[dict] | None = None,
+    credentials: dict | None = None,
 ) -> None:
     console = console or Console()
     violations = _masked_violations(violations)
     not_applicable = _masked_not_applicable(not_applicable or [])
     warnings = _masked_warnings(config_warnings)
 
+    _print_credentials(console, credentials)
     if source:
         # Mode hors ligne (check --config-dir) : dire d'où vient chaque équipement et ce que cela change.
         devices = source["devices"]
@@ -439,6 +448,7 @@ def compliance_to_dict(
     violations: list[Violation], compliant: bool, not_applicable: list[NotApplicable] | None = None,
     config_warnings: list[ConfigWarning] | None = None, source: dict | None = None,
     derogations: dict | None = None, coverage: list[dict] | None = None,
+    credentials: dict | None = None,
 ) -> dict:
     violations = _masked_violations(violations)
     not_applicable = _masked_not_applicable(not_applicable or [])
@@ -484,6 +494,9 @@ def compliance_to_dict(
         # Présent seulement s'il y a quelque chose à dire (ex. IPv6 configuré, aucune règle IPv6 chargée).
         data["coverage_notes"] = coverage
         data["summary"]["coverage_notes"] = len(coverage)
+    if credentials:
+        # Présent seulement en direct : la source de chaque identifiant (variable, fichier, inventaire).
+        data["credential_sources"] = credentials
     return data
 
 
@@ -492,10 +505,11 @@ def write_compliance_json(
     not_applicable: list[NotApplicable] | None = None,
     config_warnings: list[ConfigWarning] | None = None, source: dict | None = None,
     derogations: dict | None = None, coverage: list[dict] | None = None,
+    credentials: dict | None = None,
 ) -> None:
     Path(path).write_text(
         json.dumps(compliance_to_dict(violations, compliant, not_applicable, config_warnings, source,
-                                      derogations, coverage),
+                                      derogations, coverage, credentials),
                    indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
@@ -508,6 +522,7 @@ def render_compliance_html(
     source: dict | None = None,
     derogations: dict | None = None,
     coverage: list[dict] | None = None,
+    credentials: dict | None = None,
 ) -> str:
     """Rend le rapport HTML de conformité, autonome (aucune ressource externe)."""
     template = _ENV.get_template("compliance.html.j2")
@@ -530,6 +545,7 @@ def render_compliance_html(
         source=source,
         derogations=derogations,
         coverage=coverage or [],
+        credentials=credentials,
         reactivated=_reactivation(derogations),
         config_warnings=sorted(warnings, key=lambda w: (not w.blocks_verdict, w.device, w.warning.line)),
         warning_status=_warning_status,
@@ -548,10 +564,11 @@ def write_compliance_html(
     not_applicable: list[NotApplicable] | None = None,
     config_warnings: list[ConfigWarning] | None = None, source: dict | None = None,
     derogations: dict | None = None, coverage: list[dict] | None = None,
+    credentials: dict | None = None,
 ) -> None:
     Path(path).write_text(
         render_compliance_html(violations, compliant, rules_path, not_applicable, config_warnings, source,
-                               derogations, coverage),
+                               derogations, coverage, credentials),
         encoding="utf-8",
     )
 
@@ -569,8 +586,10 @@ _ASSERT_ORDER = {Status.ECHEC: 3, Status.NON_EVALUABLE: 2, Status.OK: 1}
 
 def print_assert_terminal(
     results: list[AssertionResult], verdict_label: str, console: Console | None = None,
+    credentials: dict | None = None,
 ) -> None:
     console = console or Console()
+    _print_credentials(console, credentials)
 
     if results:
         table = Table(show_lines=False)
@@ -594,8 +613,9 @@ def print_assert_terminal(
     )
 
 
-def assert_to_dict(results: list[AssertionResult], verdict_label: str) -> dict:
-    return {
+def assert_to_dict(results: list[AssertionResult], verdict_label: str,
+                   credentials: dict | None = None) -> dict:
+    data = {
         "verdict": verdict_label,
         "results": [
             {
@@ -605,15 +625,21 @@ def assert_to_dict(results: list[AssertionResult], verdict_label: str) -> dict:
             for r in results
         ],
     }
+    if credentials:
+        data["credential_sources"] = credentials   # présent seulement en direct ; jamais une valeur
+    return data
 
 
-def write_assert_json(results: list[AssertionResult], verdict_label: str, path: str) -> None:
+def write_assert_json(results: list[AssertionResult], verdict_label: str, path: str,
+                      credentials: dict | None = None) -> None:
     Path(path).write_text(
-        json.dumps(assert_to_dict(results, verdict_label), indent=2, ensure_ascii=False), encoding="utf-8",
+        json.dumps(assert_to_dict(results, verdict_label, credentials), indent=2, ensure_ascii=False),
+        encoding="utf-8",
     )
 
 
-def render_assert_html(results: list[AssertionResult], verdict_label: str, intent_path: str) -> str:
+def render_assert_html(results: list[AssertionResult], verdict_label: str, intent_path: str,
+                       credentials: dict | None = None) -> str:
     """Rend le rapport HTML autonome (aucune ressource externe)."""
     template = _ENV.get_template("assert.html.j2")
     counts = {s.value: sum(1 for r in results if r.status == s) for s in Status}
@@ -624,6 +650,7 @@ def render_assert_html(results: list[AssertionResult], verdict_label: str, inten
         counts=counts,
         devices=devices,
         intent_path=str(intent_path),
+        credentials=credentials,
         generated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
         netcheck_version=__version__,
     )
@@ -631,8 +658,10 @@ def render_assert_html(results: list[AssertionResult], verdict_label: str, inten
 
 def write_assert_html(
     results: list[AssertionResult], verdict_label: str, intent_path: str, path: str,
+    credentials: dict | None = None,
 ) -> None:
-    Path(path).write_text(render_assert_html(results, verdict_label, intent_path), encoding="utf-8")
+    Path(path).write_text(render_assert_html(results, verdict_label, intent_path, credentials),
+                          encoding="utf-8")
 
 
 # ------------------------------------------------------------------------------------------

@@ -431,6 +431,53 @@ lu.
 **Limite.** `automation/labtools.py` (scripts `health.py`, `backup.py`, `drift.py`, hors netcheck) garde
 `AutoAddPolicy` : la vérification ne concerne que `netcheck`.
 
+### Identifiants : variables, fichiers 0600 et source (v4, phase C2)
+
+Le mot de passe d'un équipement peut venir d'une variable, d'un **fichier 0600** ou, en dernier, de l'inventaire.
+Ordre de priorité, du plus spécifique au moins spécifique (à spécificité égale, la variable avant le fichier) :
+
+| # | Source | Portée |
+|---|---|---|
+| 1 | `NETCHECK_<DRIVER>_USER` / `_PASS` (variable) | ce driver seulement (`NETCHECK_SRLINUX_PASS`, `NETCHECK_EOS_PASS`…) |
+| 2 | `NETCHECK_<DRIVER>_USER_FILE` / `_PASS_FILE` (fichier) | ce driver seulement |
+| 3 | `NETCHECK_USER` / `NETCHECK_PASS` (variable) | tous les drivers |
+| 4 | `NETCHECK_USER_FILE` / `NETCHECK_PASS_FILE` (fichier) | tous les drivers |
+| 5 | `LAB_USER` / `LAB_PASS` (variable historique) | tous les drivers |
+| 6 | valeur du fichier d'inventaire | valeurs par défaut des images de lab (C11) |
+
+(HashiCorp Vault s'insérera entre 5 et 6 à l'étape C3 : une variable ou un fichier posé par l'opérateur l'emporte
+toujours.) Le niveau « driver » passe avant le niveau générique, **fichier ou non** : un `NETCHECK_PASS` posé pour
+FRR n'écrase pas le `NETCHECK_SRLINUX_PASS_FILE` de r5 (la garantie de la v0.3 est conservée).
+
+- **Fichier de secret** : texte brut, **une seule ligne** (la fin de ligne finale est retirée, rien d'autre). Refusé
+  (code 3, avant toute connexion, sans jamais citer le contenu) s'il n'est pas un fichier régulier (un lien
+  symbolique est refusé), s'il n'appartient pas à l'utilisateur courant, si ses droits ne sont pas **0600 ou 0400**,
+  s'il est vide, de plus de 4 Ko ou de plusieurs lignes. Un fichier désigné mais refusé est **une erreur, jamais un
+  repli silencieux** sur la valeur suivante :
+  ```bash
+  install -m 600 /dev/null ~/.netcheck-pass && printf '%s' 'mon-mot-de-passe' > ~/.netcheck-pass   # saisie hors historique à préférer
+  NETCHECK_PASS_FILE=~/.netcheck-pass python -m netcheck snapshot avant -i mon-inventaire.yml
+  ```
+- **`SecretStr`** : le mot de passe d'un routeur n'est jamais une `str` ordinaire. `str()`, `repr()`, f-string,
+  `json.dumps`, `yaml.dump`, `pickle` et `copy` ne donnent jamais la valeur ; la seule porte est `.reveal()`, appelée en
+  un seul endroit (l'ouverture de la connexion). Sa valeur est inscrite dans un registre : tout message d'erreur de
+  collecte, rapport ou alerte qui la contiendrait (une bibliothèque qui recopie le mot de passe dans son exception)
+  est expurgé en `****`.
+- **La source est dite, jamais la valeur** : une ligne « Identifiants, mot de passe : variable NETCHECK_PASS (r1, r2) ;
+  inventaire (r3) » sur le terminal de `snapshot`, `check`, `assert` et `guard` ; dans le JSON (`credential_sources`)
+  de `check` et `assert` ; dans le HTML de `check` et `assert` ; dans `meta.json` d'un snapshot ; dans le journal de
+  `guard` ; dans `summary.json` des rapports de `monitor` (sans rien écrire sur la sortie d'erreur, que cron envoie par
+  courriel). Rien en mode hors ligne (`diff`, `check --config-dir`, `check --snapshot`, `assert --snapshot` : aucun
+  identifiant n'y est résolu, un fichier de secret absent n'y est donc jamais une erreur).
+- **Test sentinelle** (`tests/test_secret_sentinel.py`) : une valeur connue sert de mot de passe par variable, par
+  fichier puis par l'inventaire ; `snapshot`, `check`, `assert`, `monitor` et `guard` tournent de bout en bout, en
+  réussite puis avec une exception qui recopie le mot de passe. La valeur n'apparaît nulle part : sorties, journaux,
+  snapshots, rapports JSON et HTML, état et rapports de `monitor`, journal de `guard`, alerte webhook.
+- **Limites.** Les valeurs de **moins de 8 caractères** ne sont pas retirées des textes par valeur (« admin » ou
+  « netops » effaceraient ces mots partout, jusque dans « network-admin ») : seul `SecretStr` les protège. Seule la
+  valeur exacte est cherchée (pas sa forme en base64 ou en pourcentage). Les mots de passe par défaut des images de
+  lab restent en clair dans `automation/inventory*.yml` (C11) ; sur un vrai réseau, utilisez une variable ou un fichier.
+
 ### Codes retour
 
 | Commande | 0 | 1 | 2 | 3 |

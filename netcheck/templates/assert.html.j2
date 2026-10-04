@@ -27,6 +27,7 @@
 
 <h1>Rapport d'état attendu netcheck</h1>
 <p class="meta">Généré le {{ generated_at }} — intent : <code>{{ intent_path }}</code></p>
+{% if credentials %}<p class="meta">Identifiants :{% for kind, by_source in credentials.items() %}{% if by_source %} {{ kind }} ← {% for src, names in by_source.items() %}{{ src }} ({{ names|join(", ") }}){% if not loop.last %} ; {% endif %}{% endfor %}{% if not loop.last %} —{% endif %}{% endif %}{% endfor %}</p>{% endif %}
 <p class="verdict-{{ 'ok' if verdict == 'OK' else 'echec' }}">
   <strong>{{ verdict }}</strong>
 </p>

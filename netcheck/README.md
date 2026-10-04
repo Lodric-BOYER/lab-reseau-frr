@@ -410,6 +410,17 @@ prefix-list (premier correspondant) : un `permit` est signalé même précédé 
   (avec les deux empreintes SHA256). Tests : un faux serveur SSH local (`tests/test_hostkeys.py`), un test statique (AST)
   qui interdit `AutoAddPolicy`, `WarningPolicy`, `ssh_strict=False`, `system_host_keys=True`, et qui exige
   `ssh_strict=True` à chaque appel de `ConnectHandler`.
+- **Identifiants (phase C2, `credentials.py`, `secrets.SecretStr`).** `inventory.load` résout chaque identifiant par
+  `credentials.resolve_device` (variables, fichiers 0600, inventaire : ordre dans l'en-tête du module) et le routeur
+  porte `username` (str), `password` (`SecretStr`) et `credential_sources` (source de chacun, jamais une valeur).
+  `SecretStr` ne se formate ni ne se sérialise (`str`, `repr`, `json`, `yaml`, `pickle`, `copy`) ; sa valeur est inscrite
+  dans un registre global (seuil de 8 caractères) que `mask_secrets` et `redact_known` appliquent à tout texte publié.
+  `collector._connect` est le seul endroit qui appelle `.reveal()` ; `collect_all` expurge les messages d'erreur de
+  collecte, point de passage unique de toutes les commandes. `check` et `assert` reçoivent `credentials=` (terminal,
+  JSON `credential_sources`, HTML), `snapshot.save` l'écrit dans `meta.json`, `monitor.write_reports` dans
+  `summary.json`. Hors ligne, `load(resolve_credentials=False)` ne résout rien. Le test sentinelle
+  (`tests/test_secret_sentinel.py`) parcourt cinq commandes, trois fournisseurs et deux modes (réussite, exception qui
+  recopie le mot de passe) et cherche la valeur dans tout ce qui est produit.
 - **`monitor` ne modifie rien** : il n'importe ni `guard` ni `subprocess` (vérifié par un test
   statique) et n'écrit que son état, son verrou et ses rapports locaux. **`guard`** est la seule
   commande qui exécute quelque chose de modifiant -- et c'est le script de l'utilisateur.

@@ -16,6 +16,7 @@ from netcheck import (
     collector,
     compliance,
     configdir,
+    credentials,
     derogations,
     diff,
     expect,
@@ -24,6 +25,7 @@ from netcheck import (
     inventory,
     monitor,
     report,
+    secrets,
     snapshot,
     webhook,
 )
@@ -73,14 +75,17 @@ def cmd_snapshot(args: argparse.Namespace) -> int:
     if not _setup_host_keys(args, inv):
         return 3
     results = collector.collect_all(inv.routers)
+    credential_info = credentials.describe_sources(inv.routers)
 
     try:
-        out_dir = snapshot.save(args.name, results, force=args.force)
+        out_dir = snapshot.save(args.name, results, force=args.force, credentials=credential_info)
     except FileExistsError as e:
         print(f"Erreur : {e}", file=sys.stderr)
         return 3
 
     print(f"Snapshot '{args.name}' écrit dans {out_dir.relative_to(inventory.REPO_ROOT)}")
+    for line in credentials.format_sources(credential_info or {}):
+        print(f"Identifiants, {line}")
     failed = 0
     for name, (ok, value) in sorted(results.items()):
         if ok:
@@ -100,7 +105,7 @@ def cmd_diff(args: argparse.Namespace) -> int:
         print(f"Erreur : {e}", file=sys.stderr)
         return 3
 
-    inv = inventory.load(path=args.inventory)
+    inv = inventory.load(path=args.inventory, resolve_credentials=False)   # hors ligne : aucun identifiant
     mgmt = set(inv.management_interfaces)
     mgmt_vrfs = set(inv.management_vrfs)
     findings = diff.compare(before, after, management_interfaces=mgmt, management_vrfs=mgmt_vrfs)
@@ -148,12 +153,13 @@ def cmd_check(args: argparse.Namespace) -> int:
         return 3
 
     source = None
+    credential_info = None
     file_warnings: list[compliance.ConfigWarning] = []
     if args.config_dir:
         # Hors ligne : on ne lit que des fichiers. L'inventaire sert à déduire le driver de chaque
         # équipement ; sans lui, --driver est obligatoire.
         try:
-            inv = inventory.load(path=args.inventory)
+            inv = inventory.load(path=args.inventory, resolve_credentials=False)
         except (OSError, KeyError, TypeError, yaml.YAMLError) as e:
             if not args.driver:
                 print(f"Erreur : inventaire illisible ({e.__class__.__name__}) : donnez --driver",
@@ -174,7 +180,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         devices, file_warnings = loaded.devices, loaded.warnings
         source = loaded.source_info(args.config_dir, args.driver)
     elif args.snapshot:
-        inv = inventory.load(path=args.inventory)
+        inv = inventory.load(path=args.inventory, resolve_credentials=False)
         try:
             devices = snapshot.load(args.snapshot)
         except FileNotFoundError as e:
@@ -185,6 +191,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         if not _setup_host_keys(args, inv):
             return 3
         results = collector.collect_all(inv.routers)
+        credential_info = credentials.describe_sources(inv.routers)
         devices = {}
         for name, (ok, value) in results.items():
             if ok:
@@ -204,16 +211,17 @@ def cmd_check(args: argparse.Namespace) -> int:
 
     report.print_compliance_terminal(result.violations, compliant, result.not_applicable,
                                      config_warnings=warnings, source=source, derogations=derogation_info,
-                                     coverage=coverage)
+                                     coverage=coverage, credentials=credential_info)
     if args.json:
         report.write_compliance_json(result.violations, compliant, args.json, result.not_applicable,
                                      warnings, source=source, derogations=derogation_info,
-                                     coverage=coverage)
+                                     coverage=coverage, credentials=credential_info)
         print(f"Constats écrits (JSON) : {args.json}")
     if args.html:
         report.write_compliance_html(result.violations, compliant, rules_path, args.html,
                                      result.not_applicable, warnings, source=source,
-                                     derogations=derogation_info, coverage=coverage)
+                                     derogations=derogation_info, coverage=coverage,
+                                     credentials=credential_info)
         print(f"Rapport HTML écrit : {args.html}")
     return code
 
@@ -245,6 +253,7 @@ def cmd_guard(args: argparse.Namespace) -> int:
     inv = inventory.load(path=args.inventory)
     if not _setup_host_keys(args, inv):
         return guard.EXIT_USAGE
+    credential_info = credentials.describe_sources(inv.routers)
 
     # --- Les deux scripts sont affichés ENSEMBLE, une seule confirmation, rien d'exécuté avant.
     print("Scripts qui vont être exécutés (contenu affiché en clair : c'est votre fichier local) :")
@@ -266,6 +275,8 @@ def cmd_guard(args: argparse.Namespace) -> int:
             print("Annulé : rien n'a été exécuté.")
             return guard.EXIT_USAGE
 
+    for line in credentials.format_sources(credential_info or {}):
+        print(f"Identifiants, {line}")
     mgmt = set(inv.management_interfaces)
     mgmt_vrfs = set(inv.management_vrfs)
     stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
@@ -296,6 +307,7 @@ def cmd_guard(args: argparse.Namespace) -> int:
                         "wait": args.wait, "expect": args.expect, "inventory": args.inventory},
             "snapshots": {"avant": names.before, "apres": names.after,
                           "retour": names.back if rollback_script else None},
+            "credential_sources": credential_info,
         },
     )
     journal.write()
@@ -328,7 +340,8 @@ def cmd_assert(args: argparse.Namespace) -> int:
         print(f"Erreur : {e}", file=sys.stderr)
         return 3
 
-    inv = inventory.load(path=args.inventory)
+    inv = inventory.load(path=args.inventory, resolve_credentials=not args.snapshot)
+    credential_info = None
     if args.snapshot:
         try:
             devices = snapshot.load(args.snapshot)
@@ -339,6 +352,7 @@ def cmd_assert(args: argparse.Namespace) -> int:
         if not _setup_host_keys(args, inv):
             return 3
         results = collector.collect_all(inv.routers)
+        credential_info = credentials.describe_sources(inv.routers)
         devices = {}
         for name, (ok, value) in results.items():
             if ok:
@@ -354,12 +368,12 @@ def cmd_assert(args: argparse.Namespace) -> int:
         return 3
     verdict_label, code = assertions.verdict(results)
 
-    report.print_assert_terminal(results, verdict_label)
+    report.print_assert_terminal(results, verdict_label, credentials=credential_info)
     if args.json:
-        report.write_assert_json(results, verdict_label, args.json)
+        report.write_assert_json(results, verdict_label, args.json, credential_info)
         print(f"Constats écrits (JSON) : {args.json}")
     if args.html:
-        report.write_assert_html(results, verdict_label, args.intent, args.html)
+        report.write_assert_html(results, verdict_label, args.intent, args.html, credential_info)
         print(f"Rapport HTML écrit : {args.html}")
     return code
 
@@ -587,7 +601,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except credentials.CredentialError as e:
+        # Identifiant introuvable ou fichier de secret refusé : avant toute connexion, sans valeur.
+        print(f"Erreur : {secrets.mask_secrets(str(e))}", file=sys.stderr)
+        return EXIT_USAGE
 
 
 if __name__ == "__main__":

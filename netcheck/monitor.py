@@ -40,7 +40,17 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-from netcheck import __version__, assertions, compliance, diff, report, secrets, snapshot, webhook
+from netcheck import (
+    __version__,
+    assertions,
+    compliance,
+    credentials,
+    diff,
+    report,
+    secrets,
+    snapshot,
+    webhook,
+)
 from netcheck.inventory import Inventory
 from netcheck.model import DeviceState
 
@@ -596,7 +606,8 @@ def payload_for(alert: Alert, fmt: str) -> dict:
 # ------------------------------------------------------------------------------------------
 
 def write_reports(directory: Path, evaluation: Evaluation, baseline_name: str,
-                  intent_path: str | None, rules_path: str | None, now: str) -> None:
+                  intent_path: str | None, rules_path: str | None, now: str,
+                  credential_sources: dict | None = None) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     managed = ["diff.json", "diff.html", "assert.json", "assert.html", "check.json", "check.html",
                "summary.json"]
@@ -608,22 +619,23 @@ def write_reports(directory: Path, evaluation: Evaluation, baseline_name: str,
                       str(directory / "diff.html"))
     if evaluation.assert_results is not None:
         report.write_assert_json(evaluation.assert_results, evaluation.assert_label,
-                                 str(directory / "assert.json"))
+                                 str(directory / "assert.json"), credential_sources)
         report.write_assert_html(evaluation.assert_results, evaluation.assert_label, intent_path or "",
-                                 str(directory / "assert.html"))
+                                 str(directory / "assert.html"), credential_sources)
     if evaluation.violations is not None:
         report.write_compliance_json(evaluation.violations, evaluation.compliant,
                                      str(directory / "check.json"), evaluation.not_applicable,
                                      evaluation.config_warnings, derogations=evaluation.derogations,
-                                     coverage=evaluation.coverage)
+                                     coverage=evaluation.coverage, credentials=credential_sources)
         report.write_compliance_html(evaluation.violations, evaluation.compliant, rules_path or "",
                                      str(directory / "check.html"), evaluation.not_applicable,
                                      evaluation.config_warnings, derogations=evaluation.derogations,
-                                     coverage=evaluation.coverage)
+                                     coverage=evaluation.coverage, credentials=credential_sources)
     summary = {
         "timestamp": now, "status": evaluation.status, "baseline": baseline_name,
         "components": evaluation.components,
         "unreachable": sorted(evaluation.unreachable),
+        **({"credential_sources": credential_sources} if credential_sources else {}),
         "contributions": [
             {"status": c.status, "severity": _clean(c.severity), "component": c.component,
              "device": _clean(c.device), "category": _clean(c.category), "message": _clean(c.message)}
@@ -720,7 +732,8 @@ def _run_locked(cfg: MonitorConfig, io: MonitorIO) -> int:
         return EXIT_CODES[evaluation.status]
 
     try:
-        write_reports(latest, evaluation, cfg.baseline_name, cfg.intent_path, cfg.rules_path, now_iso)
+        write_reports(latest, evaluation, cfg.baseline_name, cfg.intent_path, cfg.rules_path, now_iso,
+                      credentials.describe_sources(cfg.inventory.routers))
         print(f"  rapport : {_display_path(latest, cfg.repo_root)}")
     except OSError as e:
         print(f"Attention : rapport local non écrit ({type(e).__name__})", file=sys.stderr)
@@ -758,7 +771,8 @@ def _send_alert(cfg: MonitorConfig, io: MonitorIO, decision: Decision, evaluatio
               "alertes désactivées, rien n'est envoyé", file=sys.stderr)
         return
     try:
-        write_reports(dated, evaluation, cfg.baseline_name, cfg.intent_path, cfg.rules_path, now_iso)
+        write_reports(dated, evaluation, cfg.baseline_name, cfg.intent_path, cfg.rules_path, now_iso,
+                      credentials.describe_sources(cfg.inventory.routers))
     except OSError as e:
         print(f"Attention : rapport daté non écrit ({type(e).__name__})", file=sys.stderr)
     alert = _build(cfg, decision, evaluation, now, dated)

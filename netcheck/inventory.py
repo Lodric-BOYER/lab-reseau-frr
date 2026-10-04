@@ -4,18 +4,20 @@ fonction load_inventory() de labtools, dont la résolution d'identifiants ne con
 
 Sur un inventaire mixte (Phase D1), NETCHECK_USER/PASS s'appliqueraient sinon uniformément à
 TOUS les routeurs, y compris ceux d'un autre driver (ex. écraser les identifiants SR Linux avec
-ceux pensés pour FRR) : _resolve_credential ajoute un niveau plus spécifique, par driver
-(NETCHECK_<DRIVER>_USER/PASS, ex. NETCHECK_SRLINUX_USER), prioritaire sur le générique. Ordre
-complet, du plus spécifique au moins spécifique :
-  NETCHECK_<DRIVER>_USER/PASS  >  NETCHECK_USER/PASS  >  LAB_USER/PASS  >  inventaire
+ceux pensés pour FRR) : un niveau plus spécifique, par driver (NETCHECK_<DRIVER>_USER/PASS, ex.
+NETCHECK_SRLINUX_USER), est prioritaire sur le générique. Depuis la phase C2, la résolution (variables,
+fichiers 0600, valeur de l'inventaire) vit dans netcheck/credentials.py : l'ordre complet y est documenté.
+Le mot de passe d'un routeur est un SecretStr (jamais affiché), et le routeur porte la SOURCE de chaque
+identifiant (`credential_sources`), jamais sa valeur.
 """
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
+
+from netcheck import credentials
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 INVENTORY_PATH = REPO_ROOT / "automation" / "inventory.yml"
@@ -31,21 +33,17 @@ class Inventory:
     lab: bool = False
 
 
-def _resolve_credential(kind: str, driver_name: str, fallback: str) -> str:
-    """kind = "USER" ou "PASS". Le plus spécifique gagne : voir l'ordre documenté en tête de
-    module. NETCHECK_<DRIVER>_* n'a d'effet que sur les routeurs de ce driver précis ; les
-    autres (variables génériques ou absence de variable) suivent la résolution historique."""
-    per_driver = os.environ.get(f"NETCHECK_{driver_name.upper()}_{kind}")
-    generic = os.environ.get(f"NETCHECK_{kind}") or os.environ.get(f"LAB_{kind}")
-    return per_driver or generic or fallback
-
-
-def load(only: list[str] | None = None, path: Path | str | None = None) -> Inventory:
+def load(only: list[str] | None = None, path: Path | str | None = None,
+         resolve_credentials: bool = True) -> Inventory:
     """Fusionne defaults + attributs de chaque routeur ; filtre éventuel sur une liste de noms.
 
     `path` omis = automation/inventory.yml (lab mono-constructeur). Un autre fichier (ex.
     automation/inventory-multivendor.yml) peut être passé explicitement -- c'est ce que fait
-    l'option -i/--inventory de la CLI (Phase D1)."""
+    l'option -i/--inventory de la CLI (Phase D1).
+
+    `resolve_credentials=False` (hors ligne : diff, check --config-dir/--snapshot, assert --snapshot) :
+    aucun identifiant n'est résolu, aucun fichier de secret n'est lu, un fichier de secret absent n'y est
+    donc jamais une erreur."""
     path = Path(path) if path else INVENTORY_PATH
     data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     defaults = data.get("defaults", {})
@@ -55,10 +53,7 @@ def load(only: list[str] | None = None, path: Path | str | None = None) -> Inven
         if only and name not in only:
             continue
         r = {**defaults, **(attrs or {}), "name": name}
-        driver_name = r.get("driver", "frr")
-        r["username"] = _resolve_credential("USER", driver_name, r["username"])
-        r["password"] = _resolve_credential("PASS", driver_name, r["password"])
-        routers[name] = r
+        routers[name] = credentials.resolve_device(r) if resolve_credentials else r
 
     if only and set(only) - set(routers):
         raise SystemExit(f"Routeur(s) inconnu(s) : {', '.join(sorted(set(only) - set(routers)))}")
