@@ -1039,7 +1039,7 @@ porte une VRF de démonstration. Les configurations existantes (FRR, EOS, SR Lin
 **Contrôles** : `test_lab.sh` passe de 28 à **47** contrôles, `test_lab_multivendor.sh` de 15 à **28**,
 `test_lab_ceos.sh` de 26 à **44** (OSPFv3 Full, authentification RFC 7166, BGP IPv6, `ping6`, chemin IPv6, VRF,
 durcissement IPv6 des deux côtés, coupure de l'IPv6 seul sur le lab FRR). Les scripts d'intégration de netcheck
-(80, 27 et 38 contrôles en B1 ; 117, 47 et 72 en B4 ; **128, 59 et 83 depuis la phase C1**, qui ajoute le scénario H1 des clés d'hôte) sont verts, rejoués à froid. `automation/health.py` lit OSPFv3 et BGP IPv6 quand l'inventaire
+(80, 27 et 38 contrôles en B1 ; 117, 47 et 72 en B4 ; 128, 59 et 83 depuis la phase C1, qui ajoute le scénario H1 des clés d'hôte ; **178, 96 et 120 depuis la phase C4**, qui ajoute le bastion) sont verts, rejoués à froid. `automation/health.py` lit OSPFv3 et BGP IPv6 quand l'inventaire
 déclare `ospf6_neighbors` et `bgp6_peers`.
 
 **Mesures** (démarrage à froid, 3 essais par lab, convergence comptée depuis la fin du déploiement, sonde à 1 s) :
