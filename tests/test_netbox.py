@@ -73,6 +73,7 @@ def cfg(url, **kw):
         platforms=kw.get("platforms", dict(PLATFORMS)),
         filters=kw.get("filters", {"status": ("active",)}),
         cacert=kw.get("cacert"),
+        page_size=kw.get("page_size"),
     )
 
 
@@ -1313,6 +1314,58 @@ def test_the_default_driver_of_the_file_is_checked_against_netbox_at_load_time(t
     path = write_inventory(tmp_path, live.addr, routers={"r1": {}}, defaults={**DEFAULTS, "driver": "eos"})
     with pytest.raises(NetboxInventoryError, match=r"r1 \(driver : NetBox frr, local eos\)"):
         inventory.load(path=path)
+
+
+# === 14. taille de page : forcer une vraie pagination =================================================
+
+
+@pytest.mark.parametrize("size", [1, 2, 100, 1000])
+def test_the_page_size_is_a_bounded_integer_of_the_block(size):
+    assert _block("https://nb.example", page_size=size).page_size == size
+
+
+@pytest.mark.parametrize("size", [0, -1, 1001, 10**6, "10", 2.5, True, False, [2], {"n": 2}])
+def test_a_bad_page_size_is_refused(size):
+    with pytest.raises(NetboxConfigError, match="page_size"):
+        _block("https://nb.example", page_size=size)
+
+
+def test_without_page_size_the_default_is_read_at_use_time(monkeypatch):
+    config = _block("https://nb.example")
+    assert config.page_size is None and config.limit == netbox.PAGE_SIZE == 100
+    monkeypatch.setattr(netbox, "PAGE_SIZE", 7)
+    assert config.limit == 7
+
+
+def test_a_small_page_size_forces_a_real_pagination_and_is_what_netbox_is_asked(nb):
+    nb.devices = many(5)
+    fetched = netbox.fetch(cfg(nb.addr, page_size=2), tok())
+    assert (fetched.count, fetched.pages, len(fetched.devices)) == (5, 3, 5)
+    pages = [r["query"] for r in nb.requests if r["path"].endswith("devices/")]
+    assert [q["limit"] for q in pages] == [["2"], ["2"], ["2"]]
+    assert [q["offset"] for q in pages] == [["0"], ["2"], ["4"]]
+
+
+def test_the_page_size_survives_the_authority_override(tmp_path):
+    ca = tmp_path / "ca.pem"
+    ca.write_text("x", encoding="utf-8")
+    assert netbox.with_cacert(cfg("https://nb.example", page_size=3), str(ca)).page_size == 3
+
+
+def test_the_announcement_says_how_many_pages_were_read(nb):
+    nb.devices = many(5)
+    config = cfg(nb.addr, page_size=2)
+    fetched = netbox.fetch(config, tok())
+    _, info = netbox.merge({}, {}, fetched, config, "variable T")
+    assert (info.pages, info.page_size) == (3, 2)
+    assert "5 équipement(s) en 3 page(s) de 2 au plus" in info.lines()[0]
+
+
+def test_the_page_cap_message_counts_devices_with_the_configured_page_size(nb, monkeypatch):
+    monkeypatch.setattr(netbox, "MAX_PAGES", 3)
+    nb.devices = many(10)
+    with pytest.raises(NetboxUnavailable, match=r"plus de 3 pages \(6 équipements\)"):
+        netbox.fetch(cfg(nb.addr, page_size=2), tok())
 
 
 # === 12. analyse statique : stdlib seulement, rien d'autre que deux GET ===========================

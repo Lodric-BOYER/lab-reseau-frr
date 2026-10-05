@@ -79,6 +79,7 @@ class FakeNetbox:
         self.count_delta = 0
         self.page_counts = None  # callable(numéro de page) -> count
         self.next_base: str | None = None
+        self.next_from_host = False  # comme le vrai NetBox : le lien `next` est construit sur l'en-tête Host
         self.next_mutator = None  # callable(url, numéro de page) -> url | None
         self.max_limit = 1000
         self.auth_status = 403
@@ -130,7 +131,7 @@ class FakeNetbox:
                 if parts.path == "/api/status/":
                     return self._send(200, {"netbox-version": outer.version, "python-version": "3.12"})
                 if parts.path == "/api/dcim/devices/":
-                    return self._send(200, outer.devices_page(query, parts.query))
+                    return self._send(200, outer.devices_page(query, parts.query, self.headers.get("Host")))
                 return self._send(404, {"detail": "introuvable"})
 
             do_GET = do_POST = do_PUT = do_PATCH = do_DELETE = do_HEAD = do_OPTIONS = _handle
@@ -152,7 +153,7 @@ class FakeNetbox:
             return False
         return not ("tag" in query and not set(query["tag"]) <= {t["slug"] for t in item.get("tags", [])})
 
-    def devices_page(self, query, raw_query):
+    def devices_page(self, query, raw_query, host=None):
         limit = min(int(query.get("limit", ["50"])[0]), self.max_limit)
         offset = int(query.get("offset", ["0"])[0])
         rows = [d for d in self.devices if self._matches(d, query)]
@@ -166,6 +167,8 @@ class FakeNetbox:
             pairs.append(("offset", str(offset + limit)))
             scheme = "https" if self.tls else "http"
             base = self.next_base or f"{scheme}://127.0.0.1:{self.server.server_address[1]}"
+            if self.next_from_host and host and not self.next_base:
+                base = f"{scheme}://{host}"
             link = f"{base}/api/dcim/devices/?{urlencode(pairs)}"
             if self.next_mutator:
                 link = self.next_mutator(link, number)

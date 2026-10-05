@@ -65,7 +65,7 @@ TIMEOUT = 10  # secondes, connexion et lecture
 PAGE_SIZE = 100
 MAX_PAGES = 50  # 5000 équipements : au-delà, ce n'est plus un lab ni une zone d'audit raisonnable
 MAX_BODY_BYTES = 16 * 1024 * 1024
-BLOCK_KEYS = ("url", "site", "role", "tag", "status", "platforms", "cacert")
+BLOCK_KEYS = ("url", "site", "role", "tag", "status", "platforms", "cacert", "page_size")
 # Type Netmiko par driver, comme dans les inventaires du dépôt (inventory*.yml).
 DEVICE_TYPES = {"frr": "linux", "eos": "arista_eos", "srlinux": "nokia_srl"}
 
@@ -105,6 +105,11 @@ class NetboxConfig:
     platforms: dict
     filters: dict  # {"site": ("lab",), "status": ("active",), ...}
     cacert: str | None = None
+    page_size: int | None = None  # `limit` demandé à NetBox ; None = PAGE_SIZE (lu à l'usage)
+
+    @property
+    def limit(self) -> int:
+        return self.page_size or PAGE_SIZE
 
     @property
     def label(self) -> str:
@@ -206,7 +211,16 @@ def parse_block(spec, path, lab: bool) -> NetboxConfig:
     cacert = spec.get("cacert")
     if cacert is not None and (not isinstance(cacert, str) or not cacert.strip()):
         raise NetboxConfigError(f"{where} : `cacert` doit être un chemin (texte)")
-    return NetboxConfig(url=url, platforms=dict(platforms), filters=filters, cacert=cacert)
+    page_size = spec.get("page_size")
+    if page_size is not None:
+        valid = isinstance(page_size, int) and not isinstance(page_size, bool) and 1 <= page_size <= 1000
+        if not valid:
+            raise NetboxConfigError(
+                f"{where} : `page_size` doit être un entier de 1 à 1000 (reçu : {page_size!r})"
+            )
+    return NetboxConfig(
+        url=url, platforms=dict(platforms), filters=filters, cacert=cacert, page_size=page_size
+    )
 
 
 def with_cacert(config: NetboxConfig, override: str | None) -> NetboxConfig:
@@ -218,7 +232,8 @@ def with_cacert(config: NetboxConfig, override: str | None) -> NetboxConfig:
         if not resolved.is_file():
             raise NetboxConfigError(f"autorité de certification NetBox introuvable : {chosen}")
         chosen = str(resolved)
-    return NetboxConfig(url=config.url, platforms=config.platforms, filters=config.filters, cacert=chosen)
+    return NetboxConfig(url=config.url, platforms=config.platforms, filters=config.filters, cacert=chosen,
+                        page_size=config.page_size)
 
 
 # --- jeton --------------------------------------------------------------------------------------------
@@ -445,7 +460,7 @@ def fetch(config: NetboxConfig, token: SecretStr, opener=None) -> Fetched:
         raise NetboxUnavailable(f"{where} : {STATUS_PATH} ne ressemble pas à NetBox (version absente)")
     params: dict = {
         **{k: list(v) for k, v in config.filters.items()},
-        "limit": [str(PAGE_SIZE)],
+        "limit": [str(config.limit)],
         "offset": ["0"],
     }
     raw: list = []
@@ -471,7 +486,7 @@ def fetch(config: NetboxConfig, token: SecretStr, opener=None) -> Fetched:
             break
         if pages >= MAX_PAGES:
             raise NetboxUnavailable(
-                f"{where} : plus de {MAX_PAGES} pages ({MAX_PAGES * PAGE_SIZE} équipements) : "
+                f"{where} : plus de {MAX_PAGES} pages ({MAX_PAGES * config.limit} équipements) : "
                 "affinez les filtres site, role ou tag"
             )
         params = _next_params(config, link, int(params["offset"][0]), params)
@@ -550,6 +565,8 @@ class NetboxInfo:
     token_source: str
     filters: dict
     count: int
+    pages: int = 1
+    page_size: int = PAGE_SIZE
     both: list[str] = field(default_factory=list)
     netbox_only: list[str] = field(default_factory=list)
     plain_http: bool = False  # http:// (bouclage d'un lab) : le jeton circule en clair, à dire à chaque usage
@@ -558,7 +575,7 @@ class NetboxInfo:
         filters = describe_filters(self.filters)
         out = [
             f"Inventaire NetBox : {self.url} (NetBox {self.version}), filtres {filters}, "
-            f"{self.count} équipement(s) "
+            f"{self.count} équipement(s) en {self.pages} page(s) de {self.page_size} au plus "
             f"({len(self.both)} aussi dans l'inventaire local, "
             f"{len(self.netbox_only)} de NetBox seulement) ; "
             f"jeton : {self.token_source}"
@@ -639,6 +656,8 @@ def merge(local: dict, defaults: dict, fetched: Fetched, config: NetboxConfig, t
         token_source=token_source,
         filters=config.filters,
         count=fetched.count,
+        pages=fetched.pages,
+        page_size=config.limit,
         both=both,
         netbox_only=netbox_only,
         plain_http=config.is_http,
