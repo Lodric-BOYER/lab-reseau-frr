@@ -42,3 +42,6 @@ set / network-instance default protocols ospf instance v3 address-family ipv6-un
 set / network-instance default protocols ospf instance v3 area 0.0.0.0 interface ethernet-1/1.0 interface-type point-to-point
 set / network-instance default protocols ospf instance v3 area 0.0.0.0 interface ethernet-1/2.0 passive true
 set / network-instance default protocols ospf instance v3 area 0.0.0.0 interface lo0.0 passive true
+set / system aaa authorization role netcheck-ro services [ cli ]
+set / system aaa authorization role netcheck-ro cli allow-command-list [ "^environment complete-on-space false$" "^environment cli-engine type basic$" "^info from state interface \* \| as json$" "^info from state network-instance \* interface \* \| as json$" "^info from state network-instance \* route-table \| as json$" "^show network-instance default protocols ospf neighbor \| as json$" "^info from running interface \*$" "^info from running network-instance default protocols ospf$" "^info from running system authentication$" "^info from running system banner$" ]
+set / system aaa authorization role netcheck-ro cli deny-command-list [ ".*" ]

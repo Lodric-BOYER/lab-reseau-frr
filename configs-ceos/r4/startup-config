@@ -17,6 +17,35 @@ no aaa root
 !
 username admin privilege 15 role network-admin secret sha512 $6$BfyQeqMEAOYfFIFW$2TgamS6RUy/xvOEvKUwPWTVOBo3/XKjMOv0OJc1jq0e5avT1XGjkSpRvtprKpxM3u/HbtqsRiDweed98L7PYS.
 !
+! Phase C5 : compte netcheck-ro en LECTURE SEULE. Sans les deux lignes aaa, un rôle n'est PAS appliqué (observé
+! sur cEOS 4.34.8M : configure, copy et même bash passaient). `exec` attribue le rôle à l'ouverture de session,
+! `commands` autorise chaque commande. EOS évalue la commande SANS « | json » (format de sortie, pas un filtre) ;
+! les expressions sont ancrées (^...$), sinon « show ip bgp » laisserait passer « show ip bgp neighbors ».
+! Les refus finaux sont explicites (exec, configuration, tout). network-operator n'est PAS en lecture seule
+! (copy running-config file: passe). L'utilisateur et sa clé publique sont posés par lab-access/accounts_lab.sh.
+aaa authorization exec default local
+aaa authorization commands all default local
+!
+role netcheck-ro
+   10 permit mode exec command ^enable$
+   20 permit mode exec command ^terminal (width|length) [0-9]+$
+   30 permit mode exec command ^show interfaces$
+   40 permit mode exec command ^show ipv6 interface$
+   50 permit mode exec command ^show vrf$
+   60 permit mode exec command ^show ip route vrf all$
+   70 permit mode exec command ^show ipv6 route vrf all$
+   80 permit mode exec command ^show ip ospf neighbor$
+   90 permit mode exec command ^show ospfv3 neighbor$
+   100 permit mode exec command ^show ip bgp summary$
+   110 permit mode exec command ^show ip bgp$
+   120 permit mode exec command ^show ipv6 bgp summary$
+   130 permit mode exec command ^show ipv6 bgp$
+   140 permit mode exec command ^show running-config$
+   150 deny mode exec command .*
+   160 deny mode config command .*
+   170 deny mode config-all command .*
+   180 deny command .*
+!
 no service interface inactive port-id allocation disabled
 !
 transceiver qsfp default-mode 4x10G
