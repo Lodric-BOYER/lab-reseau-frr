@@ -15,8 +15,10 @@ from __future__ import annotations
 import json
 import os
 import socket
+import struct
 import sys
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
@@ -34,6 +36,19 @@ TOKEN = "hvs.FAKE-TOKEN-SENTINEL-0123456789"
 VAULT_PASSWORD = "Vault-Password-SENTINEL-77"
 LAB_PASSWORD = "lab-pass-from-LAB_PASS"
 INVENTORY_PASSWORD = "inventory-password-xyz"
+
+
+class _QuietServer(ThreadingHTTPServer):
+    """Un client qui abandonne (délai dépassé, certificat refusé) fait lever OSError au gestionnaire quand il
+    écrit sa réponse. Les fils de requête de ThreadingHTTPServer sont des démons que server_close() n'attend
+    pas : la trace de socketserver sortait sur stderr plus tard, dans un test voisin qui vérifie qu'il n'y a
+    qu'UNE ligne sur stderr (échec intermittent de test_vault_without_hvac). Seuls les abandons du client sont
+    tus ; toute autre exception du faux serveur reste visible."""
+
+    def handle_error(self, request, client_address):
+        if isinstance(sys.exc_info()[1], OSError):
+            return
+        super().handle_error(request, client_address)
 
 
 class FakeVault:
@@ -89,7 +104,7 @@ class FakeVault:
 
             do_GET = do_POST = do_PUT = do_DELETE = do_LIST = _handle
 
-        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server = _QuietServer(("127.0.0.1", 0), Handler)
         self.thread = threading.Thread(
             target=lambda: self.server.serve_forever(poll_interval=0.02), daemon=True
         )
@@ -326,6 +341,32 @@ def test_a_slow_vault_times_out_with_an_explicit_error(venv, fake, monkeypatch):
     fake.delay = 1.5
     with pytest.raises(vault.VaultError, match="injoignable"):
         _resolve({**venv, "LAB_PASS": LAB_PASSWORD})
+
+
+def _give_up_after_sending_login(fake):
+    """Envoie le login puis ferme avec un RST : le gestionnaire (qui attend `delay`) écrira dans le vide."""
+    client = socket.create_connection(("127.0.0.1", fake.server.server_address[1]))
+    client.sendall(b"POST /v1/auth/approle/login HTTP/1.1\r\nHost: x\r\nContent-Length: 2\r\n\r\n{}")
+    client.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+    client.close()
+
+
+def test_a_client_that_gives_up_leaves_no_traceback_behind(fake, capsys):
+    """Sans _QuietServer, la BrokenPipe du gestionnaire sortait sur stderr APRÈS la fin du test."""
+    fake.delay = 0.2
+    _give_up_after_sending_login(fake)
+    time.sleep(0.7)  # le gestionnaire se réveille, écrit, échoue
+    assert fake.requests == [("POST", "/v1/auth/approle/login")]  # il a bien reçu la requête
+    assert capsys.readouterr().err == ""
+
+
+def test_a_real_bug_in_the_fake_server_is_still_reported(fake, capsys):
+    """Le silence ne vaut que pour les abandons du client (OSError) : une erreur de logique reste visible."""
+    try:
+        raise KeyError("bug du faux serveur")
+    except KeyError:
+        fake.server.handle_error(None, ("127.0.0.1", 1))
+    assert "bug du faux serveur" in capsys.readouterr().err
 
 
 def test_a_failure_is_not_cached_as_success(venv, fake):
