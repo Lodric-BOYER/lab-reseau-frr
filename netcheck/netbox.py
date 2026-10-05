@@ -286,6 +286,31 @@ def validate_call(method: str, path: str, params: dict) -> dict[str, list[str]]:
 # --- appels réseau ------------------------------------------------------------------------------------
 
 
+# Raisons OpenSSL qui disent « en face, ce n'est pas du TLS » (https:// vers un port en clair), selon la
+# version d'OpenSSL : mesuré, RECORD_LAYER_FAILURE avec OpenSSL 3.x récent, WRONG_VERSION_NUMBER avant.
+_NOT_TLS_REASONS = frozenset(
+    {"WRONG_VERSION_NUMBER", "RECORD_LAYER_FAILURE", "UNKNOWN_PROTOCOL", "HTTP_REQUEST", "WRONG_SSL_VERSION"}
+)
+
+
+def _tls_failure(where: str, error: BaseException) -> NetboxUnavailable:
+    """Trois causes, jamais confondues, sans reprendre le texte de la bibliothèque : certificat refusé
+    (l'autorité se donne par --netbox-cacert), serveur qui ne parle pas TLS sur ce port, autre échec de
+    négociation."""
+    if isinstance(error, ssl.SSLCertVerificationError):
+        return NetboxUnavailable(
+            f"{where} : certificat TLS refusé ; autorité à ajouter : --netbox-cacert ou `cacert:`"
+        )
+    if getattr(error, "reason", None) in _NOT_TLS_REASONS:
+        return NetboxUnavailable(
+            f"{where} : le serveur ne parle pas TLS sur ce port (https:// vers un service en clair ?) : "
+            "vérifiez le schéma et le port de `url`"
+        )
+    return NetboxUnavailable(
+        f"{where} : échec de la négociation TLS (ni certificat refusé, ni serveur sans TLS)"
+    )
+
+
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *_args, **_kwargs):  # noqa: D401 -- None : la redirection devient une HTTPError
         return None
@@ -331,15 +356,11 @@ def _get(config: NetboxConfig, token: SecretStr, opener, path: str, params: dict
         raise NetboxUnavailable(f"{where} : réponse HTTP {code} inattendue") from None
     except (TimeoutError, socket.timeout):
         raise NetboxUnavailable(f"{where} : délai de {TIMEOUT} s dépassé") from None
-    except (ssl.SSLError, ssl.CertificateError):
-        raise NetboxUnavailable(
-            f"{where} : certificat TLS refusé ; autorité à ajouter : --netbox-cacert ou `cacert:`"
-        ) from None
+    except ssl.SSLError as error:
+        raise _tls_failure(where, error) from None
     except urllib.error.URLError as error:
-        if isinstance(error.reason, (ssl.SSLError, ssl.CertificateError)):
-            raise NetboxUnavailable(
-                f"{where} : certificat TLS refusé ; autorité à ajouter : --netbox-cacert ou `cacert:`"
-            ) from None
+        if isinstance(error.reason, ssl.SSLError):
+            raise _tls_failure(where, error.reason) from None
         if isinstance(error.reason, (TimeoutError, socket.timeout)):
             raise NetboxUnavailable(f"{where} : délai de {TIMEOUT} s dépassé") from None
         raise NetboxUnavailable(f"{where} : injoignable") from None

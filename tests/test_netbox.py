@@ -23,6 +23,7 @@ import shutil
 import ssl
 import subprocess
 import sys
+import urllib.error
 from pathlib import Path
 
 import pytest
@@ -1208,13 +1209,57 @@ def test_the_exception_itself_never_carries_the_library_text_nor_the_token(live,
     assert raised.value.__cause__ is None and raised.value.__suppress_context__ is True
 
 
-def test_an_ssl_error_raised_directly_is_a_certificate_refusal_not_a_network_failure(live):
-    with pytest.raises(NetboxUnavailable, match="certificat TLS refusé"):
-        netbox.fetch(cfg(live.addr), tok(), opener=_CopyingOpener(ssl.SSLError))
+class _TlsError(ssl.SSLError):
+    """Une erreur TLS avec la `reason` d'OpenSSL qu'on veut simuler (le constructeur ne la fixe pas)."""
+
+    def __init__(self, reason):
+        super().__init__(1, f"[SSL: {reason}] simulé")
+        self.reason = reason
 
 
-def test_a_handshake_failure_against_a_plain_http_server_is_a_tls_refusal(live):
-    with pytest.raises(NetboxUnavailable, match="certificat TLS refusé"):
+class _RaisingOpener:
+    def __init__(self, error):
+        self.error = error
+
+    def open(self, request, timeout=None):
+        raise self.error
+
+
+def _fetch_with(live, error):
+    return netbox.fetch(cfg(live.addr), tok(), opener=_RaisingOpener(error))
+
+
+def test_a_certificate_verification_error_is_a_certificate_refusal(live):
+    with pytest.raises(NetboxUnavailable) as raised:
+        _fetch_with(live, ssl.SSLCertVerificationError(1, "[SSL: CERTIFICATE_VERIFY_FAILED] simulé"))
+    assert "certificat TLS refusé" in str(raised.value) and "--netbox-cacert" in str(raised.value)
+    assert "ne parle pas TLS" not in str(raised.value)
+
+
+@pytest.mark.parametrize(
+    "reason",
+    ["WRONG_VERSION_NUMBER", "RECORD_LAYER_FAILURE", "UNKNOWN_PROTOCOL", "HTTP_REQUEST", "WRONG_SSL_VERSION"],
+)
+def test_a_server_that_does_not_speak_tls_is_told_apart_from_a_refused_certificate(live, reason):
+    for error in (_TlsError(reason), urllib.error.URLError(_TlsError(reason))):
+        with pytest.raises(NetboxUnavailable) as raised:
+            _fetch_with(live, error)
+        text = str(raised.value)
+        assert "ne parle pas TLS sur ce port" in text and "schéma et le port" in text
+        assert "certificat TLS refusé" not in text and reason not in text
+
+
+def test_any_other_tls_failure_is_a_negotiation_failure_without_the_library_text(live):
+    for error in (ssl.SSLError("texte de bibliothèque secret"), _TlsError("SSLV3_ALERT_HANDSHAKE_FAILURE")):
+        with pytest.raises(NetboxUnavailable) as raised:
+            _fetch_with(live, error)
+        text = str(raised.value)
+        assert "échec de la négociation TLS" in text
+        assert "secret" not in text and "HANDSHAKE" not in text and "certificat TLS refusé" not in text
+
+
+def test_https_towards_a_plain_http_server_says_it_does_not_speak_tls(live):
+    with pytest.raises(NetboxUnavailable, match="ne parle pas TLS sur ce port"):
         netbox.fetch(cfg(live.addr.replace("http://", "https://")), tok())
     assert live.requests == []
 
