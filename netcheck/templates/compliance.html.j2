@@ -50,8 +50,9 @@ SHA-256 <code>{{ derogations.file.sha256 }}</code>.</p>
 {% if source %}
 <p class="meta"><strong>Mode hors ligne</strong> (<code>check --config-dir</code>) : {{ source.devices|length }}
 équipement(s) lu(s) depuis des fichiers, aucun équipement interrogé. Les règles qui lisent l'état collecté
-(interfaces) sont <strong class="cause-gap">non évaluables</strong> hors ligne : voir « Non applicable »,
-cause « ÉTAT REQUIS (hors ligne) ».</p>
+(interfaces) sont <strong class="cause-gap">non évaluables</strong> hors ligne, sauf si la règle déclare
+<code>sources: [live, snapshot]</code> : elle est alors « HORS PÉRIMÈTRE (source : hors ligne) » (voir la
+section du même nom) ; sinon voir « NON ÉVALUABLE », cause « ÉTAT REQUIS (hors ligne) ».</p>
 <table id="sources">
   <thead>
     <tr><th>Équipement</th><th>Driver</th><th>Fichier</th></tr>
@@ -215,25 +216,46 @@ retour. Les secrets sont masqués.</p>
 </table>
 {% endif %}
 
-{% if not_applicable %}
-<h2>Non applicable</h2>
-<p class="meta">Règle(s) non évaluée(s) sur un équipement — ni conforme, ni non-conformité, sans effet
-sur le verdict ni le code retour. Causes distinctes : <strong>hors sujet</strong> (la règle ne
-liste pas le driver de l'équipement, Phase D2), <strong class="cause-gap">non implémenté</strong>
-(la règle concerne ce driver, mais il ne sait pas l'évaluer : un trou de couverture, pas un choix) et,
+{% if gaps %}
+<h2>NON ÉVALUABLE</h2>
+<p class="meta">Règle(s) <strong class="cause-gap">non évaluable(s)</strong> sur un équipement : l'audit est
+<strong>incomplet</strong> (code retour 1 au moins), jamais « conforme ». Trois causes :
+<strong class="cause-gap">non implémenté</strong> (la règle concerne ce driver, mais il ne sait pas l'évaluer :
+un trou de couverture), <strong class="cause-gap">équipement injoignable</strong> (il n'a pas pu être lu) et,
 hors ligne seulement, <strong class="cause-gap">état requis</strong> (la règle lit l'état collecté de
 l'équipement, que des fichiers de configuration ne contiennent pas).</p>
-<table id="not-applicable">
+<table id="not-evaluable">
   <thead>
     <tr><th>Équipement</th><th>Règle</th><th>Cause</th><th>Raison</th></tr>
   </thead>
   <tbody>
-    {% for na in not_applicable %}
+    {% for na in gaps %}
     <tr>
       <td>{{ na.device }}</td>
       <td>{{ na.rule.id }}<br><small>{{ na.rule.description }}</small></td>
-      <td>{% if na.cause == not_implemented %}<span class="cause-gap">NON IMPLÉMENTÉ</span>{% elif na.cause == no_model %}<span class="cause-gap">ÉTAT REQUIS (hors ligne)</span>{% else %}hors sujet (driver){% endif %}</td>
+      <td><span class="cause-gap">{{ na_label(na) }}</span></td>
       <td>{{ na.reason }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if scope_groups %}
+<h2>HORS PÉRIMÈTRE</h2>
+<p class="meta">Exclusion <strong>déclarée</strong> par la règle (<code>drivers:</code> ou <code>sources:</code>) :
+ni conforme, ni non-conformité, sans effet sur le verdict ni le code retour. Ce n'est pas un défaut, mais la liste
+est donnée : une ligne par règle et périmètre, avec les équipements concernés.</p>
+<table id="out-of-scope">
+  <thead>
+    <tr><th>Règle</th><th>Périmètre</th><th>Équipements</th></tr>
+  </thead>
+  <tbody>
+    {% for g in scope_groups %}
+    <tr>
+      <td>{{ g.rule_id }}<br><small>{{ g.description }}</small></td>
+      <td>{{ g.scope }}</td>
+      <td>{{ g.devices|join(", ") }}</td>
     </tr>
     {% endfor %}
   </tbody>

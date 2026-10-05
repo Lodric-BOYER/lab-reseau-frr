@@ -241,9 +241,24 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   corrigé : `assert` (NON ÉVALUABLE : code 0 -> **ATTENTION, code 1**), `check` (règle `not_implemented` ou `no_model` : CONFORME / 0 ->
   **ANALYSE INCOMPLÈTE / 1**, dans le terminal, le JSON et le HTML), `diff` (section relevée d'un seul côté : information -> **ATTENTION**),
   `monitor` (le composant check compte maintenant les règles non évaluables, comme l'assert le faisait déjà). **Conséquence :**
-  `check --config-dir` avec `default.yml` sort en 1 (deux règles lisent l'état collecté, absent hors ligne) ; `security.yml` reste CONFORME / 0.
+  `check --config-dir` avec `default.yml` sortait en 1 (deux règles lisent l'état collecté, absent hors ligne), ce qui ferait une alarme permanente :
+  voir « Périmètre par source » ci-dessous, qui le ramène à 0 quand tout le périmètre est évalué et conforme ; `security.yml` reste CONFORME / 0.
   Les règles hors périmètre par choix (`drivers:`) ne comptent pas. Le gel des verdicts est inchangé (0 écart). Un pipeline qui testait
-  `assert == 0` ou `check --config-dir == 0` doit distinguer 1.
+  `assert == 0` doit distinguer 1.
+- **Périmètre par source (`sources:`), libellés HORS PÉRIMÈTRE, « rien n'a été audité » (changement incompatible de la sémantique du code de sortie de
+  `check`).** Une règle peut déclarer `sources: [live, snapshot]` (valeurs : `live`, `snapshot`, `config-dir` ; valeur inconnue, liste vide ou
+  doublon = erreur au chargement). Une règle déclarée hors de la source de l'exécution est **exclue du verdict mais listée** : « HORS PÉRIMÈTRE
+  (source : hors ligne) » ; de même une règle `drivers:` pour un autre driver : « HORS PÉRIMÈTRE (driver : srlinux) ». Règle, libellé et équipements
+  sont regroupés sur une ligne dans le terminal, le JSON (`not_applicable[].scope` et `out_of_scope`) et le HTML (section « HORS PÉRIMÈTRE »), au lieu d'un
+  simple décompte. « NON AUDITÉ » reste réservé aux lignes et fichiers de configuration illisibles. `default.yml` : `interface-avec-description` et
+  `lan-en-ospf-passif` (qui lisent l'état collecté) déclarent `sources: [live, snapshot]` ; **`check --config-dir` avec `default.yml` sort donc en 0 sur
+  les trois labs** (il sortait en 1 depuis la décision C6). **Une règle qui lit l'état collecté sans cette déclaration reste ANALYSE INCOMPLÈTE (code 1)
+  hors ligne.** **Une seule règle de code pour `check` : zéro couple (règle, équipement) évalué, quelle qu'en soit la cause** (hors périmètre, non évaluable,
+  injoignable, snapshot ou source vide, règle sans équipement concerné), **sort en code 3 « rien n'a été audité »** avec la liste de toutes
+  les causes (`monitor` : ATTENTION) ; au moins un couple évalué avec des trous = 1 ; tout évalué et conforme = 0. Un équipement injoignable
+  pendant un `check` en direct est un trou (cause `unreachable`, « ÉQUIPEMENT INJOIGNABLE », code 1 au moins) au lieu d'être ignoré. Un
+  pipeline qui testait `check --config-dir == 0` avec `default.yml` retrouve 0 ; un qui attendait 0 d'un audit où rien n'était évalué
+  reçoit 3 (voir aussi « Sécurité »). Gel : 0 écart.
 - **`guard` refuse un périmètre dont des équipements n'ont aucun attendu local** (code 3, avant tout script, tout snapshot, tout journal ; liste
   de tous les équipements concernés). Seule issue : `--accept-unverified r6,r7` (noms explicites, jamais de joker ni « all » ; nom inconnu,
   en double, hors périmètre ou déjà vérifié = erreur). Ces équipements sortent du calcul de convergence, sont annoncés à chaque usage et le verdict
@@ -364,6 +379,11 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   des fichiers hors de `snapshots/`. Le nom est désormais limité aux lettres, chiffres, `.`, `-` et `_` (100 caractères,
   commençant par une lettre ou un chiffre) et refusé en code 3 avant toute collecte. La lecture d'un snapshot par chemin
   reste permise (elle n'écrase rien).
+- **`check` ne sort plus en CONFORME quand rien n'a été audité.** Un `check` en direct dont aucun équipement était joignable (ou
+  appliqué à un snapshot vide, ou à des règles qui ne concernent aucun équipement) sortait en code 0 « CONFORME » : aucune règle
+  n'était évaluée. C'était un faux OK préexistant. Désormais zéro couple (règle, équipement) évalué = code 3 « rien n'a été
+  audité » avec la liste de toutes les causes ; un équipement injoignable pendant un `check` en direct rend l'audit incomplet
+  (code 1, listé), au lieu d'être ignoré en silence.
 - **Fuite d'un extrait de fichier par un message d'erreur YAML.** PyYAML recopie dans son message la ligne fautive ; sur
   un inventaire, cette ligne peut être un mot de passe, que `netcheck` affichait donc sur stderr. Les messages ne donnent
   plus que la ligne, la colonne et le type du problème, jamais un extrait (test qui met un mot de passe dans la ligne

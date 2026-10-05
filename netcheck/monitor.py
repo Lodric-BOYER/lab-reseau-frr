@@ -225,6 +225,11 @@ def evaluate(
         ev.config_warnings = audit.config_warnings
         ev.compliant = compliance.verdict(ev.violations, ev.config_warnings, ev.not_applicable)[0]
         components["check"], extra = check_outcome(ev.violations, ev.config_warnings, ev.not_applicable)
+        if compliance.nothing_audited(audit):
+            # Aucune règle évaluée sur aucun équipement joignable : jamais un OK (check : code 3).
+            extra.append(Contribution(ATTENTION, "NON AUDITÉ", "check", "*", "rien-audite",
+                                      "aucune règle n'a pu être évaluée sur un équipement joignable"))
+            components["check"] = worst(components["check"], ATTENTION)
         contributions += extra
 
     ev.status = worst(OK, *(s for s in components.values() if s is not None))

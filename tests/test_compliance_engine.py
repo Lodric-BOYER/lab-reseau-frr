@@ -203,7 +203,7 @@ def test_real_configurations_produce_no_warning():
 def _scenario():
     r = rule("ospf_authentication_required", "gap")
     na = [NotApplicable(r, "r5", "non implémenté par le driver srlinux", CAUSE_NOT_IMPLEMENTED),
-          NotApplicable(r, "r6", "driver 'srlinux' non couvert par cette règle", CAUSE_DRIVER)]
+          NotApplicable(r, "r6", "driver 'srlinux' non couvert par cette règle", CAUSE_DRIVER, "srlinux")]
     warnings = [
         ConfigWarning("r1", ParseWarning(12, "neighbor 10.0.0.1 password lab-bgp-r3r4 }",
                                          "accolade fermante sans bloc ouvert", False)),
@@ -218,7 +218,8 @@ def test_json_counts_every_family_apart_and_labels_the_cause():
     assert d["summary"] == {
         "violations": 0, "config_lines_unread": 1, "config_files_not_audited": 0, "config_notes": 1,
         "not_applicable": 2,
-        "not_applicable_not_implemented": 1, "not_applicable_no_model": 0, "not_applicable_out_of_scope": 1}
+        "not_applicable_not_implemented": 1, "not_applicable_no_model": 0, "not_applicable_unreachable": 0,
+        "not_applicable_out_of_scope": 1}
     assert [(n["device"], n["cause"]) for n in d["not_applicable"]] == [
         ("r5", "not_implemented"), ("r6", "driver")]
     assert [(w["line"], w["kept"]) for w in d["config_analysis"]] == [(12, False), (7, True)]
@@ -232,7 +233,7 @@ def test_terminal_shows_unread_lines_notes_and_the_gap_apart():
     text = console.export_text()
     assert "Analyse de la configuration" in text and "NON LUE" in text
     assert "information (lue, ambiguë)" in text
-    assert "NON IMPLÉMENTÉ" in text and "hors sujet (driver)" in text
+    assert "NON IMPLÉMENTÉ" in text and "HORS PÉRIMÈTRE (driver : srlinux)" in text
     assert "non implémenté par le driver srlinux" in text
     assert "1 ligne(s) de configuration non lue(s)" in text and "1 information(s) d'analyse" in text
     assert "2 non applicable(s) dont 1 non implémentée(s) par leur driver" in " ".join(text.split())

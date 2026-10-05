@@ -34,6 +34,12 @@ class Rule:
     # None = pas de catégorie (règles antérieures à la Phase A).
     category: str | None = None
     params: dict[str, Any] = field(default_factory=dict)
+    # Phase C6 (périmètre par SOURCE) : d'où la règle peut être évaluée parmi KNOWN_SOURCES (« live » :
+    # collecte en direct, « snapshot » : relevé enregistré, « config-dir » : fichiers de configuration,
+    # hors ligne). None = toutes les sources. Une règle déclarée hors de la source de l'exécution est
+    # « HORS PÉRIMÈTRE (source : …) » : exclue du verdict, mais listée. Sans déclaration, une règle qui
+    # ne peut pas être évaluée reste un trou de couverture (ANALYSE INCOMPLÈTE).
+    sources: list[str] | None = None
 
     def applies(self, device_name: str) -> bool:
         return self.applies_to == "all" or device_name in self.applies_to
@@ -62,17 +68,43 @@ CAUSE_NO_MODEL = "no_model"
 # Règle de la phase C6 (« jamais de code 0 avec des parties NON ÉVALUABLES ») : seules les deux causes qui
 # sont un MANQUE (trou de couverture d'un driver, état collecté absent hors ligne) rendent l'audit
 # incomplet. La cause « driver » est un choix de périmètre de la règle, pas un manque.
-GAP_CAUSES = (CAUSE_NOT_IMPLEMENTED, CAUSE_NO_MODEL)
+# L'équipement n'a pas pu être lu (collecte en échec, snapshot pris sur un équipement injoignable) : la règle
+# n'a PAS été évaluée sur lui, c'est un manque.
+CAUSE_UNREACHABLE = "unreachable"
+GAP_CAUSES = (CAUSE_NOT_IMPLEMENTED, CAUSE_NO_MODEL, CAUSE_UNREACHABLE)
+# `sources:` de la règle ne liste pas la source de l'exécution : un CHOIX déclaré, comme « driver ».
+CAUSE_SOURCE = "source"
+OUT_OF_SCOPE_CAUSES = (CAUSE_DRIVER, CAUSE_SOURCE)
+KNOWN_SOURCES = ("live", "snapshot", "config-dir")
+SOURCE_LABELS = {"live": "en direct", "snapshot": "snapshot", "config-dir": "hors ligne"}
 
 
 @dataclass
 class NotApplicable:
     """Une règle qui ne concerne pas cet équipement : ni conforme, ni violation, un troisième
-    état à part entière -- voir compliance.evaluate_config() et verdict()."""
+    état à part entière -- voir compliance.evaluate_config() et verdict().
+
+    `scope` : pour une exclusion VOLONTAIRE (cause « driver » ou « source »), le driver de l'équipement ou la
+    source de l'exécution ; il donne le libellé « HORS PÉRIMÈTRE (driver : frr) » / « HORS PÉRIMÈTRE (source :
+    hors ligne) » (`scope_label`)."""
     rule: Rule
     device: str
     reason: str
     cause: str = CAUSE_DRIVER
+    scope: str = ""
+
+    @property
+    def out_of_scope(self) -> bool:
+        return self.cause in OUT_OF_SCOPE_CAUSES
+
+    @property
+    def scope_label(self) -> str | None:
+        """None pour un trou de couverture (qui n'est PAS hors périmètre)."""
+        if self.cause == CAUSE_DRIVER:
+            return f"HORS PÉRIMÈTRE (driver : {self.scope or 'inconnu'})"
+        if self.cause == CAUSE_SOURCE:
+            return f"HORS PÉRIMÈTRE (source : {SOURCE_LABELS.get(self.scope, self.scope or 'inconnue')})"
+        return None
 
 
 def coverage_gaps(not_applicable) -> list[NotApplicable]:

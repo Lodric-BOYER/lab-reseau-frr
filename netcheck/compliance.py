@@ -39,6 +39,9 @@ from netcheck.ruletypes import (
     CAUSE_DRIVER,
     CAUSE_NO_MODEL,
     CAUSE_NOT_IMPLEMENTED,
+    CAUSE_SOURCE,
+    CAUSE_UNREACHABLE,
+    KNOWN_SOURCES,
     Check,
     ConfigWarning,
     NotApplicable,
@@ -114,6 +117,9 @@ class ComplianceResult:
     derogation_file: tuple[str, str] | None = None     # (chemin, SHA-256) du fichier utilisé
     # Phase B4 : information de couverture (jamais un constat, jamais d'effet sur le verdict).
     coverage_notes: list[CoverageNote] = field(default_factory=list)
+    # Phase C6 : nombre de couples (règle, équipement) réellement ÉVALUÉS. Zéro, sans aucun trou de
+    # couverture, veut dire que rien n'a été audité (voir `nothing_audited`).
+    evaluated: int = 0
 
     @property
     def unread_lines(self) -> list[ConfigWarning]:
@@ -207,6 +213,21 @@ def _validate_rule(raw: Any, index: int, path: Path) -> Rule:
                 f"{implementers(raw['kind'])})"
             )
 
+    sources = raw.get("sources")  # optionnel (phase C6) : absent = toutes les sources
+    if sources is not None:
+        if not isinstance(sources, list) or not sources:
+            raise ValueError(
+                f"{path} : {label} : sources doit être une liste non vide parmi {list(KNOWN_SOURCES)}"
+            )
+        unknown_sources = [s for s in sources if s not in KNOWN_SOURCES]
+        if unknown_sources:
+            raise ValueError(
+                f"{path} : {label} : source(s) inconnue(s) dans 'sources' : {unknown_sources} "
+                f"(attendu : {list(KNOWN_SOURCES)})"
+            )
+        if len(set(sources)) != len(sources):
+            raise ValueError(f"{path} : {label} : source en double dans 'sources' : {sources}")
+
     references = raw.get("references")  # optionnel (Phase A, C14) : absent = aucune référence
     if references is not None:
         if not isinstance(references, list) or not references:
@@ -224,11 +245,11 @@ def _validate_rule(raw: Any, index: int, path: Path) -> Rule:
     if category is not None and not isinstance(category, str):
         raise ValueError(f"{path} : {label} : category doit être une chaîne")
 
-    meta_fields = REQUIRED_FIELDS | {"drivers", "references", "category"}
+    meta_fields = REQUIRED_FIELDS | {"drivers", "references", "category", "sources"}
     params = {k: v for k, v in raw.items() if k not in meta_fields}
     return Rule(id=raw["id"], description=raw["description"], severity=raw["severity"],
                 applies_to=applies_to, kind=raw["kind"], drivers=drivers,
-                references=references, category=category, params=params)
+                references=references, category=category, params=params, sources=sources)
 
 
 def _check_unique_ids(rules: list[Rule], path: Path) -> None:
@@ -297,15 +318,20 @@ def evaluate_config(
     management_vrfs: set[str] | None = None,
     derogations: derog.DerogationSet | None = None,
     today: date | None = None,
+    source: str | None = None,
 ) -> ComplianceResult:
     """Applique chaque règle à chaque équipement concerné (rule.applies_to).
 
-    Trois causes de « non applicable », jamais conformes, jamais comptées dans le verdict : la règle ne
-    liste pas le driver de l'équipement (`drivers:`, cause « driver »), le driver ne sait pas évaluer
-    son kind (cause « not_implemented » : un trou de couverture, à ne pas confondre avec une règle
-    hors sujet), ou -- hors ligne seulement (`offline=True`, `check --config-dir`) -- la règle lit le
+    Cinq causes de « non applicable », jamais conformes, jamais comptées comme violation : la règle ne
+    liste pas le driver de l'équipement (`drivers:`, cause « driver ») ou la source de l'exécution
+    (`sources:`, cause « source ») -- deux CHOIX déclarés, « hors périmètre » ; le driver ne sait pas
+    évaluer son kind (cause « not_implemented » : un trou de couverture, à ne pas confondre avec une règle
+    hors sujet) ; ou -- hors ligne seulement (`offline=True`, `check --config-dir`) -- la règle lit le
     MODÈLE collecté (`Check.needs` contient « interfaces ») alors que seule la configuration existe
-    (cause « no_model » : un manque de données). La configuration de chaque équipement audité est
+    (cause « no_model » : un manque de données, sauf si la règle l'a déclaré par `sources:`) ; ou
+    l'équipement n'a pas pu être lu (cause « unreachable » : un manque).
+    `source` (« live », « snapshot » ou « config-dir ») ; par défaut « config-dir » si `offline`, sinon
+    « live ». La configuration de chaque équipement audité est
     analysée une fois ; toute ligne douteuse devient un `ConfigWarning` (voir `verdict()`).
 
     Phase B3 : avec `derogations`, les violations couvertes par une dérogation en cours passent dans
@@ -313,6 +339,9 @@ def evaluate_config(
     moteur n'appelle jamais l'horloge (les tests passent une date fixe)."""
     if derogations is not None and today is None:
         raise ValueError("`today` est obligatoire avec des dérogations : le moteur n'appelle pas l'horloge")
+    run_source = source or ("config-dir" if offline else "live")
+    if run_source not in KNOWN_SOURCES:
+        raise ValueError(f"source d'exécution inconnue : {run_source!r} (attendu : {list(KNOWN_SOURCES)})")
     mgmt = set(management_interfaces or ())
     mgmt_vrfs = set(management_vrfs or ())
     result = ComplianceResult()
@@ -325,12 +354,22 @@ def evaluate_config(
 
     for rule in rules:
         for name, state in devices.items():
-            if not rule.applies(name) or not state.reachable:
+            if not rule.applies(name):
+                continue
+            if not state.reachable:
+                result.not_applicable.append(NotApplicable(rule, name,
+                    f"équipement injoignable ({state.error or 'cause inconnue'}) : règle non évaluée",
+                    CAUSE_UNREACHABLE))
                 continue
             if rule.drivers is not None and state.driver not in rule.drivers:
                 result.not_applicable.append(NotApplicable(rule, name,
                     f"driver '{state.driver}' non couvert par cette règle (drivers: {rule.drivers})",
-                    CAUSE_DRIVER))
+                    CAUSE_DRIVER, state.driver))
+                continue
+            if rule.sources is not None and run_source not in rule.sources:
+                result.not_applicable.append(NotApplicable(rule, name,
+                    f"source d'exécution '{run_source}' non couverte par cette règle "
+                    f"(sources: {rule.sources}) : déclarée hors périmètre", CAUSE_SOURCE, run_source))
                 continue
             check = resolve_check(rule.kind, state.driver)
             if check is None:
@@ -342,6 +381,7 @@ def evaluate_config(
                     "lit le modèle collecté (interfaces) : indisponible hors ligne, seule la configuration "
                     "est lue", CAUSE_NO_MODEL))
                 continue
+            result.evaluated += 1
             result.violations += check.fn(rule, management.filtered(state, mgmt, mgmt_vrfs),
                                            config_of(name, state))
 
@@ -381,6 +421,14 @@ def check_one(rule: Rule, device: DeviceState) -> list[Violation]:
     if check is None:
         raise ValueError(f"kind '{rule.kind}' non implémenté par le driver '{device.driver}'")
     return check.fn(rule, device, parse_device_config(device))
+
+
+def nothing_audited(result: ComplianceResult) -> bool:
+    """Aucun couple (règle, équipement) n'a été ÉVALUÉ, quelle qu'en soit la cause (hors périmètre, non
+    évaluable, injoignable, snapshot ou source vide, règle sans équipement concerné). Un tel audit n'est ni
+    « conforme » ni « incomplet » : il n'a RIEN audité (`check` : code 3). Une seule règle : zéro couple
+    évalué = 3 ; au moins un évalué avec des trous = 1 ; tout évalué et conforme = 0."""
+    return result.evaluated == 0
 
 
 STATUS_COMPLIANT = "CONFORME"

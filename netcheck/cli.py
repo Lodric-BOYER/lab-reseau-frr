@@ -32,6 +32,7 @@ from netcheck import (
     usage,
     webhook,
 )
+from netcheck.model import DeviceState
 
 DEFAULT_RULES_PATH = Path(__file__).resolve().parent / "rules" / "default.yml"
 EXIT_USAGE = 3   # erreur d'usage : même code que guard.EXIT_USAGE et monitor.EXIT_USAGE
@@ -303,14 +304,22 @@ def cmd_check(args: argparse.Namespace) -> int:
                 devices[name] = value
             else:
                 print(f"  {name:<8} INJOIGNABLE : {value}", file=sys.stderr)
+                # Gardé dans l'audit : chaque règle non évaluée sur lui est un trou (jamais un faux OK).
+                devices[name] = DeviceState(name=name, host="?", timestamp="", reachable=False,
+                                            error=str(value))
 
     try:
         result = compliance.evaluate_config(
             rules, devices, management_interfaces=set(inv.management_interfaces),
             offline=bool(args.config_dir), management_vrfs=set(inv.management_vrfs),
-            derogations=derogation_set, today=today)
+            derogations=derogation_set, today=today,
+            source="config-dir" if args.config_dir else ("snapshot" if args.snapshot else "live"))
     except ValueError as e:   # défaut d'une règle de l'opérateur invisible au chargement (paramètre manquant)
         raise usage.UsageError(str(e)) from None
+    if compliance.nothing_audited(result):
+        # Aucun couple (règle, équipement) évalué, quelle qu'en soit la cause : jamais « conforme », code 3,
+        # avec la liste de TOUTES les causes.
+        raise usage.UsageError(report.nothing_audited_message(result, devices, rules))
     derogation_info = report.derogation_data(result)
     coverage = report.coverage_data(result)
     # Une ligne de configuration non lue (ou un fichier non audité) donne au minimum le code 1 : jamais

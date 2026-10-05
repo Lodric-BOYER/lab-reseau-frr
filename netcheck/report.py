@@ -28,6 +28,7 @@ from netcheck.diff import Finding, Severity
 from netcheck.ruletypes import (
     CAUSE_NO_MODEL,
     CAUSE_NOT_IMPLEMENTED,
+    CAUSE_UNREACHABLE,
     ConfigWarning,
     NotApplicable,
     Violation,
@@ -130,6 +131,7 @@ def _summary_counts(
     verdict, une ligne ambiguë non."""
     not_implemented = sum(1 for n in not_applicable if n.cause == CAUSE_NOT_IMPLEMENTED)
     no_model = sum(1 for n in not_applicable if n.cause == CAUSE_NO_MODEL)
+    unreachable = sum(1 for n in not_applicable if n.cause == CAUSE_UNREACHABLE)
     # Une entrée de dossier (ligne 0) n'est pas une ligne : un fichier que `check --config-dir` n'a pas pu
     # lire est « non audité », compté à part des lignes non lues ; les deux bloquent le verdict.
     not_audited = sum(1 for w in warnings if w.blocks_verdict and w.warning.line == 0)
@@ -142,7 +144,8 @@ def _summary_counts(
         "not_applicable": len(not_applicable),
         "not_applicable_not_implemented": not_implemented,
         "not_applicable_no_model": no_model,
-        "not_applicable_out_of_scope": len(not_applicable) - not_implemented - no_model,
+        "not_applicable_unreachable": unreachable,
+        "not_applicable_out_of_scope": len(not_applicable) - not_implemented - no_model - unreachable,
     }
 
 
@@ -180,7 +183,62 @@ def _na_label(n: NotApplicable) -> str:
         return "NON IMPLÉMENTÉ"
     if n.cause == CAUSE_NO_MODEL:
         return "ÉTAT REQUIS (hors ligne)"
-    return "hors sujet (driver)"
+    if n.cause == CAUSE_UNREACHABLE:
+        return "ÉQUIPEMENT INJOIGNABLE"
+    return n.scope_label or "HORS PÉRIMÈTRE"
+
+
+def out_of_scope_groups(not_applicable: list[NotApplicable] | tuple) -> list[dict]:
+    """Les exclusions VOLONTAIRES (driver, source), regroupées de façon compacte : une ligne par
+    (règle, libellé) avec la liste des équipements. Ce n'est pas un défaut (aucun effet sur le verdict)
+    mais elles sont listées, jamais seulement comptées."""
+    groups: dict[tuple[str, str], dict] = {}
+    for n in not_applicable:
+        if not n.out_of_scope:
+            continue
+        key = (n.rule.id, n.scope_label or "HORS PÉRIMÈTRE")
+        group = groups.setdefault(key, {"rule_id": n.rule.id, "scope": key[1],
+                                        "description": n.rule.description, "devices": []})
+        if n.device not in group["devices"]:
+            group["devices"].append(n.device)
+    for group in groups.values():
+        group["devices"].sort()
+    return [groups[k] for k in sorted(groups)]
+
+
+def nothing_audited_message(result, devices, rules) -> str:
+    """Le message de `check` (code 3) quand aucun couple (règle, équipement) n'a été évalué : il liste TOUTES
+    les causes (source vide, équipements injoignables, règles hors périmètre, règles non évaluables, règles
+    qui ne concernent aucun équipement), jamais un simple « rien n'a été audité »."""
+    def lines(groups, limit=6):
+        shown = [f"{rule} {label} : {', '.join(devs)}" for (rule, label), devs in groups[:limit]]
+        if len(groups) > limit:
+            shown.append(f"… ({len(groups) - limit} autre(s))")
+        return "; ".join(shown)
+
+    causes = []
+    if not devices:
+        causes.append("la source ne contient aucun équipement")
+    unreachable = sorted({n.device for n in result.not_applicable if n.cause == CAUSE_UNREACHABLE})
+    if unreachable:
+        causes.append(f"équipement(s) injoignable(s) : {', '.join(unreachable)}")
+    scoped = out_of_scope_groups(result.not_applicable)
+    if scoped:
+        pairs = [((g["rule_id"], g["scope"]), g["devices"]) for g in scoped]
+        causes.append("hors périmètre : " + lines(pairs))
+    gaps: dict[tuple[str, str], list[str]] = {}
+    for n in coverage_gaps(result.not_applicable):
+        if n.cause != CAUSE_UNREACHABLE:
+            gaps.setdefault((n.rule.id, _na_label(n)), []).append(n.device)
+    if gaps:
+        causes.append("non évaluable : " + lines([(k, sorted(set(v))) for k, v in sorted(gaps.items())]))
+    seen = {n.rule.id for n in result.not_applicable}
+    unseen = [r.id for r in rules if r.id not in seen]
+    if unseen and devices:
+        causes.append("règle(s) qui ne concernent aucun équipement : " + ", ".join(unseen[:6])
+                      + (f" … ({len(unseen) - 6} autre(s))" if len(unseen) > 6 else ""))
+    return ("rien n'a été audité : aucun couple (règle, équipement) n'a pu être évalué. Causes : "
+            + (" ; ".join(causes) or "aucune règle chargée") + ".")
 
 
 def _severity_counts(findings: list[Finding]) -> dict[Severity, int]:
@@ -419,17 +477,26 @@ def print_compliance_terminal(
             titles = ", ".join(ref["title"] for ref in rule.references)
             console.print(f"  {rule.id} : {titles}")
 
-    if not_applicable:
-        na_table = Table(show_lines=False, title="Non applicable (Phase D2)")
+    gaps = coverage_gaps(not_applicable)
+    if gaps:
+        na_table = Table(show_lines=False, title="NON ÉVALUABLE : l'audit est incomplet (code 1 au moins)")
         na_table.add_column("Équipement")
         na_table.add_column("Règle")
         na_table.add_column("Cause")
         na_table.add_column("Raison", overflow="fold")
-        for na in sorted(not_applicable, key=lambda n: (n.device, n.rule.id)):
-            gap = na.cause in (CAUSE_NOT_IMPLEMENTED, CAUSE_NO_MODEL)
-            cause = f"[bold yellow]{_na_label(na)}[/]" if gap else _na_label(na)
-            na_table.add_row(na.device, na.rule.id, cause, na.reason)
+        for na in sorted(gaps, key=lambda n: (n.device, n.rule.id)):
+            na_table.add_row(na.device, na.rule.id, f"[bold yellow]{_na_label(na)}[/]", na.reason)
         console.print(na_table)
+    scope_groups = out_of_scope_groups(not_applicable)
+    if scope_groups:
+        scope_table = Table(show_lines=False,
+                            title="HORS PÉRIMÈTRE : exclusion déclarée, sans effet sur le verdict")
+        scope_table.add_column("Règle")
+        scope_table.add_column("Périmètre")
+        scope_table.add_column("Équipements", overflow="fold")
+        for group in scope_groups:
+            scope_table.add_row(group["rule_id"], group["scope"], ", ".join(group["devices"]))
+        console.print(scope_table)
 
     counts = _summary_counts(violations, not_applicable, warnings)
     label = _status(violations, compliant, warnings, not_applicable)
@@ -451,6 +518,10 @@ def print_compliance_terminal(
         if counts["not_applicable_no_model"]:
             na_part += (f" dont {counts['not_applicable_no_model']} non évaluable(s) hors ligne "
                         "(état requis)")
+        if counts["not_applicable_unreachable"]:
+            na_part += f" dont {counts['not_applicable_unreachable']} sur équipement(s) injoignable(s)"
+        if counts["not_applicable_out_of_scope"]:
+            na_part += f" dont {counts['not_applicable_out_of_scope']} hors périmètre (exclusion déclarée)"
         parts.append(na_part)
     console.print(f"Conformité : [bold]{label}[/bold]  ({', '.join(parts)})")
 
@@ -479,10 +550,13 @@ def compliance_to_dict(
         "not_applicable": [
             {
                 "rule_id": n.rule.id, "device": n.device, "reason": n.reason, "cause": n.cause,
+                "scope": n.scope_label,   # « HORS PÉRIMÈTRE (…) » pour un choix déclaré, null pour un trou
                 "category": n.rule.category, "references": n.rule.references,
             }
             for n in (not_applicable or [])
         ],
+        # Les exclusions déclarées (driver, source), regroupées par règle et libellé, avec leurs équipements.
+        "out_of_scope": out_of_scope_groups(not_applicable or []),
         # Phase A3 : lignes de configuration que l'analyse n'a pas classées proprement. `kept` faux =
         # ligne NON lue (le verdict ne peut plus être « conforme ») ; vrai = lue mais ambiguë.
         "config_analysis": [
@@ -551,6 +625,9 @@ def render_compliance_html(
         status=_status(violations, compliant, warnings, not_applicable),
         violations=sorted(violations, key=lambda v: -_COMPLIANCE_ORDER[v.rule.severity]),
         not_applicable=sorted(not_applicable, key=lambda n: (n.device, n.rule.id)),
+        gaps=sorted(coverage_gaps(not_applicable), key=lambda n: (n.device, n.rule.id)),
+        na_label=_na_label,
+        scope_groups=out_of_scope_groups(not_applicable),
         not_implemented=CAUSE_NOT_IMPLEMENTED,
         no_model=CAUSE_NO_MODEL,
         source=source,

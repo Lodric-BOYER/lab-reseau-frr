@@ -11,11 +11,12 @@ import json
 from pathlib import Path
 
 import pytest
+import yaml
 
 from netcheck import cli, compliance, configdir
 from netcheck.drivers.registry import DRIVER_REGISTRY
 from netcheck.model import DeviceState
-from netcheck.ruletypes import CAUSE_DRIVER, CAUSE_NO_MODEL, Rule
+from netcheck.ruletypes import CAUSE_DRIVER, CAUSE_NO_MODEL, CAUSE_SOURCE, Rule
 
 REPO = Path(__file__).resolve().parent.parent
 RULES = {name: REPO / "netcheck" / "rules" / f"{name}.yml" for name in ("default", "security")}
@@ -161,8 +162,35 @@ def states():
                               driver="eos")}
 
 
-def test_rules_that_read_the_model_are_not_evaluable_offline_with_their_own_cause():
+def default_without_sources(tmp_path):
+    """default.yml SANS `sources:` : une règle qui lit l'état collecté y est un trou (no_model)."""
+    data = yaml.safe_load(RULES["default"].read_text(encoding="utf-8"))
+    for rule in data["rules"]:
+        rule.pop("sources", None)
+    path = tmp_path / "default-sans-sources.yml"
+    path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    return path
+
+
+def test_rules_that_declare_their_sources_are_out_of_scope_offline_not_a_gap():
     rules = compliance.load_rules(RULES["default"])
+    offline = compliance.evaluate_config(rules, states(), offline=True)
+    scoped = {(n.rule.id, n.device) for n in offline.not_applicable if n.cause == CAUSE_SOURCE}
+    assert scoped == {("lan-en-ospf-passif", "r3"), ("interface-avec-description", "r3"),
+                      ("interface-avec-description", "r4")}
+    assert not [n for n in offline.not_applicable if n.cause == CAUSE_NO_MODEL]
+    assert {n.scope_label for n in offline.not_applicable if n.cause == CAUSE_SOURCE} == {
+        "HORS PÉRIMÈTRE (source : hors ligne)"}
+    verdict = compliance.verdict(offline.violations, offline.config_warnings, offline.not_applicable)
+    assert verdict == (True, 0)
+    # En direct, les mêmes règles s'appliquent : la déclaration ne les retire que hors ligne.
+    live = compliance.evaluate_config(rules, states())
+    assert not [n for n in live.not_applicable if n.cause == CAUSE_SOURCE]
+    assert live.evaluated > offline.evaluated
+
+
+def test_rules_that_read_the_model_are_not_evaluable_offline_with_their_own_cause(tmp_path):
+    rules = compliance.load_rules(default_without_sources(tmp_path))
     offline = compliance.evaluate_config(rules, states(), offline=True)
     no_model = {(n.rule.id, n.device) for n in offline.not_applicable if n.cause == CAUSE_NO_MODEL}
     assert no_model == {("lan-en-ospf-passif", "r3"), ("interface-avec-description", "r3"),
@@ -209,27 +237,57 @@ def test_the_three_labs_offline_are_conform_or_incomplete_and_the_report_says_wh
     argv = [x for d in dirs for x in ("--config-dir", str(REPO / d))]
     argv += ["-i", str(REPO / "automation" / inventory)]
     code, data, html, out = run(argv, tmp_path, capsys, rules)
-    # Phase C6 : des règles NON ÉVALUABLES hors ligne (état requis) ne sortent jamais en code 0 : l'audit des
-    # fichiers dit « ANALYSE INCOMPLÈTE » (code 1) ; sans règle de ce type (sécurité), toujours CONFORME / 0.
-    incomplete = rules == "default"
-    assert code == (1 if incomplete else 0) and data["violations"] == []
-    assert data["status"] == ("ANALYSE INCOMPLÈTE" if incomplete else "CONFORME")
-    assert data["compliant"] is (not incomplete)
+    # Phase C6 : les règles de default.yml qui lisent l'état collecté déclarent `sources: [live, snapshot]` :
+    # hors ligne elles sont HORS PÉRIMÈTRE (listées), le reste est audité : CONFORME / 0 sur les trois labs,
+    # comme avec les règles de sécurité (qui n'ont aucune règle de ce type).
+    assert code == 0 and data["violations"] == []
+    assert data["status"] == "CONFORME" and data["compliant"] is True
     assert sorted(data["source"]["devices"]) == ["r1", "r2", "r3", "r4", "r5"]
-    no_model = {n["rule_id"] for n in data["not_applicable"] if n["cause"] == "no_model"}
+    assert not [n for n in data["not_applicable"] if n["cause"] == "no_model"]
+    scoped = {n["rule_id"] for n in data["not_applicable"] if n["cause"] == "source"}
     state_rules = {"lan-en-ospf-passif", "interface-avec-description"}
-    assert no_model == (set() if rules == "security" else state_rules)
-    assert data["summary"]["not_applicable_no_model"] == sum(n["cause"] == "no_model"
-                                                              for n in data["not_applicable"])
+    assert scoped == (set() if rules == "security" else state_rules)
+    assert data["summary"]["not_applicable_no_model"] == 0
     # `daemons` (sans extension) est listé, pas ignoré en silence ; et rien ne bloque le verdict.
     assert "daemons" in {w["device"] for w in data["config_analysis"]}
     assert not any(w["blocks_verdict"] for w in data["config_analysis"])
-    # Les trois sorties disent « hors ligne » ; celles qui ont des règles non évaluables le disent aussi.
-    assert "Mode hors ligne" in out.out and "Mode hors ligne" in html
-    assert "source" in data and ("ANALYSE INCOMPLÈTE" in out.out) is incomplete
-    if no_model:
-        assert "ÉTAT REQUIS (hors ligne)" in out.out and "ÉTAT REQUIS (hors ligne)" in html
-        assert "non évaluable(s) hors ligne" in out.out and "non évaluable(s) hors ligne" in html
+    assert "Mode hors ligne" in out.out and "Mode hors ligne" in html and "source" in data
+    assert "ANALYSE INCOMPLÈTE" not in out.out
+    # Les exclusions déclarées sont LISTÉES (règle, périmètre, équipements regroupés), dans les trois sorties.
+    groups = {(g["rule_id"], g["scope"]): g["devices"] for g in data["out_of_scope"]}
+    for rule_id in scoped:
+        devices = sorted(n["device"] for n in data["not_applicable"]
+                         if n["rule_id"] == rule_id and n["cause"] == "source")
+        assert groups[(rule_id, "HORS PÉRIMÈTRE (source : hors ligne)")] == devices
+        assert ", ".join(devices) in html and rule_id in out.out
+    if scoped:
+        assert "HORS PÉRIMÈTRE" in out.out    # le terminal replie les cellules : libellé complet dans le HTML
+        assert "HORS PÉRIMÈTRE (source : hors ligne)" in html
+
+
+@pytest.mark.parametrize("dirs, inventory", [
+    (["configs"], "inventory.yml"),
+    (["configs", "configs-multivendor"], "inventory-multivendor.yml"),
+    (["configs", "configs-ceos"], "inventory-ceos.yml"),
+], ids=["frr", "mixte", "ceos"])
+def test_a_rule_that_reads_the_model_without_declaring_its_sources_stays_incomplete_offline(
+        dirs, inventory, tmp_path, capsys):
+    """Point de la décision C6 : sans `sources:`, la règle dans le périmètre mais non évaluable à l'exécution
+    reste ANALYSE INCOMPLÈTE (code 1), dite telle dans les trois sorties."""
+    argv = [x for d in dirs for x in ("--config-dir", str(REPO / d))]
+    argv += ["-i", str(REPO / "automation" / inventory)]
+    out_json, out_html = tmp_path / "o.json", tmp_path / "o.html"
+    code = cli.main(["check", "--rules", str(default_without_sources(tmp_path)), "--json", str(out_json),
+                     "--html", str(out_html), *argv])
+    out = " ".join(capsys.readouterr().out.split())
+    data = json.loads(out_json.read_text(encoding="utf-8"))
+    html = out_html.read_text(encoding="utf-8")
+    assert code == 1 and data["status"] == "ANALYSE INCOMPLÈTE" and data["compliant"] is False
+    assert {n["rule_id"] for n in data["not_applicable"] if n["cause"] == "no_model"} == {
+        "lan-en-ospf-passif", "interface-avec-description"}
+    assert not [n for n in data["not_applicable"] if n["cause"] == "source"]
+    assert "Conformité : ANALYSE INCOMPLÈTE" in out and "ÉTAT REQUIS (hors ligne)" in out
+    assert "ANALYSE INCOMPLÈTE" in html and "ÉTAT REQUIS (hors ligne)" in html
 
 
 def test_a_mixed_lab_reads_r5_as_sr_linux_from_the_later_folder(tmp_path, capsys):

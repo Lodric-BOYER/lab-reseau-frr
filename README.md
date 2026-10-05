@@ -959,14 +959,30 @@ bash tests/integration_netbox.sh frr               # ou multivendor, ceos (le la
 | `monitor` | le composant assert comptait déjà NON ÉVALUABLE en ATTENTION ; le composant check ne comptait pas les règles non évaluables | les deux : **ATTENTION** |
 | `guard` | un équipement sans attendus locaux était ignoré en silence par le calcul de convergence | **refus** avant tout script (code 3), ou opt-in nominatif (ci-dessous) |
 
-**Ce qui n'est pas « non évaluable » :** une règle qui ne liste pas le driver d'un équipement (`drivers:`) est hors de son périmètre par
-choix : elle reste « non applicable » sans effet sur le code. Seules les causes `not_implemented` (trou de couverture d'un driver)
-et `no_model` (état absent hors ligne) sont des manques.
+**Ce qui n'est pas « non évaluable » : le HORS PÉRIMÈTRE déclaré.** Une règle peut déclarer son périmètre, et une exclusion déclarée est un
+choix, pas un manque : elle est exclue du verdict mais **listée** (règle, périmètre, équipements, regroupés sur une ligne) dans le terminal, le JSON
+(`not_applicable[].scope` et `out_of_scope`) et le HTML, jamais seulement comptée. Deux champs, validés au chargement (valeur inconnue = erreur) :
 
-**Conséquence à connaître : `check --config-dir` avec les règles `default.yml` sort en code 1.** Deux de ses règles (`interface-avec-description`,
-`lan-en-ospf-passif`) lisent l'état collecté, qui n'existe pas hors ligne : l'audit des fichiers dit « ANALYSE INCOMPLÈTE » au lieu de
-« CONFORME ». Les règles de sécurité (`security.yml`) n'ont aucune règle de ce type : toujours CONFORME / 0 hors ligne. Le gel des verdicts
-(`tests/golden/`) ne bouge pas : il enregistre la réponse du moteur, pas le code de la commande.
+| Champ de la règle | Libellé dans les rapports |
+|---|---|
+| `drivers: [frr, eos]` : seuls ces drivers sont concernés | `HORS PÉRIMÈTRE (driver : srlinux)` |
+| `sources: [live, snapshot]` : seules ces sources sont concernées (`live`, `snapshot`, `config-dir`) | `HORS PÉRIMÈTRE (source : hors ligne)` |
+
+(« NON AUDITÉ » désigne autre chose : une ligne ou un fichier de configuration illisible, un défaut.) Seules les causes `not_implemented` (trou de
+couverture d'un driver), `no_model` (état absent hors ligne, **sans** déclaration `sources:`) et `unreachable` (l'équipement n'a pas pu
+être lu : collecte en échec, ou snapshot pris sur un équipement injoignable) sont des manques.
+
+**`check --config-dir` avec `default.yml` sort en code 0 quand tout ce qui est dans le périmètre est évalué et conforme.** Ses deux règles qui
+lisent l'état collecté (`interface-avec-description`, `lan-en-ospf-passif`) déclarent `sources: [live, snapshot]` : hors ligne elles sont
+« HORS PÉRIMÈTRE (source : hors ligne) », listées, et le reste est audité. **Une règle qui lit l'état collecté SANS cette déclaration reste
+ANALYSE INCOMPLÈTE (code 1) hors ligne.**
+
+**Une seule règle pour le code de `check` :** zéro couple (règle, équipement) évalué, **quelle qu'en soit la cause** (hors périmètre, non évaluable,
+injoignable, snapshot ou source vide, règle sans équipement concerné) = rien n'a été audité : `check` sort en **code 3** avec la liste de toutes les
+causes ; au moins un couple évalué avec des trous = **1** ; tout évalué et conforme = **0**. Un `check` en direct dont aucun équipement était
+joignable sortait auparavant en CONFORME (0) : c'était un faux OK, corrigé. Un équipement injoignable pendant un `check` en direct rend
+désormais l'audit incomplet (1), et il est listé (« ÉQUIPEMENT INJOIGNABLE »). Le gel des verdicts (`tests/golden/`) enregistre la
+réponse du moteur, pas le code de la commande.
 
 **`guard` et les équipements sans attendus locaux (option C).** `guard --wait` attend la convergence décrite par les attendus de l'inventaire
 (`ospf_neighbors`, `ospf6_neighbors`, `bgp_peers`, `bgp6_peers`). Un équipement qui n'en porte aucun, typiquement un équipement lu dans NetBox
@@ -987,7 +1003,7 @@ jamais 0** : un succès devient ATTENTION (code 1), un échec reste un échec.
 | Commande | 0 | 1 | 2 | 3 | 70 |
 |---|---|---|---|---|---|
 | `diff` / `guard` | OK | ATTENTION (**y compris une section non comparable, ou un `guard` avec des équipements non vérifiés**) | ÉCHEC (≥ 1 CRITIQUE) | erreur d'utilisation / snapshot manquant ; **`guard` : équipements sans attendus locaux** | défaut interne |
-| `check` | conforme | non-conformité(s) moyenne/basse, **ou analyse incomplète** (règle non évaluable, ligne non lue) | non-conformité critique/haute | règles ou équipement introuvable | défaut interne |
+| `check` | conforme | non-conformité(s) moyenne/basse, **ou analyse incomplète** (règle non évaluable, équipement injoignable, ligne non lue) | non-conformité critique/haute | règles ou équipement introuvable ; **rien n'a été audité (zéro couple évalué)** | défaut interne |
 | `snapshot` | tout OK | au moins un équipement injoignable | — | snapshot existant sans `--force` | défaut interne |
 | `assert` | tout OK | **aucun échec mais au moins une assertion NON ÉVALUABLE** (ATTENTION) | au moins un ÉCHEC | intent invalide | défaut interne |
 | `monitor` | statut OK | statut ATTENTION | statut ÉCHEC | refusé (4 : verrou tenu) | défaut interne (**était 3** avant la phase C) |
@@ -1032,6 +1048,8 @@ Une règle est une entrée YAML dans `netcheck/rules/default.yml` (ou un fichier
   description: "Phrase humaine expliquant la règle."
   severity: critique | haute | moyenne | basse
   applies_to: all              # ou une liste explicite : [r3, r4]
+  drivers: [frr]               # facultatif : seuls ces drivers sont concernés (sinon HORS PÉRIMÈTRE)
+  sources: [live, snapshot]    # facultatif : live, snapshot, config-dir (voir « Jamais de code 0 »)
   kind: line_present           # un des 6 types, voir le tableau ci-dessous
   pattern: "..."               # paramètre propre au kind
 ```

@@ -6,6 +6,7 @@
 #     severity: critique | haute | moyenne | basse
 #     applies_to: all                      # ou une liste explicite : [r3, r4]
 #     drivers: [frr]                       # optionnel (Phase D2) : absent = tous les drivers
+#     sources: [live, snapshot]            # optionnel (phase C6) : absent = toutes les sources
 #     kind: <un des 8 types ci-dessous>
 #     ...                                  # paramètres propres au kind
 #
@@ -17,6 +18,13 @@
 # normalisé (interface_description_required) n'a pas ce problème : elle reste universelle,
 # sans "drivers". Sur un équipement dont le driver n'est pas couvert par "drivers", la règle
 # devient "non applicable" (ni conforme, ni non-conformité, sans effet sur le verdict).
+#
+# Champ "sources" (phase C6) : d'où la règle peut être évaluée -- live (collecte en direct), snapshot
+# (relevé enregistré), config-dir (fichiers de configuration, hors ligne) ; valeur inconnue = erreur.
+# Une règle qui lit l'ÉTAT COLLECTÉ (interface_description_required, ospf_passive_on_interfaces) ne peut
+# pas être évaluée sur des fichiers : elle doit déclarer "sources: [live, snapshot]". Hors ligne elle est
+# alors "HORS PÉRIMÈTRE (source : hors ligne)" : exclue du verdict mais listée dans les rapports. Sans
+# cette déclaration, c'est un trou : ANALYSE INCOMPLÈTE (code 1). Un test garde cette cohérence.
 #
 # Types (kind) disponibles et leurs paramètres :
 #   line_present                     pattern: <regex recherchée dans la running-config>
@@ -79,6 +87,7 @@ rules:
     severity: moyenne
     applies_to: all
     drivers: [frr]
+    sources: [live, snapshot]   # lit l'état collecté (interfaces) : hors périmètre pour --config-dir
     kind: ospf_passive_on_interfaces
     pattern: "LAN"
 
@@ -113,6 +122,7 @@ rules:
     description: "Toute interface avec une adresse IP, hors loopback, doit avoir une description."
     severity: basse
     applies_to: all
+    sources: [live, snapshot]   # lit l'état collecté (interfaces) : hors périmètre pour --config-dir
     kind: interface_description_required
 
   # --- Règles SR Linux (Phase D2) ---------------------------------------------------------

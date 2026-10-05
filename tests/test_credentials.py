@@ -251,17 +251,23 @@ def test_a_refused_secret_file_stops_every_live_command_with_code_3(command, mon
     assert "chmod 600" in err and SECRET not in err
 
 
-@pytest.mark.parametrize("argv", [["diff", "avant", "apres"], ["check", "--snapshot", "s"],
-                                  ["assert", "--intent", str(inventory.REPO_ROOT / "intents" / "lab.yml"),
-                                   "--snapshot", "s"]])
-def test_snapshot_based_commands_never_resolve_credentials(argv, monkeypatch, tmp_path, capsys):
+# Le snapshot est VIDE : le code attendu est exact et ne dépend pas de l'environnement.
+#   diff   : deux relevés vides, rien à comparer -> aucun constat, OK (0) ;
+#   check  : aucun couple (règle, équipement) évalué -> « rien n'a été audité » (3) ;
+#   assert : chaque assertion vise un équipement absent -> NON ÉVALUABLE -> ATTENTION (1).
+@pytest.mark.parametrize(("argv", "expected"), [
+    (["diff", "avant", "apres"], 0),
+    (["check", "--snapshot", "s"], 3),
+    (["assert", "--intent", str(inventory.REPO_ROOT / "intents" / "lab.yml"), "--snapshot", "s"], 1),
+], ids=["diff", "check", "assert"])
+def test_snapshot_based_commands_never_resolve_credentials(argv, expected, monkeypatch, tmp_path, capsys):
     # diff, check --snapshot, assert --snapshot lisent des fichiers : un secret mal réglé ne les bloque pas.
     monkeypatch.setenv("NETCHECK_PASS_FILE", str(tmp_path / "n-existe-pas"))
     monkeypatch.setattr(snapshot, "load", lambda name: {})
     code = cli.main([*argv, "-i", _inventory_file(tmp_path)])
     err = capsys.readouterr().err
     assert "NETCHECK_PASS_FILE" not in err, err
-    assert code in (0, 1, 2)
+    assert code == expected
 
 
 def test_offline_commands_ignore_the_secret_configuration(monkeypatch, tmp_path, capsys):

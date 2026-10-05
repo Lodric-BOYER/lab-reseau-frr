@@ -30,6 +30,8 @@ from netcheck.ruletypes import (
     CAUSE_DRIVER,
     CAUSE_NO_MODEL,
     CAUSE_NOT_IMPLEMENTED,
+    CAUSE_SOURCE,
+    CAUSE_UNREACHABLE,
     GAP_CAUSES,
     NotApplicable,
     Rule,
@@ -57,10 +59,11 @@ def na(cause, device="r1"):
 # === 1. règles de conformité : verdict, libellé, JSON =============================================
 
 
-def test_only_the_two_missing_data_causes_are_gaps():
-    assert set(GAP_CAUSES) == {CAUSE_NOT_IMPLEMENTED, CAUSE_NO_MODEL}
-    assert coverage_gaps([na(CAUSE_DRIVER)]) == []
-    assert len(coverage_gaps([na(CAUSE_NOT_IMPLEMENTED), na(CAUSE_NO_MODEL), na(CAUSE_DRIVER)])) == 2
+def test_only_the_missing_data_causes_are_gaps():
+    assert set(GAP_CAUSES) == {CAUSE_NOT_IMPLEMENTED, CAUSE_NO_MODEL, CAUSE_UNREACHABLE}
+    assert coverage_gaps([na(CAUSE_DRIVER), na(CAUSE_SOURCE)]) == []
+    causes = [na(CAUSE_NOT_IMPLEMENTED), na(CAUSE_NO_MODEL), na(CAUSE_UNREACHABLE), na(CAUSE_DRIVER)]
+    assert len(coverage_gaps(causes)) == 3
 
 
 @pytest.mark.parametrize(
@@ -70,6 +73,8 @@ def test_only_the_two_missing_data_causes_are_gaps():
         ([na(CAUSE_DRIVER)], (True, 0)),  # hors périmètre de la règle : un choix, pas un manque
         ([na(CAUSE_NOT_IMPLEMENTED)], (False, 1)),
         ([na(CAUSE_NO_MODEL)], (False, 1)),
+        ([na(CAUSE_UNREACHABLE)], (False, 1)),
+        ([na(CAUSE_SOURCE)], (True, 0)),  # hors périmètre déclaré : un choix, comme « driver »
         ([na(CAUSE_DRIVER), na(CAUSE_NO_MODEL)], (False, 1)),
     ],
 )
@@ -112,8 +117,19 @@ def _offline(directory, inventory_file):
     return ["--config-dir", str(ROOT / directory), "-i", str(ROOT / "automation" / inventory_file)]
 
 
+def _default_without_sources(tmp_path) -> str:
+    """default.yml sans `sources:` : ses règles qui lisent l'état collecté y sont des trous hors ligne."""
+    data = yaml.safe_load((ROOT / "netcheck" / "rules" / "default.yml").read_text(encoding="utf-8"))
+    for rule in data["rules"]:
+        rule.pop("sources", None)
+    path = tmp_path / "default-sans-sources.yml"
+    path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    return str(path)
+
+
 def test_the_offline_audit_of_the_repository_configurations_is_incomplete_and_says_why(tmp_path, capsys):
-    code, data, html, out = _check(_offline("configs", "inventory.yml"), tmp_path, capsys)
+    code, data, html, out = _check(_offline("configs", "inventory.yml"), tmp_path, capsys,
+                                   rules=_default_without_sources(tmp_path))
     text = " ".join(out.out.split())
     assert code == 1 and data["status"] == "ANALYSE INCOMPLÈTE" and data["compliant"] is False
     assert data["violations"] == []
@@ -158,7 +174,15 @@ def test_a_live_audit_with_a_rule_the_driver_cannot_evaluate_is_never_code_0(tmp
                         "applies_to": "all",
                         "kind": "line_present",
                         "pattern": "^hostname r1$",
-                    }
+                    },
+                    {
+                        "id": "absente",
+                        "description": "d",
+                        "severity": "basse",
+                        "applies_to": "all",
+                        "kind": "line_absent",
+                        "pattern": "^zzz$",
+                    },
                 ]
             }
         ),
@@ -166,8 +190,11 @@ def test_a_live_audit_with_a_rule_the_driver_cannot_evaluate_is_never_code_0(tmp
     )
     code, data, _, _ = _check(["-i", str(path)], tmp_path, capsys, rules=str(rules))
     assert code == 0 and data["status"] == "CONFORME"  # contrôle : sans trou, tout va bien
-    monkeypatch.setattr(compliance, "resolve_check", lambda kind, driver: None)
+    real = compliance.resolve_check
+    monkeypatch.setattr(compliance, "resolve_check",
+                        lambda kind, driver: None if kind == "line_absent" else real(kind, driver))
     code, data, _, _ = _check(["-i", str(path)], tmp_path, capsys, rules=str(rules))
+    # Un couple évalué, un trou : 1 (jamais 0).
     assert code == 1 and data["status"] == "ANALYSE INCOMPLÈTE"
     assert {n["cause"] for n in data["not_applicable"]} == {"not_implemented"}
 
@@ -298,11 +325,15 @@ def test_a_monitor_evaluation_with_a_rule_the_driver_cannot_evaluate_is_attentio
         kind="line_present",
         params={"pattern": "^hostname r1$"},
     )
+    absent = Rule(id="absente", description="d", severity="basse", applies_to="all", kind="line_absent",
+                  params={"pattern": "^zzz$"})
     results = {"r1": (True, _state())}
-    clean = monitor.evaluate(results, {"r1": _state()}, set(), None, [rule])
+    clean = monitor.evaluate(results, {"r1": _state()}, set(), None, [rule, absent])
     assert clean.status == monitor.OK and clean.compliant is True
-    monkeypatch.setattr(compliance, "resolve_check", lambda kind, driver: None)
-    gap = monitor.evaluate(results, {"r1": _state()}, set(), None, [rule])
+    real = compliance.resolve_check
+    monkeypatch.setattr(compliance, "resolve_check",
+                        lambda kind, driver: None if kind == "line_absent" else real(kind, driver))
+    gap = monitor.evaluate(results, {"r1": _state()}, set(), None, [rule, absent])
     assert gap.status == monitor.ATTENTION and gap.compliant is False
     assert gap.components["check"] == monitor.ATTENTION
     assert [c.category for c in gap.contributions] == ["regles-non-evaluables"]

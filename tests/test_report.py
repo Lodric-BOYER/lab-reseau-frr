@@ -114,10 +114,10 @@ def test_compliance_html_conforme_still_renders():
 def test_not_applicable_appears_in_html():
     rule = Rule(id="frr-only", description="d", severity="haute", applies_to="all",
                 drivers=["frr"], kind="line_present")
-    na = [NotApplicable(rule=rule, device="r5", reason="driver 'srlinux' non couvert")]
+    na = [NotApplicable(rule=rule, device="r5", reason="driver 'srlinux' non couvert", scope="srlinux")]
     html = report.render_compliance_html(
         [], compliant=True, rules_path="rules/default.yml", not_applicable=na)
-    assert "Non applicable" in html
+    assert "HORS PÉRIMÈTRE" in html and "HORS PÉRIMÈTRE (driver : srlinux)" in html
     assert "r5" in html
     assert "frr-only" in html
 
@@ -141,11 +141,16 @@ def test_not_applicable_absent_when_empty():
 def test_not_applicable_appears_in_json():
     rule = Rule(id="frr-only", description="d", severity="haute", applies_to="all",
                 drivers=["frr"], kind="line_present")
-    na = [NotApplicable(rule=rule, device="r5", reason="driver 'srlinux' non couvert")]
+    na = [NotApplicable(rule=rule, device="r5", reason="driver 'srlinux' non couvert", scope="srlinux")]
     d = report.compliance_to_dict([], compliant=True, not_applicable=na)
     assert d["not_applicable"] == [
         {"rule_id": "frr-only", "device": "r5", "reason": "driver 'srlinux' non couvert",
-         "cause": "driver", "category": None, "references": None}
+         "cause": "driver", "scope": "HORS PÉRIMÈTRE (driver : srlinux)", "category": None,
+         "references": None}
+    ]
+    assert d["out_of_scope"] == [
+        {"rule_id": "frr-only", "scope": "HORS PÉRIMÈTRE (driver : srlinux)", "description": "d",
+         "devices": ["r5"]}
     ]
     assert d["violations"] == []  # jamais mélangé aux violations
 
@@ -348,11 +353,11 @@ def test_references_listed_in_terminal_output():
 def test_not_applicable_appears_in_terminal():
     rule = Rule(id="frr-only", description="d", severity="haute", applies_to="all",
                 drivers=["frr"], kind="line_present")
-    na = [NotApplicable(rule=rule, device="r5", reason="driver 'srlinux' non couvert")]
+    na = [NotApplicable(rule=rule, device="r5", reason="driver 'srlinux' non couvert", scope="srlinux")]
     console = Console(record=True, width=120)
     report.print_compliance_terminal([], compliant=True, not_applicable=na, console=console)
     text = console.export_text()
-    assert "Non applicable" in text
+    assert "HORS PÉRIMÈTRE" in text and "HORS PÉRIMÈTRE (driver : srlinux)" in text
     assert "r5" in text
     assert "1 non applicable" in text
 
