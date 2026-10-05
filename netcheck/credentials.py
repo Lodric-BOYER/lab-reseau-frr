@@ -147,8 +147,9 @@ def _password_configured(driver: str, router: dict, env: dict) -> bool:
     posée, variable de fichier posée (le fichier n'est pas lu), valeur d'inventaire. Rien n'est résolu : quand
     une clé est configurée, le mot de passe n'est pas lu ; on dit seulement qu'il est ignoré. Vault n'entre
     pas ici : il n'est pas consulté du tout (voir `resolve_device`), on ne sait rien de son contenu."""
-    # (le niveau Vault de `_candidates` a un nom de variable vide : il n'est jamais présent dans l'environnement)
-    return any(env.get(var) for _provider, var in _candidates("PASS", driver)) or bool(router.get("password"))
+    # (le niveau Vault de `_candidates` a un nom de variable vide : jamais présent dans l'environnement)
+    candidates = _candidates("PASS", driver)
+    return any(env.get(var) for _provider, var in candidates) or bool(router.get("password"))
 
 
 def resolve_device(router: dict, environ: dict | None = None) -> dict:

@@ -13,8 +13,9 @@ fail() {
 }
 
 ssh-keygen -A >/dev/null 2>&1 || fail "ssh-keygen -A a échoué : pas de clés d'hôte, le conteneur s'arrête"
-[ -s /etc/ssh/ssh_host_ed25519_key ] && [ -s /etc/ssh/ssh_host_ed25519_key.pub ] \
-    || fail "clé d'hôte ed25519 absente après ssh-keygen -A : le conteneur s'arrête"
+if [ ! -s /etc/ssh/ssh_host_ed25519_key ] || [ ! -s /etc/ssh/ssh_host_ed25519_key.pub ]; then
+    fail "clé d'hôte ed25519 absente après ssh-keygen -A : le conteneur s'arrête"
+fi
 
 # sshd ne rend la main qu'une fois ses sockets d'écoute ouverts (il passe en arrière-plan après le bind) : un code 0
 # veut donc dire « à l'écoute ».
