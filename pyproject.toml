@@ -7,8 +7,9 @@ name = "netcheck"
 dynamic = ["version"]
 description = "Validation de changement reseau et audit de conformite (lab FRR)."
 readme = "netcheck/README.md"
-# Expression SPDX (PEP 639). Toute dependance doit rester compatible : MIT, BSD ou Apache-2.0 ;
-# pas de licence copyleft (GPL) sans decision explicite.
+# Expression SPDX (PEP 639). Toute dependance DIRECTE doit rester MIT, BSD ou Apache-2.0 ; pas de licence GPL
+# sans decision explicite. Deux dependances INDIRECTES (via netmiko), paramiko et scp, sont LGPL-2.1 :
+# installees par pip sans modification, jamais redistribuees ici (voir la section Licence du README).
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"

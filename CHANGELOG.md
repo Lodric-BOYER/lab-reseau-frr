@@ -235,6 +235,13 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   ajouté dans NetBox seul fait refuser `guard` (option C). NetBox ne gêne pas cEOS : 3,9 Go utilisés ensemble sur 15,5 Go.
   Note : `GET /api/users/tokens/` répond 200 au jeton en lecture seule (ses propres jetons, sans secret) et non 403 ; la preuve vérifie cela.
 
+- **Phase C7, bout en bout** (`tests/integration_e2e.sh`, vue d'ensemble de la phase C dans le README). Sur chaque lab déployé à froid, un
+  seul scénario : clés d'hôte strictes + bastion + compte `netcheck-ro` par clé + inventaire alimenté par NetBox -> `snapshot`, `check`,
+  `assert`, `guard` (changement inoffensif), `monitor` ; puis les identifiants lus dans Vault ; puis la couverture et la fraîcheur d'un
+  snapshot sur de vraies données (snapshot amputé, `--max-age`) ; enfin **les violations en direct sont égales à celles de `--config-dir`**
+  (règle, équipement, objet), avec et sans dérogations. Le snapshot complet `snapshots/c7-ref-<lab>` est gardé (local, hors Git) ; les anciens
+  (`a10-*`, `v4a-ref-*`) sont archivés dans `snapshots/archive/`, jamais supprimés.
+
 ### Modifié (incompatible)
 
 - **`check --snapshot` et `assert --snapshot` disent ce que le snapshot couvre et de quand il date.** Terminal, JSON (`snapshot_scope`) et HTML
@@ -400,6 +407,11 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   fautive et le cherche dans la sortie).
 
 ### Corrigé
+
+- **Licences : `paramiko` et `scp` sont LGPL-2.1, pas permissives.** Le README affirmait que toutes les dépendances d'exécution
+  étaient MIT ou BSD ; `paramiko` et `scp` (dépendances indirectes de netmiko) sont sous LGPL-2.1. Elles sont installées par `pip` sans
+  modification et non redistribuées par ce dépôt (compatible avec une licence Apache-2.0) ; la section Licence du README et le commentaire de
+  `pyproject.toml` le disent.
 
 Défauts des règles FRR de la v0.3.0, qui lisaient le texte de la configuration par expressions
 régulières et sous-chaînes (validés sur 10 cas du gel et 4 entrées fabriquées) :

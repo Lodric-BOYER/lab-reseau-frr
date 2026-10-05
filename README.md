@@ -404,6 +404,49 @@ Surveillance à exécution unique, pour cron ou un timer systemd : statut global
 des assertions et de la conformité), alerte par webhook **seulement quand le statut change**.
 Lecture seule stricte. Voir « [Surveillance planifiée et alertes](#surveillance-planifiée-et-alertes-v3) ».
 
+### Phase C, accès d'entreprise : vue d'ensemble (v4)
+
+Sept étapes, chacune avec son outil de lab (`lab-access/`) et sa preuve (un script d'intégration qui tourne sur un lab déployé à froid) :
+
+| Étape | Sujet | Outil de lab | Preuve |
+|---|---|---|---|
+| C1 | clés d'hôte SSH **strictes** (aucun « ignorer ») | `lab-access/pin_hostkeys.sh` | `tests/lib_hostkeys.sh` |
+| C2 | identifiants par variables ou fichiers 0600, source affichée, jamais une valeur | `tests/lib_*.sh` | `tests/integration*.sh` |
+| C3 | identifiants lus dans Vault / OpenBao (AppRole, lecture seule) | `lab-access/vault_lab.sh` | `tests/integration_vault.sh` |
+| C4 | clés SSH et **bastion** (relais limité, aucun repli direct) | `lab-access/bastion_lab.sh` | `tests/lib_bastion.sh` |
+| C5 | comptes en **lecture seule** `netcheck-ro` (FRR, EOS, SR Linux) | `lab-access/accounts_lab.sh`, `pathz_lab.py` | `tests/lib_ro.sh` |
+| C6 | la **liste des équipements** vient de NetBox (lecture seule) | `lab-access/netbox/` | `tests/integration_netbox.sh` |
+| C7 | tout ensemble, de bout en bout | les scripts ci-dessus | `tests/integration_e2e.sh` |
+
+**Mettre un lab en route, dans l'ordre** (après `containerlab deploy`, à rejouer après CHAQUE redéploiement : l'état des équipements est perdu avec eux) :
+
+```bash
+bash lab-access/bastion_lab.sh keys && bash lab-access/bastion_lab.sh provision frr      # bastion (C4)
+bash lab-access/accounts_lab.sh frr provision                                            # comptes netcheck-ro (C5)
+bash lab-access/pin_hostkeys.sh frr                                                      # clés d'hôte, bastion compris (C1)
+bash lab-access/netbox/netbox_lab.sh up                                                  # NetBox (C6, une fois)
+bash tests/integration_e2e.sh frr                                                        # le scénario de bout en bout (C7)
+```
+
+`tests/integration_e2e.sh` enchaîne, sur un inventaire alimenté par NetBox, avec le compte `netcheck-ro` par clé, **par le bastion**, en clés d'hôte
+**strictes** : `snapshot`, `check`, `assert`, `guard` (changement inoffensif), `monitor` ; puis les identifiants lus **dans Vault** ; puis la
+couverture et la fraîcheur d'un snapshot lu hors ligne ; enfin l'égalité des violations **en direct** et de `--config-dir` (règle, équipement,
+objet), avec et sans dérogations. Il garde un snapshot complet et frais `snapshots/c7-ref-<lab>` (local, hors Git).
+
+**Principes qui valent pour toute la phase.** Aucun repli silencieux : une source (NetBox, Vault, bastion, clé d'hôte) qui manque est une erreur
+(code 3), jamais un retour à une valeur plus faible. Un résultat qui contient des parties **non évaluables** ne sort jamais en code 0, et un audit
+où **rien** n'a été évalué sort en code 3 (voir « Jamais de code 0 »). Aucun secret dans une sortie, un snapshot ou un rapport. netcheck ne
+modifie aucun équipement : seul le script de `guard` le fait.
+
+**Écarts à la SPEC v4 (décidés et documentés).**
+
+- **Pas de `pynetbox` côté netcheck** (SPEC C26 : extra `[netbox]`). Le client `urllib` suffit à deux `GET` et évite une bibliothèque dont la surface
+  d'écriture est large ; `pynetbox` ne sert que dans `lab-access/netbox/` pour charger le lab, jamais importé par `netcheck/`.
+- **Pathz de SR Linux par un outil de lab maison.** Le client gNSI essayé (`gnsic` v0.0.4) n'a pas de commande Pathz : `lab-access/pathz_lab.py` forge
+  l'appel gRPC `Pathz.Rotate`. Lab seulement, jamais pour la production ; TLS strict par défaut, vérification après envoi.
+- **`show running-config sanitized` refusé** pour le compte EOS en lecture seule : les verdicts des règles sont identiques, mais `diff`, `guard` et
+  `monitor` perdraient la détection d'un changement de clé. Documenté, non implémenté.
+
 ### Clés d'hôte SSH et migration (v4, phase C1)
 
 **Avant la v0.4.0, netcheck acceptait n'importe quelle clé d'hôte** (un défaut de Netmiko, `ssh_strict=False`, jamais
@@ -1919,9 +1962,14 @@ n'apparaît dans aucune sortie ; les exemples du dépôt n'utilisent que des val
 Ce dépôt est distribué sous licence **Apache-2.0** (texte complet dans [LICENSE](LICENSE),
 copyright 2026 Lodric BOYER). Le paquet `netcheck` la déclare dans `pyproject.toml`.
 
-**Dépendances.** Celles d'exécution (netmiko, PyYAML, Jinja2, rich) et de développement (pytest,
-ruff) sont sous licences permissives (MIT ou BSD). Une dépendance future doit rester compatible :
-MIT, BSD ou Apache-2.0. Une licence copyleft (GPL) n'est pas acceptée sans décision explicite.
+**Dépendances.** Celles que le dépôt déclare (netmiko, PyYAML, Jinja2, rich ; hvac en extra optionnel ; pytest et
+ruff pour le développement) sont sous licences permissives (MIT, BSD ou Apache-2.0). **Deux dépendances indirectes
+de netmiko, `paramiko` et `scp`, sont sous licence LGPL-2.1** (et non Apache-2.0) : bibliothèques installées par `pip`
+**sans modification** et **non redistribuées** par ce dépôt, ce que la LGPL permet pour un programme sous une autre
+licence ; quiconque les redistribuerait avec netcheck (par exemple dans une image) doit respecter la LGPL pour ces
+bibliothèques (fournir leurs sources et permettre de les remplacer). Une dépendance directe nouvelle doit rester
+MIT, BSD ou Apache-2.0 ; une licence GPL n'est pas acceptée sans décision explicite. `pynetbox` (Apache-2.0) ne sert
+que dans `lab-access/netbox/`.
 
 Les images de routeurs (Arista cEOS, Nokia SR Linux, et les suivantes) restent soumises à leurs
 propres licences : elles ne sont jamais dans ce dépôt ni redistribuées par lui.
