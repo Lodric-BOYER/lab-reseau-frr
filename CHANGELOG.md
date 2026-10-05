@@ -206,6 +206,8 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
 - **Contrôle du rôle SR Linux après déploiement** : `tests/tools/srl_role_check.py` compare les lignes `role netcheck-ro` de
   `config.cli` à la configuration courante de r5 (un commentaire dans `config.cli` les faisait avorter en silence) ; test statique
   « aucun commentaire dans `configs-multivendor/*/config.cli` ».
+- **`golden.py reference compare`** : une référence locale absente (hors Git) donne « référence locale absente : … ; générer avec : … » et le code 3, sans comparaison partielle. `reference record` n'écrase plus les références existantes sans `--overwrite`.
+
 ### Modifié
 
 - **Phase C5 : l'image `frr-ssh` embarque `doas` et le compte `netcheck-ro`.** Surface ajoutée : un binaire setuid (`doas` 6.8.2,

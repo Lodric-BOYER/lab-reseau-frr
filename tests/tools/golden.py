@@ -619,6 +619,23 @@ def _reference_file(name: str) -> Path:
     return REFERENCE_DIR / f"{name}.json"
 
 
+EXIT_REFERENCE_MISSING = 3   # usage : une référence LOCALE (hors Git) manque : ni écart ni succès
+
+
+def missing_references() -> list[Path]:
+    """Fichiers de référence attendus (un par snapshot réel et par fichier de règles) mais absents."""
+    return [_reference_file(f"{snap}__{rules}") for snap in REFERENCES for rules in RULE_FILES
+            if not _reference_file(f"{snap}__{rules}").is_file()]
+
+
+def _reference_missing_message(missing: list[Path]) -> str:
+    names = ", ".join(str(p.relative_to(REPO)) if p.is_relative_to(REPO) else str(p) for p in missing)
+    return (f"référence locale absente : {names} ; "
+            "générer avec : python tests/tools/golden.py reference record "
+            "(n'écrase pas les références existantes, --overwrite pour le faire exprès). "
+            "Aucune comparaison n'a été faite : ce n'est pas un succès.")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -642,6 +659,8 @@ def main(argv: list[str] | None = None) -> int:
                           "l'arbre indexé (retrouvée dans le commit qui suit)")
     ref = sub.add_parser("reference")
     ref.add_argument("action", choices=["record", "compare"])
+    ref.add_argument("--overwrite", action="store_true",
+                     help="record : réécrire aussi les références déjà présentes (jamais par défaut)")
     args = parser.parse_args(argv)
 
     if args.command == "record-new":
@@ -688,12 +707,27 @@ def main(argv: list[str] | None = None) -> int:
             failed += bool(diffs)
         return 1 if failed else 0
 
-    records = reference_records()
+    if args.action == "compare":
+        missing = missing_references()
+        if missing:
+            print(_reference_missing_message(missing), file=sys.stderr)
+            return EXIT_REFERENCE_MISSING
+    try:
+        records = reference_records()
+    except FileNotFoundError as exc:      # snapshot réel d'un lab absent (local, hors Git)
+        print(f"référence locale absente : {exc} ; les snapshots v4a-ref-* se refont avec "
+              "`netcheck snapshot <nom> -i <inventaire>` sur le lab concerné. "
+              "Aucune comparaison n'a été faite.",
+              file=sys.stderr)
+        return EXIT_REFERENCE_MISSING
     if args.action == "record":
         REFERENCE_DIR.mkdir(parents=True, exist_ok=True)
         for name, rec in records.items():
-            _reference_file(name).write_text(json.dumps(rec, indent=1, ensure_ascii=False) + "\n",
-                                             encoding="utf-8")
+            target = _reference_file(name)
+            if target.exists() and not args.overwrite:
+                print(f"{name} : référence existante conservée (--overwrite pour la réécrire)")
+                continue
+            target.write_text(json.dumps(rec, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
             print(f"{name} : compliant={rec.get('compliant')} code={rec.get('code')} "
                   f"violations={len(rec.get('violations', []))} "
                   f"non applicables={len(rec.get('not_applicable', []))}")
