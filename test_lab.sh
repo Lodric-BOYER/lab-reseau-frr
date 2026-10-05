@@ -225,6 +225,11 @@ check "health.py : tout OK (code 0)"   $PY health.py
 check "ping6 pc1 -> pc2 rétabli"       docker exec "$LAB-pc1" ping -6 -c 3 -W 1 2001:db8:a2::10
 cd ..
 
+# ---------------------------------------------------------------- Comptes en lecture seule (phase C5)
+title "Comptes netcheck-ro (lecture seule) : clé de lab, comptes, politique"
+check "accounts_lab.sh : netcheck-ro provisionné sur tout le lab"  bash lab-access/accounts_lab.sh frr provision
+check "accounts_lab.sh : état vérifié (status)"                     bash lab-access/accounts_lab.sh frr status
+
 # ---------------------------------------------------------------- Bilan
 lab_diag_if_failed "test_lab-frr"
 [[ "${1:-}" == "--destroy" ]] && containerlab destroy -t lab.clab.yml --cleanup >/dev/null 2>&1 && echo && echo "Lab détruit."

@@ -200,7 +200,8 @@ c4_router_keys_and_cut() {
   [[ "$code" == "0" ]] && ok "retour : connexion directe rétablie (code 0)" || { ko "retour : code $code"; echo "$out" | tail -6; }
   out=$($NC diff c4_avant c4_retour -i "$inv" 2>&1); code=$?
   [[ "$code" == "0" ]] && grep -q "Verdict : OK" <<<"$out" && ok "retour PROUVÉ : diff avant <-> retour sans constat (verdict OK)" || { ko "retour non prouvé : code $code"; echo "$out" | tail -8; }
-  [[ "$(docker exec "$prefix-r1" sh -c 'ls /etc/ssh/sshd_config.d/ | wc -l')" == "0" ]] \
+  # le dossier n'est plus vide depuis la phase C5 (10-netcheck-ro.conf, voulu) : on vérifie le seul fichier du scénario
+  [[ "$(docker exec "$prefix-r1" sh -c 'ls /etc/ssh/sshd_config.d/99-bastion-only.conf 2>/dev/null | wc -l')" == "0" ]] \
     && ok "le fichier AllowUsers a disparu de chaque routeur" || ko "fichier AllowUsers restant"
   $health >/dev/null 2>&1 && ok "après le retour : OSPF Full et eBGP Established (health.py)" || ko "réseau non nominal après le retour"
 }

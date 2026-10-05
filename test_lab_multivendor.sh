@@ -193,6 +193,19 @@ done
 check "VRF DEMO (r2) : dum-demo est dans le VRF DEMO"  bash -c "docker exec $LAB-r2 vtysh -c 'show interface dum-demo json' | python3 -c 'import json, sys; sys.exit(json.load(sys.stdin)[\"dum-demo\"].get(\"vrfName\") != \"DEMO\")'"
 check "VRF DEMO (r2) : la route 10.99.9.0/24 est dans le VRF"  bash -c "docker exec $LAB-r2 vtysh -c 'show ip route vrf DEMO 10.99.9.0/24' | grep -q blackhole"
 
+# ---------------------------------------------------------------- Comptes en lecture seule (phase C5)
+title "Comptes netcheck-ro (lecture seule) : rôle chargé, clé de lab, comptes, politique"
+# Un commentaire dans config.cli fait avorter en silence les lignes qui le suivent (containerlab charge le fichier
+# d'un bloc) : le déploiement réussit sans rôle. On compare donc le fichier à la configuration COURANTE de r5.
+if role_msg=$(srl "info flat from running system aaa authorization role netcheck-ro" \
+    | python3 tests/tools/srl_role_check.py configs-multivendor/r5/config.cli 2>&1); then
+  ok "rôle netcheck-ro chargé : $role_msg (config.cli = configuration courante de r5)"
+else
+  ko "rôle netcheck-ro chargé : $role_msg"
+fi
+check "accounts_lab.sh : netcheck-ro provisionné sur tout le lab"  bash lab-access/accounts_lab.sh multivendor provision
+check "accounts_lab.sh : état vérifié (status)"                     bash lab-access/accounts_lab.sh multivendor status
+
 # ---------------------------------------------------------------- Bilan
 lab_diag_if_failed "test_lab-mixte"
 [[ "${1:-}" == "--destroy" ]] && containerlab destroy -t lab-multivendor.clab.yml --cleanup >/dev/null 2>&1 && echo && echo "Lab détruit."

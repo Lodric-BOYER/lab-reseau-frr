@@ -37,6 +37,8 @@ export NETCHECK_KNOWN_HOSTS="$PWD/lab-access/.keys/known_hosts"
 source "$(dirname "$0")/lib_hostkeys.sh"
 # shellcheck source=tests/lib_bastion.sh
 source "$(dirname "$0")/lib_bastion.sh"
+# shellcheck source=tests/lib_ro.sh
+source "$(dirname "$0")/lib_ro.sh"
 lab_ready_lab 172.20.21 "integration-mixte" 240
 bash lab-access/pin_hostkeys.sh multivendor >/dev/null || { echo "épinglage des clés d'hôte impossible (lab déployé ?)"; exit 1; }
 
@@ -293,6 +295,7 @@ grep -q '"status": "OK"' "$M_STATE" && ok "état enregistré (premier relevé OK
 
 c1_hostkeys_scenarios multivendor automation/inventory-multivendor.yml 172.20.21.11 172.20.21.15
 c4_bastion_scenarios multivendor automation/inventory-multivendor.yml 172.20.21 clab-frr-lab-multivendor non
+c5_ro_scenarios multivendor automation/inventory-multivendor.yml 172.20.21 clab-frr-lab-multivendor
 
 # ---------------------------------------------------------------- Bilan
 lab_diag_if_failed "integration-mixte"

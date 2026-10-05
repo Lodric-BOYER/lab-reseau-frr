@@ -31,6 +31,8 @@ export NETCHECK_KNOWN_HOSTS="$PWD/lab-access/.keys/known_hosts"
 source "$(dirname "$0")/lib_hostkeys.sh"
 # shellcheck source=tests/lib_bastion.sh
 source "$(dirname "$0")/lib_bastion.sh"
+# shellcheck source=tests/lib_ro.sh
+source "$(dirname "$0")/lib_ro.sh"
 lab_ready_lab 172.20.20 "integration-frr" 240
 bash lab-access/pin_hostkeys.sh frr >/dev/null || { echo "épinglage des clés d'hôte impossible (lab déployé ?)"; exit 1; }
 
@@ -536,6 +538,7 @@ fi
 
 c1_hostkeys_scenarios frr automation/inventory.yml 172.20.20.11 172.20.20.12
 c4_bastion_scenarios frr automation/inventory.yml 172.20.20 clab-frr-lab oui
+c5_ro_scenarios frr automation/inventory.yml 172.20.20 clab-frr-lab
 
 # ---------------------------------------------------------------- Bilan
 lab_diag_if_failed "integration-frr"

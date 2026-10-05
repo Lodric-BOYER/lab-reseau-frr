@@ -1,0 +1,25 @@
+{
+  "commentaire": "Politique gNSI Pathz de SR Linux pour le compte netcheck-ro (lecture seule). Poussée par lab-access/pathz_lab.py, qui RELIT ensuite l'équipement (version active + une sonde par règle et par attendu ci-dessous) et échoue si elle n'est pas effective. À rejouer après chaque déploiement : elle n'est pas dans la configuration de l'équipement. Les clés omises valent « toutes » (/interface = toutes les interfaces et tout ce qu'elles contiennent). MODE_WRITE implique la lecture : la règle d'admin est UNE règle en écriture à la racine (une règle de lecture ajoutée ensuite sur le même chemin l'annulerait, observé). Chemins de netcheck-ro = ceux des 8 commandes du driver SR Linux (netcheck/drivers/srlinux.py) et rien d'autre ; aucun /system/aaa, aucun /system/tls. Seules les clés « version » et « rules » (et « groups ») sont envoyées ; « commentaire », « attendus » et « sonde » ne servent qu'à la vérification (Pathz.Probe refuse les chemins à jokers : « sonde » est un chemin concret couvert par la règle).",
+  "version": "netcheck-ro-v1",
+  "rules": [
+    {"id": "admin-acces-complet", "user": "admin", "path": "/", "action": "permit", "mode": "write"},
+    {"id": "ro-interface", "user": "netcheck-ro", "path": "/interface", "action": "permit", "mode": "read", "sonde": "/interface[name=ethernet-1/1]"},
+    {"id": "ro-instance-reseau-interface", "user": "netcheck-ro", "path": "/network-instance/interface", "action": "permit", "mode": "read", "sonde": "/network-instance[name=default]/interface[name=ethernet-1/1.0]"},
+    {"id": "ro-instance-reseau-routes", "user": "netcheck-ro", "path": "/network-instance/route-table", "action": "permit", "mode": "read", "sonde": "/network-instance[name=default]/route-table"},
+    {"id": "ro-instance-reseau-ospf", "user": "netcheck-ro", "path": "/network-instance/protocols/ospf", "action": "permit", "mode": "read", "sonde": "/network-instance[name=default]/protocols/ospf/instance[name=main]"},
+    {"id": "ro-systeme-authentification", "user": "netcheck-ro", "path": "/system/authentication", "action": "permit", "mode": "read"},
+    {"id": "ro-systeme-banniere", "user": "netcheck-ro", "path": "/system/banner", "action": "permit", "mode": "read"},
+    {"id": "ro-systeme-nom", "user": "netcheck-ro", "path": "/system/name", "action": "permit", "mode": "read"}
+  ],
+  "attendus": [
+    {"user": "admin", "path": "/system/aaa", "mode": "write", "action": "permit", "pourquoi": "admin garde l'écriture partout"},
+    {"user": "admin", "path": "/interface[name=ethernet-1/1]", "mode": "read", "action": "permit", "pourquoi": "admin garde la lecture"},
+    {"user": "netcheck-ro", "path": "/interface[name=ethernet-1/1]", "mode": "write", "action": "deny", "pourquoi": "lecture seule : jamais d'écriture"},
+    {"user": "netcheck-ro", "path": "/system/name", "mode": "write", "action": "deny", "pourquoi": "lecture seule : jamais d'écriture"},
+    {"user": "netcheck-ro", "path": "/", "mode": "write", "action": "deny", "pourquoi": "aucune écriture à la racine"},
+    {"user": "netcheck-ro", "path": "/", "mode": "read", "action": "deny", "pourquoi": "pas de lecture générale"},
+    {"user": "netcheck-ro", "path": "/acl", "mode": "read", "action": "deny", "pourquoi": "hors des 8 commandes"},
+    {"user": "netcheck-ro", "path": "/system/aaa", "mode": "read", "action": "deny", "pourquoi": "rôles et utilisateurs hors périmètre"},
+    {"user": "netcheck-ro", "path": "/system/tls", "mode": "read", "action": "deny", "pourquoi": "matériel TLS hors périmètre"}
+  ]
+}

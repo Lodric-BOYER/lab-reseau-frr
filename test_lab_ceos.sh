@@ -257,6 +257,11 @@ echo "  … RAM de r4 (cEOS) : ${mem_mib} MiB ; hôte : $(free -m | awk 'NR==2{p
 [[ "$mem_mib" =~ ^[0-9]+$ ]] && (( mem_mib < 1536 )) \
   && ok "RAM de r4 (cEOS) sous 1,5 GiB (${mem_mib} MiB)" || ko "RAM de r4 inattendue : ${mem_mib:-inconnue} MiB"
 
+# ---------------------------------------------------------------- Comptes en lecture seule (phase C5)
+title "Comptes netcheck-ro (lecture seule) : clé de lab, comptes, politique"
+check "accounts_lab.sh : netcheck-ro provisionné sur tout le lab"  bash lab-access/accounts_lab.sh ceos provision
+check "accounts_lab.sh : état vérifié (status)"                     bash lab-access/accounts_lab.sh ceos status
+
 # ---------------------------------------------------------------- Bilan
 lab_diag_if_failed "test_lab-ceos"
 [[ "${1:-}" == "--destroy" ]] && containerlab destroy -t lab-cEOS.clab.yml --cleanup >/dev/null 2>&1 && echo && echo "Lab détruit."

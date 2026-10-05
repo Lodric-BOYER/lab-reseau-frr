@@ -42,6 +42,8 @@ export NETCHECK_KNOWN_HOSTS="$PWD/lab-access/.keys/known_hosts"
 source "$(dirname "$0")/lib_hostkeys.sh"
 # shellcheck source=tests/lib_bastion.sh
 source "$(dirname "$0")/lib_bastion.sh"
+# shellcheck source=tests/lib_ro.sh
+source "$(dirname "$0")/lib_ro.sh"
 lab_ready_lab 172.20.22 "integration-ceos" 240
 bash lab-access/pin_hostkeys.sh ceos >/dev/null || { echo "épinglage des clés d'hôte impossible (lab déployé ?)"; exit 1; }
 
@@ -511,6 +513,7 @@ sleep 5
 
 c1_hostkeys_scenarios ceos automation/inventory-ceos.yml 172.20.22.11 172.20.22.14
 c4_bastion_scenarios ceos automation/inventory-ceos.yml 172.20.22 clab-frr-lab-ceos non
+c5_ro_scenarios ceos automation/inventory-ceos.yml 172.20.22 clab-frr-lab-ceos
 
 # ---------------------------------------------------------------- Bilan
 lab_diag_if_failed "integration-ceos"
