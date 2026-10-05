@@ -224,6 +224,23 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   (le client `urllib` suffit à deux GET et évite une bibliothèque dont la surface d'écriture est large). `pynetbox` ne sera utilisé que
   par le chargement du lab (`lab-access/netbox/`, C6.2), jamais importé par `netcheck/`. Un test statique le garde.
 
+### Modifié (incompatible)
+
+- **Phase C6 : un résultat avec des parties NON ÉVALUABLES ne sort plus jamais en code 0** (décision de la revue). État des lieux mesuré puis
+  corrigé : `assert` (NON ÉVALUABLE : code 0 -> **ATTENTION, code 1**), `check` (règle `not_implemented` ou `no_model` : CONFORME / 0 ->
+  **ANALYSE INCOMPLÈTE / 1**, dans le terminal, le JSON et le HTML), `diff` (section relevée d'un seul côté : information -> **ATTENTION**),
+  `monitor` (le composant check compte maintenant les règles non évaluables, comme l'assert le faisait déjà). **Conséquence :**
+  `check --config-dir` avec `default.yml` sort en 1 (deux règles lisent l'état collecté, absent hors ligne) ; `security.yml` reste CONFORME / 0.
+  Les règles hors périmètre par choix (`drivers:`) ne comptent pas. Le gel des verdicts est inchangé (0 écart). Un pipeline qui testait
+  `assert == 0` ou `check --config-dir == 0` doit distinguer 1.
+- **`guard` refuse un périmètre dont des équipements n'ont aucun attendu local** (code 3, avant tout script, tout snapshot, tout journal ; liste
+  de tous les équipements concernés). Seule issue : `--accept-unverified r6,r7` (noms explicites, jamais de joker ni « all » ; nom inconnu,
+  en double, hors périmètre ou déjà vérifié = erreur). Ces équipements sortent du calcul de convergence, sont annoncés à chaque usage et le verdict
+  final n'est jamais 0 (un succès devient ATTENTION). Les trois inventaires du dépôt ont des attendus pour chaque routeur : rien ne change pour eux.
+- **NetBox : « le serveur ne parle pas TLS sur ce port » est distingué d'un certificat refusé** (`https://` vers un service en clair, mesuré :
+  `RECORD_LAYER_FAILURE` avec OpenSSL 3.x récent, `WRONG_VERSION_NUMBER` avant), et d'un autre échec de négociation ; jamais le texte de la
+  bibliothèque dans le message.
+
 ### Modifié
 
 - **Phase C5 : l'image `frr-ssh` embarque `doas` et le compte `netcheck-ro`.** Surface ajoutée : un binaire setuid (`doas` 6.8.2,

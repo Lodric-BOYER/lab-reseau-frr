@@ -3,7 +3,7 @@
 # Toutes les valeurs ci-dessous sont vérifiées sur un snapshot réel du lab durci (Phase B),
 # pas devinées. Format et champs : voir netcheck/assertions.py (docstring du module) et
 # netcheck/README.md. Résultat par assertion : OK, ÉCHEC ou NON ÉVALUABLE. Codes retour de
-# `assert` : 0 tout OK, 2 au moins un ÉCHEC, 3 erreur d'usage.
+# `assert` : 0 tout OK, 1 ATTENTION (aucun échec, au moins un NON ÉVALUABLE), 2 au moins un ÉCHEC, 3 erreur d'usage.
 #
 # Évaluées uniquement sur le modèle normalisé (model.py), jamais le texte de la config.
 

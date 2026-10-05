@@ -474,7 +474,7 @@ assertions:
 | `path` | `prefix`, `via` (suite d'équipements après `device`) ; `mode: all\|any` (défaut `all`), `vrf` | le chemin logique calculé de saut en saut (IPv4 ou IPv6, dans la VRF de départ) |
 
 Résultat par assertion : **OK**, **ÉCHEC** ou **NON ÉVALUABLE** (jamais un OK silencieux). Code
-retour : 0 tout OK, 2 au moins un ÉCHEC, 3 usage ; NON ÉVALUABLE ne change pas le code (mais
+retour : 0 tout OK, 1 ATTENTION (aucun échec mais une assertion NON ÉVALUABLE : phase C6, jamais un OK silencieux), 2 au moins un ÉCHEC, 3 usage ; NON ÉVALUABLE affiché (et
 `monitor` le traite comme ATTENTION). Évalué **uniquement sur le modèle normalisé** : les mêmes
 assertions fonctionnent sur FRR, SR Linux et EOS.
 

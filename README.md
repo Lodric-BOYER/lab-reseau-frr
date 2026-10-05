@@ -895,14 +895,52 @@ local compte, le bloc `netbox:` est seulement vérifié dans sa structure, et `-
 **Écart avec la SPEC (C26) :** elle prévoyait `pynetbox` en extra `[netbox]`. Il n'est pas utilisé côté netcheck (deux GET ne justifient
 pas une bibliothèque dont la surface d'écriture est large) ; `pynetbox` ne servira que dans le chargement du lab, hors du paquet.
 
+### Jamais de code 0 avec des parties NON ÉVALUABLES (v4, phase C6)
+
+**Règle : un résultat global qui contient des parties NON ÉVALUABLES ne sort jamais en code 0.** « Non évaluable » veut dire
+« netcheck n'a pas pu conclure sur cette partie » : ce n'est ni un succès ni une panne, c'est au minimum l'ATTENTION (code 1).
+
+État des lieux commande par commande, **mesuré avant la correction** puis corrigé :
+
+| Commande | Avant | Maintenant |
+|---|---|---|
+| `assert` | NON ÉVALUABLE n'y changeait rien : **code 0** | aucun échec mais une assertion non évaluable : verdict **ATTENTION, code 1** ; un échec reste ÉCHEC, code 2 |
+| `check` | une règle non évaluable (driver qui ne sait pas l'évaluer, **état collecté absent hors ligne**) : CONFORME, **code 0** | statut **ANALYSE INCOMPLÈTE, code 1** dans les trois sorties (terminal, JSON, HTML) ; une violation garde son propre code |
+| `diff` | une section relevée d'un seul côté : simple information, **code 0** | **ATTENTION, code 1** (comme une section perdue) |
+| `monitor` | le composant assert comptait déjà NON ÉVALUABLE en ATTENTION ; le composant check ne comptait pas les règles non évaluables | les deux : **ATTENTION** |
+| `guard` | un équipement sans attendus locaux était ignoré en silence par le calcul de convergence | **refus** avant tout script (code 3), ou opt-in nominatif (ci-dessous) |
+
+**Ce qui n'est pas « non évaluable » :** une règle qui ne liste pas le driver d'un équipement (`drivers:`) est hors de son périmètre par
+choix : elle reste « non applicable » sans effet sur le code. Seules les causes `not_implemented` (trou de couverture d'un driver)
+et `no_model` (état absent hors ligne) sont des manques.
+
+**Conséquence à connaître : `check --config-dir` avec les règles `default.yml` sort en code 1.** Deux de ses règles (`interface-avec-description`,
+`lan-en-ospf-passif`) lisent l'état collecté, qui n'existe pas hors ligne : l'audit des fichiers dit « ANALYSE INCOMPLÈTE » au lieu de
+« CONFORME ». Les règles de sécurité (`security.yml`) n'ont aucune règle de ce type : toujours CONFORME / 0 hors ligne. Le gel des verdicts
+(`tests/golden/`) ne bouge pas : il enregistre la réponse du moteur, pas le code de la commande.
+
+**`guard` et les équipements sans attendus locaux (option C).** `guard --wait` attend la convergence décrite par les attendus de l'inventaire
+(`ospf_neighbors`, `ospf6_neighbors`, `bgp_peers`, `bgp6_peers`). Un équipement qui n'en porte aucun, typiquement un équipement lu dans NetBox
+seulement, ne peut pas être vérifié. Par défaut, **`guard` refuse AVANT d'exécuter le changement** (code 3, aucun script, aucun snapshot, pas
+de journal) et liste **tous** les équipements du périmètre dans ce cas. Seule issue : l'acceptation **nominative** :
+
+```bash
+netcheck guard --change change.sh --accept-unverified r6,r7
+```
+
+Des noms explicites, séparés par des virgules : jamais de joker, jamais « all », jamais un nom vide ; un nom inconnu, absent du périmètre,
+en double ou qui a déjà des attendus est une erreur. Avec l'acceptation, ces équipements restent dans les snapshots et le diff mais sortent du
+calcul de convergence ; ils sont annoncés **avant** la confirmation puis dans le message final et le journal, et **le verdict final n'est
+jamais 0** : un succès devient ATTENTION (code 1), un échec reste un échec.
+
 ### Codes retour
 
 | Commande | 0 | 1 | 2 | 3 | 70 |
 |---|---|---|---|---|---|
-| `diff` / `guard` | OK | ATTENTION | ÉCHEC (≥ 1 CRITIQUE) | erreur d'utilisation / snapshot manquant | défaut interne |
-| `check` | conforme | non-conformité(s) moyenne/basse | non-conformité critique/haute | règles ou équipement introuvable | défaut interne |
+| `diff` / `guard` | OK | ATTENTION (**y compris une section non comparable, ou un `guard` avec des équipements non vérifiés**) | ÉCHEC (≥ 1 CRITIQUE) | erreur d'utilisation / snapshot manquant ; **`guard` : équipements sans attendus locaux** | défaut interne |
+| `check` | conforme | non-conformité(s) moyenne/basse, **ou analyse incomplète** (règle non évaluable, ligne non lue) | non-conformité critique/haute | règles ou équipement introuvable | défaut interne |
 | `snapshot` | tout OK | au moins un équipement injoignable | — | snapshot existant sans `--force` | défaut interne |
-| `assert` | tout OK | — | au moins un ÉCHEC | intent invalide | défaut interne |
+| `assert` | tout OK | **aucun échec mais au moins une assertion NON ÉVALUABLE** (ATTENTION) | au moins un ÉCHEC | intent invalide | défaut interne |
 | `monitor` | statut OK | statut ATTENTION | statut ÉCHEC | refusé (4 : verrou tenu) | défaut interne (**était 3** avant la phase C) |
 
 **70 = défaut interne de netcheck (EX_SOFTWARE), pour toutes les commandes.** Ce n'est ni une erreur d'usage (3), ni
