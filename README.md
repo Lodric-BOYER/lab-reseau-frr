@@ -832,8 +832,8 @@ mot-clé `role` (sinon `check --config-dir` le signalerait).
 ### Inventaire NetBox (v4, phase C6)
 
 netcheck peut lire la **liste** de ses équipements dans NetBox : en lecture seule, avec `urllib`, **sans dépendance de plus**.
-Cette étape (C6.1) est prouvée contre un **faux NetBox local** (`tests/tools/fake_netbox.py`), pas encore contre un vrai :
-le démarrage de NetBox, le chargement du lab et les scénarios sont l'étape C6.2.
+Le client est prouvé contre un **faux NetBox local** (`tests/tools/fake_netbox.py`, C6.1) **et** contre un vrai NetBox de lab
+(C6.2, section « NetBox de lab » plus bas).
 
 ```yaml
 lab: true
@@ -893,7 +893,56 @@ sur le fichier local, jamais de résultat partiel, aucun texte de bibliothèque 
 local compte, le bloc `netbox:` est seulement vérifié dans sa structure, et `--netbox-cacert` y est refusé.
 
 **Écart avec la SPEC (C26) :** elle prévoyait `pynetbox` en extra `[netbox]`. Il n'est pas utilisé côté netcheck (deux GET ne justifient
-pas une bibliothèque dont la surface d'écriture est large) ; `pynetbox` ne servira que dans le chargement du lab, hors du paquet.
+pas une bibliothèque dont la surface d'écriture est large) ; `pynetbox` ne sert que dans le chargement du lab, hors du paquet.
+
+`page_size: N` (1 à 1000, défaut 100) règle la taille de page demandée à NetBox ; la ligne d'annonce dit combien de pages ont été lues
+(« 5 équipement(s) en 3 page(s) de 2 au plus »). Utile pour forcer une vraie pagination en test.
+
+### NetBox de lab (v4, phase C6.2)
+
+Un NetBox **réel** de lab (netbox-docker 5.1.1, NetBox 4.7, images tirées **par digest**) permet de prouver le client contre le vrai
+produit. Tout vit dans `lab-access/netbox/` ; rien de cela n'est importé par `netcheck/`.
+
+```bash
+git clone --branch 5.1.1 https://github.com/netbox-community/netbox-docker ~/netbox-docker      # HORS du dépôt, commit 7689fec7…
+netcheck/.venv/bin/python -m pip install --no-deps --require-hashes --target lab-access/netbox/.pylib \
+    -r lab-access/netbox/requirements.txt                                                        # pynetbox 7.8.0, hash vérifié
+bash lab-access/netbox/netbox_lab.sh up            # netbox PUIS worker, attente de santé explicite, 20 min au plus
+PYTHONPATH=lab-access/netbox/.pylib netcheck/.venv/bin/python lab-access/netbox/load_lab.py   # équipements des 3 labs + jeton RO
+bash tests/integration_netbox.sh frr               # ou multivendor, ceos (le lab doit être déployé)
+```
+
+- **Démarrage :** `netbox_lab.sh up|status|stop|destroy --yes-destroy-volumes`. Deux temps (netbox, puis worker) parce que
+  `docker compose up -d` abandonne l'attente du worker ; message toutes les 30 s, fin des journaux en cas d'échec ; volumes **conservés**
+  (`stop` ne les supprime pas). Premier démarrage mesuré : 246 s (715 s lors d'un premier essai avec des volumes neufs et un disque
+  froid) ; les suivants, environ une minute. Écoute **127.0.0.1:8000 uniquement** (prouvé par le script) ; secrets (`SECRET_KEY`,
+  mot de passe du superutilisateur, base) générés dans `~/netbox-docker/.env` (0600), jamais affichés ni versionnés.
+- **Chargement :** `load_lab.py` (pynetbox) écrit **uniquement** dans notre instance locale : trois sites, rôle `router`, étiquette
+  `netcheck`, trois plateformes, 15 équipements avec interface de management et IP primaire ; idempotent. Il utilise un jeton
+  d'administration éphémère (1 h, supprimé à la fin).
+- **Jeton de netcheck :** compte `netcheck-ro`, une seule permission (`view` sur `dcim.device`), jeton v2 avec `write_enabled` faux,
+  dans `~/.config/netcheck/netbox-ro.token` (0600, hors dépôt). `allowed_ips` n'est pas posé : derrière le proxy de Docker, NetBox voit
+  l'adresse de la passerelle du pont, pas 127.0.0.1.
+- **Preuves négatives par script** (`prove_readonly.py`, 16 contrôles, jamais par netcheck) : avec ce jeton, `POST`, `PUT`, `PATCH` et
+  `DELETE` sur un équipement donnent **403** et NetBox est inchangé ; sites et utilisateurs ne se lisent pas (403) ; un jeton révoqué
+  n'ouvre plus rien, et netcheck sort alors en **code 3** (« jeton refusé, HTTP 403 »), sans snapshot. Mesuré : NetBox laisse chaque
+  compte **lire la liste de ses propres jetons** (`GET /api/users/tokens/` = 200, sans valeur secrète, uniquement les siens) mais pas en
+  créer ni en supprimer ; ce n'est donc pas présenté comme un 403.
+- **Forme réelle mesurée :** `primary_ip.address` (avec masque, par exemple `172.20.22.11/24`), `platform.slug`, `status.value`.
+- **Pagination réelle :** avec `page_size: 2`, cinq équipements font trois pages. NetBox construit `next` depuis l'en-tête `Host` : avec
+  `localhost` ou `127.0.0.1` dans l'URL, les liens restent cohérents et sont suivis. Derrière un proxy qui réécrit `Host`
+  (`tests/tools/hostproxy.py`), le lien `next` pointe ailleurs : netcheck le **refuse** (« lien de pagination hors du NetBox configuré
+  (refusé, jeton non envoyé) », code 3), après **2 requêtes** seulement, sans boucle ni résultat partiel ni snapshot.
+- **Scénarios** (`tests/integration_netbox.sh`, un lab à la fois) : inventaire alimenté par NetBox identique à l'inventaire YAML
+  (snapshot, `diff` sans constat, mêmes verdicts `check` et `assert`), pagination, localhost / 127.0.0.1, `next` refusé, port fermé,
+  jeton révoqué, hors ligne sans contact, jeton absent de toute sortie et de tout fichier produit ; puis un équipement ajouté dans NetBox
+  **seul** : `guard` refuse (code 3, il est nommé, aucun script exécuté, aucun snapshot ni journal), `--accept-unverified r9` l'exécute et
+  sort en **ATTENTION (code 1)**, jamais 0 ; l'équipement retiré, `guard` repart en code 0.
+- **Mémoire (mesurée avec `docker stats` et `free -m`, juste après le déploiement, sur une machine de 15,5 Go) :** NetBox seul, environ
+  1,8 Go (netbox 1,25 à 1,45 Go, worker 0,26 Go, postgres 0,09 à 0,13 Go, deux redis 0,02 Go). Avec le lab cEOS (un cEOS, r4, 1,07 Go) :
+  3 865 Mo utilisés, 11 680 Mo disponibles. Avec le lab mixte : 4 962 Mo utilisés, 10 583 Mo disponibles. Avec le lab FRR : 3 206 Mo
+  utilisés. NetBox et cEOS tiennent donc ensemble ; la règle « pas de cEOS en même temps que NetBox si la RAM est juste » n'a pas lieu
+  de s'appliquer ici, mais elle reste valable pour une machine plus petite.
 
 ### Jamais de code 0 avec des parties NON ÉVALUABLES (v4, phase C6)
 

@@ -1,4 +1,4 @@
-"""Le README et le CHANGELOG disent ce que le client NetBox fait ET ne fait pas (phase C6.1)."""
+"""Le README et le CHANGELOG disent ce que le client NetBox fait ET ne fait pas (phases C6.1 et C6.2)."""
 
 import re
 from pathlib import Path
@@ -28,7 +28,18 @@ def _section() -> str:
         "NON ÉVALUABLE",
         "tous les conflits listés ensemble",
         "faux NetBox local",
-        "pas encore contre un vrai",
+        "contre un vrai NetBox de lab",
+        "NetBox de lab (v4, phase C6.2)",
+        "uniquement** dans notre instance locale",
+        "`POST`, `PUT`, `PATCH` et `DELETE` sur un équipement donnent **403**",
+        "jeton refusé, HTTP 403",
+        "lien de pagination hors du NetBox configuré",
+        "après **2 requêtes** seulement",
+        "`page_size: N`",
+        "`--accept-unverified r9`",
+        "`GET /api/users/tokens/` = 200",
+        "`allowed_ips` n'est pas posé",
+        "127.0.0.1:8000 uniquement",
     ],
 )
 def test_the_readme_states_the_guarantees_and_the_limit_of_the_proof(phrase):

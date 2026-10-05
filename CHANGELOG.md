@@ -224,6 +224,17 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   (le client `urllib` suffit à deux GET et évite une bibliothèque dont la surface d'écriture est large). `pynetbox` ne sera utilisé que
   par le chargement du lab (`lab-access/netbox/`, C6.2), jamais importé par `netcheck/`. Un test statique le garde.
 
+- **Phase C6.2, NetBox RÉEL de lab** (`lab-access/netbox/`, `tests/integration_netbox.sh`, `tests/tools/hostproxy.py`). Script de démarrage
+  en deux temps (netbox puis worker) avec attente de santé explicite, limite de 20 min, message toutes les 30 s, volumes conservés, écoute
+  127.0.0.1 prouvée ; images tirées par digest, secrets générés dans un `.env` 0600 hors dépôt. Chargement des trois labs par `pynetbox`
+  (installé par hash dans `lab-access/netbox/.pylib`, jamais importé par `netcheck/`), écriture seulement sur notre instance. Jeton v2
+  en lecture seule dans un fichier 0600 hors dépôt ; 16 preuves négatives par script (POST, PUT, PATCH, DELETE : 403 ; jeton révoqué :
+  refusé, netcheck code 3). Mesuré sur le vrai NetBox : forme de `primary_ip`, pagination réelle (`page_size: 2`, trois pages), `next`
+  construit depuis `Host` (refusé derrière un proxy qui réécrit `Host` : code 3, 2 requêtes, aucun snapshot). Nouvelle clé `page_size`
+  du bloc `netbox:`. Intégration à froid, un lab à la fois, avec l'inventaire alimenté par NetBox : 64 contrôles par lab ; un équipement
+  ajouté dans NetBox seul fait refuser `guard` (option C). NetBox ne gêne pas cEOS : 3,9 Go utilisés ensemble sur 15,5 Go.
+  Note : `GET /api/users/tokens/` répond 200 au jeton en lecture seule (ses propres jetons, sans secret) et non 403 ; la preuve vérifie cela.
+
 ### Modifié (incompatible)
 
 - **Phase C6 : un résultat avec des parties NON ÉVALUABLES ne sort plus jamais en code 0** (décision de la revue). État des lieux mesuré puis
