@@ -55,9 +55,15 @@ Il tourne sur un simple PC portable sous WSL2, sans aucun matériel réseau.
 ```
 lab.clab.yml                    topologie containerlab (lab FRR)
 lab-multivendor.clab.yml        topologie containerlab (lab v2 : FRR + Nokia SR Linux)
-docker/Dockerfile               image FRR 10.2.1 + SSH (compte netops) ; HEALTHCHECK sur le port 22
+docker/Dockerfile               image FRR 10.2.1 + SSH (comptes netops et netcheck-ro, doas) ; HEALTHCHECK sur le port 22
+docker/doas.conf                les dix règles doas du compte netcheck-ro (arguments exacts, « as frr », sans keepenv)
+docker/sshd_netcheck_ro.conf    bloc sshd du compte netcheck-ro : clé seulement, aucun transfert, agent, X11 ni tunnel
 docker/entrypoint-sshkeys.sh    génère les clés d'hôte, puis lance sshd, puis FRR ; clés ou sshd absents = le conteneur s'arrête (code 1)
 lab-access/pin_hostkeys.sh      épingle les clés d'hôte d'un lab déployé (lues dans les conteneurs) dans le known_hosts de netcheck
+lab-access/accounts_lab.sh      comptes netcheck-ro d'un lab déployé (clé de lab, comptes EOS et SR Linux, clés FRR, politique Pathz)
+lab-access/pathz_lab.py         pousse PUIS VÉRIFIE la politique gNSI Pathz de SR Linux 26.7.2 (lab seulement ; bibliothèque standard)
+lab-access/labtls.py            garde commune : TLS/clés d'hôte non vérifiés seulement avec un inventaire `lab: true`, annoncé
+lab-access/pathz/netcheck-ro.json politique Pathz : admin complet, netcheck-ro en lecture seule sur sept chemins
 lab-access/bastion_lab.sh       provisionnement du bastion de lab (clés, authorized_keys, PermitOpen ; clés des routeurs FRR)
 docker/bastion/                 image netcheck-bastion:1 : sshd sans shell, relais direct-tcpip vers les routeurs seulement
 lab-access/vault_lab.sh         Vault ou OpenBao de lab (conteneur de développement, AppRole, politique en lecture seule)
@@ -84,6 +90,9 @@ tests/integration_multivendor.sh    lab v2 (S1, coupure r4<->r5, C1, A1/A2 asser
 tests/integration_ceos.sh           lab cEOS (S1, C1, A1, N1 mauvaise clé OSPF, N2 API exposée, G1 guard, M1 monitor, H1 clés d'hôte)
 tests/lib_bastion.sh                scénarios B1/B2 du bastion et des clés SSH (joués par les trois integration*.sh)
 tests/lib_lab.sh                    barrière « lab prêt » (port 22 + bannière SSH) et diagnostic automatique en cas d'échec
+tests/lib_ro.sh                     scénarios C5 des comptes en lecture seule : collecte, diff à zéro, preuves négatives (trois constructeurs)
+tests/tools/ro_probe.py         sondes de lab de netcheck-ro (EOS, SR Linux, gNMI et JSON-RPC) ; ptyrun.py : terminal pour VTYSH_PAGER
+tests/tools/srl_role_check.py   compare les lignes de rôle de r5/config.cli à la configuration courante de r5 (après chaque déploiement)
 tests/tools/bastion_probe.py    sonde du lab : ce que le bastion refuse (paramiko écrit à la main, pas netcheck)
 tests/integration_vault.sh          Vault puis OpenBao : identifiants lus dans Vault sur le lab FRR, deux appels, rôle en lecture seule, priorité, pannes
 test_lab.sh                     scénario de bout en bout du lab FRR (phases 1 et 2), 28 contrôles
@@ -696,6 +705,128 @@ lab sur FRR seulement (C5 pour SR Linux et cEOS). Le journal du bastion montre d
 peer » à chaque fermeture de session : paramiko ferme sans « disconnect » ; sans conséquence, mais ne les prenez pas
 pour une attaque.
 
+### Comptes en lecture seule (v4, phase C5)
+
+netcheck ne lit que (liste blanche des commandes, C1), mais le compte qu'il utilisait pouvait écrire. La phase C5 donne à
+chaque constructeur un compte **`netcheck-ro`** qui ne PEUT techniquement que lire. Ce n'est pas partout un contrôle
+d'accès natif : le tableau dit ce que chaque mécanisme empêche vraiment, et ce qu'il laisse.
+
+| | Mécanisme | Imposé par | Limite documentée |
+|---|---|---|---|
+| **FRR** | `vtysh` n'a pas de RBAC : qui atteint ses sockets (`frr:frrvty`) a tout. Le compte n'est **pas** dans `frrvty` ; `doas -u frr` (règles à arguments exacts) lui donne l'identité `frr` pour les dix commandes de netcheck et rien d'autre | le noyau (identité Unix) et `/etc/doas.conf` | **il garde un shell non privilégié** : il lit les fichiers lisibles par tous (dans le lab, `frr.conf`) et peut servir de rebond réseau depuis le routeur. Ce n'est pas un compte « sans shell » |
+| **EOS** | rôle dédié `netcheck-ro` (douze commandes + les commandes de session de Netmiko, puis refus explicites) et **deux lignes `aaa authorization`** | l'équipement (AAA) | le compte lit la `running-config` complète, donc les secrets « type 7 » (réversibles) : la confidentialité est assurée par le **masquage côté netcheck**, pas par le compte |
+| **SR Linux** | rôle `netcheck-ro` (`services [ cli ]`, liste blanche stricte de dix commandes) **et** politique gNSI Pathz (lecture seule sur sept chemins) | l'équipement | `allow-command-list` est une liste blanche de COMMANDES, **pas un contrôle d'accès par chemin** ; le compte voit les clés de keychain (`info from running system authentication`, comme `admin`) |
+
+**Utilisation.** Les comptes se provisionnent par script, **à rejouer après chaque déploiement** (comme `pin_hostkeys.sh`) :
+```bash
+bash lab-access/accounts_lab.sh frr|multivendor|ceos provision     # status | unprovision
+```
+La clé de lab (`lab-access/.keys/netcheck_ro`, ed25519, 0600, ignorée par Git) est créée au besoin. **Aucun mot de passe de
+`netcheck-ro` n'existe nulle part** (ni image, ni configuration, ni script) : authentification par clé seulement. Côté
+netcheck, un inventaire « lecture seule » ne change que l'identité ; pour FRR, l'option `privilege_wrapper: doas` :
+```yaml
+defaults: {device_type: linux, username: netcheck-ro, key_file: /chemin/vers/netcheck_ro}
+routers:
+  r1: {host: 172.20.20.11, privilege_wrapper: doas}                     # FRR
+  r4: {host: 172.20.22.14, device_type: arista_eos, driver: eos}        # EOS : même compte, même clé
+```
+Une clé configurée écarte Vault et le mot de passe (voir plus haut). Les scénarios C5 (`tests/lib_ro.sh`, joués par les trois
+`integration*.sh`) font une collecte complète avec ce compte et exigent un `diff` à zéro contre la collecte d'`admin`.
+
+**FRR : `doas -u frr`, trois durcissements.**
+1. `as frr`, jamais `as root` : les sockets sont `frr:frrvty`, l'utilisateur `frr` suffit (un `doas` sans `-u frr` vise root et
+   est refusé : prouvé).
+2. **Aucun `keepenv` ni `setenv`** dans `docker/doas.conf`. `vtysh` lance un « pager » d'après `VTYSH_PAGER` quand sa sortie va
+   à un terminal : **témoin positif** (un membre de `frrvty` qui lance `vtysh` avec `VTYSH_PAGER=<script>` fait exécuter le
+   script) puis **essai** (via `doas`, avec `VTYSH_PAGER=<script>`, `=/bin/sh`, `PAGER`, `LD_PRELOAD` : rien n'est exécuté).
+3. Le shell non privilégié restant est une **limite assumée** (tableau ci-dessus).
+
+Le driver FRR a, comme EOS, une **liste blanche EXACTE de dix chaînes** (`ALLOWED_CLI`) : en clair
+(`vtysh -c '…'`) ou, avec l'option, `doas -u frr /usr/bin/vtysh -u -c '…'` (`-u` = la vue native de vtysh, en seconde couche
+pour les neuf commandes qui l'acceptent ; `show running-config` n'existe pas en vue). Un test garde `docker/doas.conf` identique
+à cette liste. **En production**, l'équivalent est un `sudoers` à arguments exacts, sans joker :
+```
+Defaults:netcheck-ro env_reset                      # et aucun env_keep
+netcheck-ro ALL=(frr) NOPASSWD: /usr/bin/vtysh -u -c show\ interface\ json, \
+                                /usr/bin/vtysh -c show\ running-config, …   # une entrée par commande, runas frr, pas de *
+```
+
+**EOS : un rôle dédié, et deux lignes qui le rendent effectif.**
+- **Sans `aaa authorization exec default local` ET `aaa authorization commands all default local`, un rôle est INERTE** : observé
+  sur cEOS 4.34.8M, `configure`, `copy` et même `bash` passaient sous `netcheck-ro`. `exec` attribue le rôle à l'ouverture de
+  session (sans lui : « Unknown role »), `commands` autorise chaque commande. Ces deux lignes sont des **écarts de configuration**
+  (liste plus bas) ; `admin` et les scripts de lab continuent de fonctionner (vérifié).
+- **`network-operator` n'est PAS en lecture seule** : `copy running-config file:` y passe (observé). `network-operator-hardened`
+  n'autorise que `show running-config sanitized`.
+- EOS évalue la commande **sans `| json`** (format de sortie, pas un filtre : `| grep`, `| redirect`, `| tee` et `>` sont, eux,
+  refusés et n'écrivent rien). Les expressions sont **ancrées** (`^…$`) : sans ancre, `show ip bgp` laisserait passer
+  `show ip bgp neighbors`. Numéros de séquence ≤ 256. Les abréviations (`sh int`) sont normalisées avant l'autorisation.
+- Les commandes de session de Netmiko (`terminal width`, `terminal length`, `enable`) sont **permises dans le rôle** mais ne sont
+  **pas** dans la liste blanche de netcheck : netcheck ne les envoie pas, Netmiko si.
+- **`show running-config sanitized` : non.** Les verdicts des règles et du gel sont identiques (0 écart mesuré sur 17 fixtures, la
+  transformation étant calibrée à l'identique sur la sortie réelle d'EOS), mais `diff`, `guard` et `monitor` **perdent la détection
+  d'un changement de clé seule** (le scénario « clé OSPF correcte puis erronée » passe de 1 constat de configuration à 0) : une
+  régression silencieuse. La confidentialité des secrets est donc assurée par le masquage de netcheck, pas par le compte.
+
+**SR Linux : un rôle ne suffit pas, il faut une politique Pathz.**
+- Un utilisateur qui n'est pas superutilisateur **ne voit aucune donnée** sans politique gNSI Pathz (« authorization failed ») : les
+  rôles ne règlent que les services et les listes de commandes. Un **superutilisateur** voit tout, mais **contourne les listes de
+  commandes** (`enter candidate`, `bash`, `save` s'exécutent : prouvé) : jamais de `superuser` pour ce compte.
+- Rôle (`configs-multivendor/r5/config.cli`) : `services [ cli ]` (gNMI et JSON-RPC refusés, **refus observés**) ; `allow-command-list`
+  seule est une liste blanche stricte ; `deny-command-list [ ".*" ]` la rend explicite **sans l'affaiblir**, alors qu'un `deny` plus
+  étroit à côté la rendrait permissive (une commande absente des deux listes passe : observé).
+- Politique (`lab-access/pathz/netcheck-ro.json`, relisible) : `admin` complet ; `netcheck-ro` en lecture seule sur
+  `/interface`, `/network-instance/interface`, `/network-instance/route-table`, `/network-instance/protocols/ospf`,
+  `/system/authentication`, `/system/banner`, `/system/name`, et rien d'autre (ni `/system/aaa`, ni `/system/tls`). Les clés omises
+  valent « toutes ».
+- **Sémantique de Pathz, telle qu'observée sur 26.7.2** (elle explique la forme de la politique) :
+  - `MODE_WRITE` **implique** la lecture ;
+  - une règle de **lecture** ajoutée ensuite sur le même chemin **annule** l'écriture : c'est pourquoi `admin` n'a qu'**une seule
+    règle en écriture, à la racine** (`/`), et aucune règle de lecture ;
+  - une clé omise vaut « toutes » (`/interface` couvre toutes les interfaces et tout ce qu'elles contiennent) ;
+  - `Pathz.Probe` **refuse les jokers** (il faut les clés des listes) : chaque règle porte donc un chemin de sonde concret
+    (`sonde`), et le rejeu d'une même version exige `force_overwrite`.
+- La politique **n'est pas dans la configuration** : elle n'existe que dans l'état de l'équipement, poussée par gNSI, donc à
+  **rejouer après chaque déploiement** (`accounts_lab.sh`, comme `pin_hostkeys.sh`).
+
+**L'outil `lab-access/pathz_lab.py` : lab seulement, pas pour la production.** Le client gNSI essayé (`gnsic` v0.0.4, téléchargé,
+vérifié par SHA-256 puis retiré) n'a que `authz` et `certz`, pas `pathz` : le script forge lui-même l'appel gRPC `Pathz.Rotate`
+(schéma lu sur l'équipement par réflexion gRPC, bibliothèque standard, `curl --http2`). **En production, une politique Pathz se
+pousse avec l'outillage gNSI officiel de l'équipementier, pas avec ce script.** Garde-fous :
+- **Épinglé sur SR Linux 26.7.2** : il lit la version de l'équipement (gNMI) et refuse un autre (code 3) sauf `--allow-other-version`.
+- **TLS** : vérification stricte par défaut. Le certificat de lab est auto-signé : `--insecure` doit être demandé **et** accompagné de
+  `--lab-inventory` désignant un inventaire qui déclare `lab: true` (même règle que `--host-keys accept-new`), sinon refus (code 3) ;
+  chaque usage est **annoncé** sur la sortie d'erreur. `--cacert` pour une autorité de confiance. Les sondes de `tests/tools/ro_probe.py`
+  obéissent à la même garde (leurs clés d'hôte SSH acceptées sans contrôle aussi).
+- **Identifiants** : jamais dans la ligne de commande (visible dans `ps`) : fichier 0600 exigé (`--password-file`), transmis à `curl` par un
+  fichier de configuration 0600 supprimé après l'appel ; aucune option `--password` (les abréviations d'options sont désactivées).
+- **Jamais de succès silencieux** : après l'envoi, le script relit l'équipement (version de politique active, puis une sonde Pathz par
+  règle et par « attendu » du fichier JSON). Un écart affiche chaque ligne fautive, `NON EFFECTIVE`, code 1 ; `accounts_lab.sh status`
+  rejoue cette vérification sans rien envoyer.
+- **Cloisonné** : `netcheck/` n'importe rien de `lab-access/` ni de `tests/tools/` et n'a aucune dépendance gRPC/protobuf (tests
+  statiques).
+
+**Preuves négatives** (scripts de lab, jamais netcheck ; `tests/lib_ro.sh`, `tests/tools/ro_probe.py`) : configuration refusée,
+écriture refusée, et **le routeur inchangé** (configuration courante identique avant/après, empreinte de la configuration de
+démarrage identique : jamais de `write`). La famille « écriture » est représentée par `copy running-config file:/tmp/…`. FRR :
+`configure terminal`, un `-c` en plus, `doas sh`, `doas -u root`, `doas -s`, `VTYSH_PAGER`, écritures dans `/etc/frr`, mot de passe,
+transfert de port, `sshd -T`. EOS : 18 commandes refusées (configuration, `copy`, `delete`, `bash`, `python-shell`, `show version`,
+`sanitized`, filtres et redirections) et 12 permises. SR Linux : mêmes données qu'`admin` pour les huit commandes, neuf refus,
+gNMI Get/Set et JSON-RPC refusés (mot de passe **temporaire**, retiré, pour que le refus vienne du rôle), témoin (avec les services
+déclarés ils répondent), gNMI Set refusé par Pathz même avec le service, et `admin` toujours capable d'écrire.
+
+**Écarts de configuration** (tout le reste de `configs*/` est inchangé) :
+
+| Fichier | Écart | Pourquoi |
+|---|---|---|
+| `configs-ceos/r4/startup-config` | `aaa authorization exec default local`, `aaa authorization commands all default local`, bloc `role netcheck-ro` | les deux lignes rendent le rôle effectif ; le rôle est versionné |
+| `configs-multivendor/r5/config.cli` | trois lignes `set / system aaa authorization role netcheck-ro …` | le rôle est versionné. **Aucun commentaire dans ce fichier** : le chargeur de containerlab l'envoie d'un bloc et un commentaire contenant des guillemets fait avorter la suite SANS message (le déploiement réussit, le rôle n'existe pas). Un test statique interdit tout commentaire, et `test_lab_multivendor.sh` compare les trois lignes à la configuration courante de r5 après chaque déploiement |
+| `configs/` | aucun | les comptes FRR sont des comptes Unix, dans l'image |
+
+L'utilisateur et la clé publique ne sont **pas** dans les configurations (clé propre à la machine, aucun secret dans le dépôt) :
+`accounts_lab.sh` les pose dans la configuration courante, jamais avec `write` ni `save`. `netcheck/drivers/eos.py` connaît le
+mot-clé `role` (sinon `check --config-dir` le signalerait).
+
 ### Codes retour
 
 | Commande | 0 | 1 | 2 | 3 | 70 |
@@ -1058,7 +1189,7 @@ porte une VRF de démonstration. Les configurations existantes (FRR, EOS, SR Lin
 **Contrôles** : `test_lab.sh` passe de 28 à **47** contrôles, `test_lab_multivendor.sh` de 15 à **28**,
 `test_lab_ceos.sh` de 26 à **44** (OSPFv3 Full, authentification RFC 7166, BGP IPv6, `ping6`, chemin IPv6, VRF,
 durcissement IPv6 des deux côtés, coupure de l'IPv6 seul sur le lab FRR). Les scripts d'intégration de netcheck
-(80, 27 et 38 contrôles en B1 ; 117, 47 et 72 en B4 ; 128, 59 et 83 depuis la phase C1, qui ajoute le scénario H1 des clés d'hôte ; **179, 97 et 121 depuis la phase C4**, qui ajoute le bastion et la barrière « lab prêt » ; `test_lab*.sh` : 48, 29 et 45) sont verts, rejoués à froid. `automation/health.py` lit OSPFv3 et BGP IPv6 quand l'inventaire
+(80, 27 et 38 contrôles en B1 ; 117, 47 et 72 en B4 ; 128, 59 et 83 depuis la phase C1, qui ajoute le scénario H1 des clés d'hôte ; 179, 97 et 121 avec le bastion et la barrière « lab prêt » ; **210, 134 et 164 depuis la phase C5**, qui ajoute les comptes en lecture seule ; `test_lab*.sh` : 50, 32 et 47) sont verts, rejoués à froid. `automation/health.py` lit OSPFv3 et BGP IPv6 quand l'inventaire
 déclare `ospf6_neighbors` et `bgp6_peers`.
 
 **Barrière « lab prêt » et diagnostic automatique** (`tests/lib_lab.sh`). Avant le premier scénario, chaque script attend que r1 à r5 et le bastion répondent (port 22 joignable **et** bannière SSH reçue, 240 s au plus). Un échec s'annonce « lab non prêt : rX » et sort en **code 20**, distinct d'un échec de netcheck (code 1). Quand un script échoue, le lab encore en place est capturé avant toute destruction dans `reports/diagnostics/<script>-echec-<date>.txt` (droits 0600, ignoré par git) : état, code de sortie, OOM, santé, journal, processus et ports à l'écoute de chaque conteneur, droits et taille des clés d'hôte (jamais leur contenu), `docker stats`, mémoire et charge de l'hôte. Aucun secret n'y figure.

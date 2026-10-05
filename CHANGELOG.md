@@ -174,8 +174,49 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
 - **Tests du contournement paramiko 5.0.0** : une clé chiffrée de chaque type (RSA, ECDSA, Ed25519) se charge avec la
   bonne classe ; un test statique interdit `PKey.from_path`.
 
+- **Phase C5, comptes en lecture seule `netcheck-ro` (FRR, EOS, SR Linux).** netcheck ne lisait que par sa liste blanche,
+  mais son compte pouvait écrire ; chaque constructeur a maintenant un compte qui ne PEUT techniquement que lire,
+  authentifié par clé seulement (aucun mot de passe nulle part), provisionné par `lab-access/accounts_lab.sh`
+  (à rejouer après chaque déploiement, intégré à `test_lab*.sh` et aux `integration*.sh`). **FRR** : `vtysh` n'a pas de
+  RBAC (qui atteint ses sockets a tout) ; le compte est hors `frrvty` et `doas -u frr` (`docker/doas.conf`, arguments exacts,
+  `as frr`, sans `keepenv`) lui donne dix commandes et rien d'autre ; `VTYSH_PAGER` prouvé inerte avec témoin positif. **EOS** :
+  rôle dédié versionné, mais **sans `aaa authorization exec` ET `commands` un rôle est inerte** (`bash` passait) ; EOS évalue la
+  commande sans `| json` ; `network-operator` n'est pas en lecture seule (`copy running-config file:` passe) ;
+  `show running-config sanitized` refusé (verdicts identiques, mais `diff`/`guard`/`monitor` perdraient la détection d'un
+  changement de clé seule). **SR Linux** : un non-superutilisateur ne voit aucune donnée sans politique gNSI Pathz
+  (`lab-access/pathz/netcheck-ro.json`, poussée par `lab-access/pathz_lab.py` qui forge l'appel gRPC : `gnsic` v0.0.4, essayé,
+  n'a pas de commande `pathz` et a été retiré) ; un superutilisateur contourne les listes de commandes (prouvé) ; `allow` seule
+  est stricte, `allow` + `deny` étroit est permissive, `deny [ ".*" ]` + `allow` est stricte ; gNMI et JSON-RPC refusés (refus
+  observés, avec témoin). Preuves négatives sur les trois constructeurs (`tests/lib_ro.sh`, `tests/tools/ro_probe.py`) : configuration
+  refusée, écriture refusée, routeur inchangé (diff à zéro, empreinte de démarrage identique), collecte avec le compte puis `diff`
+  à zéro contre `admin`. 66 mutations des politiques et des outils, toutes détectées. Compromis et limites dans le README
+  (shell non privilégié restant sur FRR, secrets type 7 lisibles sur EOS, clés de keychain lisibles sur SR Linux).
+- **Driver FRR : liste blanche EXACTE de dix chaînes (`ALLOWED_CLI`, comme EOS) et option d'inventaire
+  `privilege_wrapper: doas`** (valeur unique, refusée hors driver FRR) : la commande part en clair
+  (`vtysh -c '…'`) ou par `doas -u frr /usr/bin/vtysh [-u] -c '…'`. Test statique (une seule fabrique de commande, aucune chaîne
+  écrite à la main), `docker/doas.conf` gardé identique à la liste, 21 mutations, toutes détectées.
+
+- **Phase C5, outil Pathz conservé sous conditions** (`lab-access/pathz_lab.py`, `lab-access/labtls.py`) : TLS strict par défaut,
+  `--insecure` seulement avec `--lab-inventory` (`lab: true`) et annoncé ; aucun secret en argument (argv inspecté sur chaque appel,
+  abréviations d'options désactivées) ; épinglé sur SR Linux 26.7.2 (version lue sur l'équipement) ; **vérification après envoi**
+  (version active relue + une sonde par règle et par attendu, code 1 et `NON EFFECTIVE` au moindre écart, jamais de succès
+  silencieux) ; `netcheck/` cloisonné (tests statiques). La vérification a trouvé deux erreurs du script au premier essai réel
+  (encodage gNMI obligatoire, sondes sans joker). `tests/tools/ro_probe.py` obéit à la même garde. Sémantique Pathz observée et
+  « pas pour la production » documentées dans le README.
+- **Contrôle du rôle SR Linux après déploiement** : `tests/tools/srl_role_check.py` compare les lignes `role netcheck-ro` de
+  `config.cli` à la configuration courante de r5 (un commentaire dans `config.cli` les faisait avorter en silence) ; test statique
+  « aucun commentaire dans `configs-multivendor/*/config.cli` ».
 ### Modifié
 
+- **Phase C5 : l'image `frr-ssh` embarque `doas` et le compte `netcheck-ro`.** Surface ajoutée : un binaire setuid (`doas` 6.8.2,
+  paquet Alpine `main`), un bloc `Match User` de `sshd`, un compte sans mot de passe (`*`, pas `!` : `sshd` refuse un compte
+  verrouillé). Aucune clé dans l'image. **Écarts de `configs*/`** : `configs-ceos/r4/startup-config` (deux lignes `aaa authorization`
+  et le bloc `role netcheck-ro`), `configs-multivendor/r5/config.cli` (trois lignes de rôle, sans commentaire : le chargeur de
+  containerlab envoie le fichier d'un bloc et un commentaire contenant des guillemets fait avorter la suite) ; `configs/` inchangé.
+  Le gel des verdicts est inchangé (0 écart, `golden.py compare`). `EosDriver.ROOT_KEYWORDS` connaît `role`. Les tests qui lisent
+  la vraie `config.cli` suivent (`test_confparse.py` : 44 → 47 lignes, trois lignes de rôle absentes du relevé en direct car le
+  driver ne collecte pas `system aaa`). Contrôle du scénario B2 précisé (le dossier `sshd_config.d` n'est plus vide : on vérifie le
+  seul fichier du scénario). Intégration à froid : 210, 134 et 164 contrôles (50, 32 et 47 pour `test_lab*.sh`).
 - **Phase C4 : une clé SSH configurée écarte Vault entièrement** (décision de la revue). Vault n'est jamais contacté
   pour un équipement qui a une clé, ni pour le mot de passe ni pour l'utilisateur, qui vient des variables, des
   fichiers ou de l'inventaire. Un utilisateur introuvable est une erreur d'usage (code 3) : « utilisateur
