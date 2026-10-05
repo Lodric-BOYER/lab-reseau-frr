@@ -461,6 +461,8 @@ FRR n'écrase pas le `NETCHECK_SRLINUX_PASS_FILE` de r5 (la garantie de la v0.3 
 variable ou tout fichier posé pour netcheck, et avant `LAB_*` et l'inventaire : si les niveaux 1 à 4 fournissent
 l'identifiant, Vault n'est **même pas contacté**. L'ordre est testé (`tests/test_vault.py`).
 
+**Exception : une clé SSH configurée pour un équipement écarte le niveau 5 entièrement.** Vault n'est alors **jamais contacté** pour cet équipement, ni pour le mot de passe (il n'y en a pas : la clé est le seul mode d'authentification), ni pour l'utilisateur, qui vient des niveaux 1 à 4, 6 ou 7. Un utilisateur introuvable est une erreur d'usage (code 3) : « utilisateur introuvable pour r1 : clé configurée, Vault non consulté ». La source l'indique : « Vault non consulté : clé configurée (r1) ». Testé avec un serveur Vault factice : zéro requête reçue (`tests/test_vault.py`).
+
 - **Fichier de secret** : texte brut, **une seule ligne** (la fin de ligne finale est retirée, rien d'autre). Refusé
   (code 3, avant toute connexion, sans jamais citer le contenu) s'il n'est pas un fichier régulier (un lien
   symbolique est refusé), s'il n'appartient pas à l'utilisateur courant, si ses droits ne sont pas **0600 ou 0400**,
@@ -614,9 +616,10 @@ autres sources.
 **Mot de passe fourni en plus de la clé.** Si une clé est configurée et qu'un mot de passe est aussi fourni quelque
 part (variable, variable de fichier, `LAB_PASS`, Vault configuré, valeur d'inventaire), la source le dit :
 **« mot de passe ignoré : clé configurée (r1, r2) »**. Ce mot de passe n'est ni lu (un fichier de mot de passe
-introuvable ne fait pas échouer : seule la présence de la variable est constatée), ni demandé à Vault : Vault n'est
-jamais interrogé pour le mot de passe quand une clé est configurée (il peut encore l'être pour l'**utilisateur**,
-selon l'ordre de priorité, sauf si `NETCHECK_USER` est posé). Sans mot de passe nulle part, la ligne n'apparaît pas.
+introuvable ne fait pas échouer : seule la présence de la variable est constatée). **Vault n'est jamais contacté**
+quand une clé est configurée, ni pour le mot de passe ni pour l'utilisateur (voir le tableau de priorité) ; s'il est
+configuré, la source dit « Vault non consulté : clé configurée ». Sans mot de passe nulle part, la ligne « mot de
+passe ignoré » n'apparaît pas.
 
 **Version de paramiko.** En paramiko **5.0.0**, `PKey.from_path` passe la phrase secrète en `str` à `cryptography`,
 qui exige des octets (`TypeError`), et son argument a changé de nom d'une version à l'autre : netcheck ne l'utilise
@@ -708,6 +711,8 @@ un statut (0 à 2), ni un code de `guard` (4 à 6) ou de verrou (4). **Changemen
 erreur interne (« monitor n'a pas pu conclure ») sortait en 3 jusqu'à la phase C ; elle sort en 70 (voir le CHANGELOG,
 « Modifié »). Un planificateur qui testait `== 3` doit distinguer le refus d'usage (3, que l'opérateur corrige) du
 défaut interne (70, à signaler).
+
+**Le code 20 « lab non prêt » n'est pas un code de netcheck** : il appartient aux scripts de test du lab (`test_lab*.sh`, `tests/integration*.sh`, via `tests/lib_lab.sh`) et dit que l'environnement n'est pas là (port 22 ou bannière SSH absents sur un nœud) avant tout appel à netcheck. **netcheck ne sort que 0 à 6 et 70** (0 à 3 pour les commandes d'analyse, 4 à 6 pour `guard`, 4 pour le verrou de `monitor`, 70 pour un défaut interne).
 
 **Une option invalide ou un argument manquant sort en code 3 pour toutes les commandes** (jamais le 2 d'argparse :
 ici, 2 veut dire ÉCHEC, et un pipeline ou `monitor.sh` prendrait une faute de frappe pour une panne).

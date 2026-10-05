@@ -176,10 +176,20 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
 
 ### Modifié
 
+- **Phase C4 : une clé SSH configurée écarte Vault entièrement** (décision de la revue). Vault n'est jamais contacté
+  pour un équipement qui a une clé, ni pour le mot de passe ni pour l'utilisateur, qui vient des variables, des
+  fichiers ou de l'inventaire. Un utilisateur introuvable est une erreur d'usage (code 3) : « utilisateur
+  introuvable pour r1 : clé configurée, Vault non consulté ». La source affiche « Vault non consulté : clé
+  configurée ». Avant ce changement, Vault pouvait encore être interrogé pour l'utilisateur. Testé avec un serveur
+  Vault factice (zéro requête reçue) ; 10 mutations, toutes détectées.
 - **Image `frr-ssh` : sshd est lancé par le point d'entrée, après les clés, et son échec arrête le conteneur.**
   Avant, `docker/entrypoint-sshkeys.sh` ne faisait que générer les clés et containerlab lançait sshd par `exec:` sans
   qu'on regarde son code retour : un conteneur pouvait vivre sans sshd (« Connection refused » sans aucun journal,
-  constaté une fois sur r2 du lab mixte, cause non établie). Maintenant : `ssh-keygen -A` puis vérification de la clé
+  constaté une fois sur r2 du lab mixte pendant 16 minutes). **Hypothèse, NON prouvée** : sshd lancé par un `exec:`
+  non vérifié, et sur r2 précédé de sept commandes (sysctl, VRF `DEMO`, interface `dummy`) que les autres nœuds n'ont
+  pas, est l'explication la plus plausible. Elle n'a pas été reproduite (5 rejeux à froid du lab mixte, dont 3 après
+  le correctif) et le lab avait été détruit avant toute inspection : le diagnostic automatique (voir plus bas)
+  capturera l'état la prochaine fois. Maintenant : `ssh-keygen -A` puis vérification de la clé
   ed25519, puis `sshd`, puis FRR ; chaque échec sort en code 1 avec un message dans `docker logs`. `HEALTHCHECK` sur le
   port 22 (`unhealthy` dans `docker ps` si sshd meurt plus tard). Les trois `.clab.yml` ne lancent plus sshd par `exec:`.
 - **Phase C4 : les trois labs ont un conteneur de plus, le bastion** (8 conteneurs au lieu de 7 : 5 routeurs, 2 PC, le
