@@ -647,3 +647,84 @@ def test_the_readme_table_lists_the_priority_order_in_the_implemented_order():
         assert marker in row, (marker, row)
     order = [(provider, var) for provider, var in credentials._candidates("USER", "frr")]
     assert [p for p, _ in order] == ["env", "file", "env", "file", "vault", "env"]  # 5e niveau : Vault
+
+
+# --- Une clé SSH configurée écarte Vault ENTIÈREMENT : ni mot de passe, ni utilisateur (revue de C4) --
+
+
+def _key_cli(monkeypatch, venv, tmp_path, user="inv-user"):
+    """Environnement Vault complet + une clé configurée ; collecteur factice qui note ce qu'il reçoit."""
+    from sshd_fake import make_key
+
+    for name, value in venv.items():
+        monkeypatch.setenv(name, value)
+    key = tmp_path / "id_netcheck"
+    make_key(key)
+    monkeypatch.setenv("NETCHECK_KEY_FILE", str(key))
+    monkeypatch.setattr(snapshot, "SNAPSHOTS_DIR", tmp_path / "snaps")
+    monkeypatch.setattr(inventory, "REPO_ROOT", tmp_path)
+    received = []
+
+    def collect(routers, *_a, **_k):
+        received.extend((r["username"], r["key_file"], "password" in r) for r in routers.values())
+        state = DeviceState(
+            name="r1", host="192.0.2.1", timestamp="2026-01-01T00:00:00+00:00", reachable=True
+        )
+        return {"r1": (True, state)}
+
+    monkeypatch.setattr(collector, "collect_all", collect)
+    inv = tmp_path / "inv_key.yml"
+    username = f"username: {user}, " if user else ""
+    inv.write_text(
+        "lab: true\n"
+        f"defaults: {{device_type: linux, {username}password: {INVENTORY_PASSWORD}}}\n"
+        "routers:\n  r1: {host: 192.0.2.1}\n",
+        encoding="utf-8",
+    )
+    return str(inv), str(key), received
+
+
+def test_a_configured_key_means_vault_receives_zero_requests(venv, fake, monkeypatch, tmp_path, capsys):
+    inv, key, received = _key_cli(monkeypatch, venv, tmp_path)
+    assert cli.main(["snapshot", "s", "-i", inv]) == 0
+    out = capsys.readouterr().out
+    assert fake.requests == []  # le serveur factice n'a reçu AUCUNE requête, pas même l'ouverture de session
+    # l'utilisateur vient de l'inventaire, pas du secret Vault (`username: vault-user`), sans mot de passe
+    assert received == [("inv-user", key, False)]
+    assert "utilisateur : inventaire (r1)" in out
+    assert "Vault non consulté : clé configurée (r1)" in out
+    assert "Vault (secret/netcheck/lab)" not in out
+    assert VAULT_PASSWORD not in out
+
+
+def test_a_user_variable_is_used_and_vault_still_receives_nothing(venv, fake, monkeypatch, tmp_path, capsys):
+    inv, key, received = _key_cli(monkeypatch, venv, tmp_path)
+    monkeypatch.setenv("NETCHECK_USER", "from-variable")
+    assert cli.main(["snapshot", "s", "-i", inv]) == 0
+    assert fake.requests == [] and received == [("from-variable", key, False)]
+    assert "utilisateur : variable NETCHECK_USER (r1)" in capsys.readouterr().out
+
+
+def test_a_missing_user_with_a_key_is_a_clear_usage_error_and_vault_is_not_consulted(
+    venv, fake, monkeypatch, tmp_path, capsys
+):
+    inv, _key, received = _key_cli(monkeypatch, venv, tmp_path, user=None)
+    assert cli.main(["snapshot", "s", "-i", inv]) == 3
+    err = capsys.readouterr().err
+    lines = [ln for ln in err.splitlines() if ln.strip()]
+    assert len(lines) == 1 and "Traceback" not in err
+    assert "utilisateur introuvable pour r1 : clé configurée, Vault non consulté" in lines[0]
+    assert fake.requests == [] and received == []  # ni requête Vault, ni collecte, ni repli
+
+
+def test_without_a_key_vault_is_still_consulted_for_the_user(venv, fake):
+    router = {
+        "name": "r1",
+        "host": "192.0.2.1",
+        "driver": "frr",
+        "device_type": "linux",
+        "password": "x" * 12,
+    }
+    resolved = credentials.resolve_device(router, environ=venv)
+    assert resolved["username"] == "vault-user"  # le témoin : sans clé, rien n'a changé
+    assert fake.requests == [LOGIN, READ]

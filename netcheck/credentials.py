@@ -109,12 +109,15 @@ def _candidates(kind: str, driver: str) -> list[tuple[str, str]]:
 
 
 def resolve(kind: str, driver: str, fallback: str | None, device: str = "?",
-            environ: dict | None = None) -> tuple[str, Source]:
-    """La valeur (str) et la source d'un identifiant. `fallback` = valeur de l'inventaire (peut manquer)."""
+            environ: dict | None = None, vault_allowed: bool = True) -> tuple[str, Source]:
+    """La valeur (str) et la source d'un identifiant. `fallback` = valeur de l'inventaire (peut manquer).
+    `vault_allowed=False` (une clé SSH est configurée) : Vault n'est jamais contacté, même configuré."""
     env = os.environ if environ is None else environ
     tried = []
     for provider, var in _candidates(kind, driver):
         if provider == "vault":
+            if not vault_allowed:
+                continue
             from netcheck import vault  # import tardif : vault importe ce module
             found = vault.lookup(kind, driver, env)   # None si Vault est désactivé ou n'a pas cette clé
             if found is not None:
@@ -132,40 +135,43 @@ def resolve(kind: str, driver: str, fallback: str | None, device: str = "?",
     if fallback:
         return fallback, Source("inventaire", "")
     label = "mot de passe" if kind == "PASS" else "utilisateur"
+    if not vault_allowed:
+        raise CredentialError(f"{label} introuvable pour {device} : clé configurée, Vault non consulté "
+                              f"(ni variable ni fichier ({', '.join(tried)}), ni valeur dans l'inventaire)")
     raise CredentialError(f"aucun {label} pour {device} : ni variable ni fichier ({', '.join(tried)}), "
                           "ni valeur dans l'inventaire")
 
 
 def _password_configured(driver: str, router: dict, env: dict) -> bool:
     """Un mot de passe est-il fourni quelque part ? Réponse par la seule PRÉSENCE des réglages : variable
-    posée, variable de fichier posée (le fichier n'est pas lu), Vault configuré (jamais contacté, voir
-    `NETCHECK_VAULT_ADDR`), valeur d'inventaire. Rien n'est résolu : quand une clé est configurée, le mot de
-    passe n'est ni lu, ni demandé à Vault ; on dit seulement qu'il est ignoré."""
-    from netcheck import vault  # import tardif : vault importe ce module
-    for provider, var in _candidates("PASS", driver):
-        if provider == "vault":
-            if env.get(vault.ENV_ADDR):
-                return True
-        elif env.get(var):
-            return True
-    return bool(router.get("password"))
+    posée, variable de fichier posée (le fichier n'est pas lu), valeur d'inventaire. Rien n'est résolu : quand
+    une clé est configurée, le mot de passe n'est pas lu ; on dit seulement qu'il est ignoré. Vault n'entre
+    pas ici : il n'est pas consulté du tout (voir `resolve_device`), on ne sait rien de son contenu."""
+    # (le niveau Vault de `_candidates` a un nom de variable vide : il n'est jamais présent dans l'environnement)
+    return any(env.get(var) for _provider, var in _candidates("PASS", driver)) or bool(router.get("password"))
 
 
 def resolve_device(router: dict, environ: dict | None = None) -> dict:
     """Ajoute à un routeur de l'inventaire son identité résolue : `username` (str) et, soit `password`
     (SecretStr), soit (phase C4, une clé est configurée) `key_file` et `key_passphrase`. Le mot de passe n'est
     alors NI résolu NI présenté, jamais en repli. `credential_sources` donne la source de chacun, sans aucune
-    valeur (« username » et « password » ou « key »)."""
-    from netcheck import sshkeys  # import tardif : sshkeys importe ce module
+    valeur (« username » et « password » ou « key »).
+
+    Une clé configurée écarte Vault ENTIÈREMENT (décision de la revue de C4) : ni pour le mot de passe, ni
+    pour l'utilisateur, qui vient alors des variables, des fichiers ou de l'inventaire ; introuvable =
+    erreur d'usage."""
+    from netcheck import sshkeys, vault  # imports tardifs : ces modules importent celui-ci
     name, driver = router["name"], router.get("driver", "frr")
-    user, user_src = resolve("USER", driver, router.get("username"), name, environ)
     env = os.environ if environ is None else environ
     key = sshkeys.resolve_key(driver, router.get("key_file"), name, env)
+    user, user_src = resolve("USER", driver, router.get("username"), name, environ, vault_allowed=key is None)
     if key is not None:
         without_password = {k: v for k, v in router.items() if k != "password"}
         sources = {"username": user_src.label, "key": key.path}
         if _password_configured(driver, router, env):
             sources["password_ignored"] = PASSWORD_IGNORED
+        if env.get(vault.ENV_ADDR):
+            sources["vault_skipped"] = PASSWORD_IGNORED
         return {**without_password, "username": user, "key_file": key.path, "key_passphrase": key.passphrase,
                 "credential_sources": sources}
     password, pass_src = resolve("PASS", driver, router.get("password"), name, environ)
@@ -178,7 +184,7 @@ def describe_sources(routers: dict) -> dict[str, dict[str, list[str]]] | None:
     rapports ; None si aucun routeur n'a d'identité résolue (mode hors ligne). Jamais une valeur.
     « clé : /chemin (r1, r2) » ; « bastion : jump@hôte (clé /chemin) »."""
     out: dict[str, dict[str, list[str]]] = {
-        "utilisateur": {}, "mot de passe": {}, "clé": {}, "mot de passe ignoré": {}}
+        "utilisateur": {}, "mot de passe": {}, "clé": {}, "mot de passe ignoré": {}, "Vault non consulté": {}}
     seen = False
     short = []
     bastions: dict[str, list[str]] = {}
@@ -192,6 +198,8 @@ def describe_sources(routers: dict) -> dict[str, dict[str, list[str]]] | None:
             out["clé"].setdefault(sources["key"], []).append(name)
             if "password_ignored" in sources:
                 out["mot de passe ignoré"].setdefault(sources["password_ignored"], []).append(name)
+            if "vault_skipped" in sources:
+                out["Vault non consulté"].setdefault(sources["vault_skipped"], []).append(name)
         else:
             out["mot de passe"].setdefault(sources["password"], []).append(name)
         bastion = router.get("bastion")
@@ -202,8 +210,9 @@ def describe_sources(routers: dict) -> dict[str, dict[str, list[str]]] | None:
             short.append(name)
     if not out["clé"]:
         del out["clé"]              # pas de clé : la forme des rapports d'avant C4 est inchangée
-    if not out["mot de passe ignoré"]:
-        del out["mot de passe ignoré"]
+    for extra in ("mot de passe ignoré", "Vault non consulté"):
+        if not out[extra]:
+            del out[extra]
     if bastions:
         out["bastion"] = bastions
     if short:

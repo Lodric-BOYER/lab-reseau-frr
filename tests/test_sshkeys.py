@@ -437,7 +437,6 @@ def test_a_router_key_file_that_is_not_a_path_is_a_usage_error(value, tmp_path):
         ("fichier NETCHECK_PASS_FILE", {"NETCHECK_PASS_FILE": "/nonexistent/pass"}, {"password": None}),
         ("fichier du driver", {"NETCHECK_FRR_PASS_FILE": "/nonexistent/pass"}, {"password": None}),
         ("LAB_PASS", {"LAB_PASS": "lab-pass-xyz"}, {"password": None}),
-        ("Vault configuré", {"NETCHECK_VAULT_ADDR": "https://vault.invalid:8200"}, {"password": None}),
         ("inventaire", {}, {}),
     ],
 )
@@ -471,35 +470,26 @@ def test_the_ignored_line_never_appears_without_a_key():
     assert "mot de passe ignoré" not in described and "mot de passe" in described
 
 
-def test_vault_is_never_asked_for_the_password_when_a_key_is_configured(tmp_path, monkeypatch):
+def test_vault_configured_alone_is_not_a_password_it_is_reported_as_not_consulted(tmp_path, monkeypatch):
     from netcheck import vault
 
-    asked = []
-
-    def spy(kind, driver, env):
-        asked.append(kind)
-
-    monkeypatch.setattr(vault, "lookup", spy)
+    monkeypatch.setattr(vault, "lookup", lambda *a, **k: pytest.fail("Vault ne doit pas être interrogé"))
     path = _key(tmp_path)
-    env = {"NETCHECK_VAULT_ADDR": "https://vault.invalid:8200"}
-    # identifiant de l'inventaire : Vault peut encore être consulté pour l'utilisateur (ordre de C3), jamais
-    # pour le mot de passe
-    credentials.resolve_device(_router(key_file=str(path)), environ=env)
-    assert asked == ["USER"]
-    # sans clé, le mot de passe est bien demandé : la différence vient de la clé
-    asked.clear()
-    credentials.resolve_device(_router(), environ=env)
-    assert asked == ["USER", "PASS"]
+    router = {k: v for k, v in _router(key_file=str(path)).items() if k != "password"}
+    env = {"NETCHECK_USER": "netops", "NETCHECK_VAULT_ADDR": "https://vault.invalid:8200"}
+    resolved = credentials.resolve_device(router, environ=env)
+    described = credentials.describe_sources({"r1": resolved})
+    assert "mot de passe ignoré" not in described  # on ne sait rien de ce que Vault contiendrait
+    assert described["Vault non consulté"] == {"clé configurée": ["r1"]}
+    assert "Vault non consulté : clé configurée (r1)" in credentials.format_sources(described)
 
 
-def test_vault_is_not_contacted_at_all_when_a_key_and_a_user_are_given(tmp_path, monkeypatch):
-    from netcheck import vault
-
-    monkeypatch.setattr(vault, "lookup", lambda *a, **k: pytest.fail("Vault contacté"))
-    path = _key(tmp_path)
-    env = {"NETCHECK_VAULT_ADDR": "https://vault.invalid:8200", "NETCHECK_USER": "netops"}
-    resolved = credentials.resolve_device(_router(key_file=str(path)), environ=env)
-    assert resolved["credential_sources"]["password_ignored"] == "clé configurée"
+def test_no_vault_line_without_a_key_or_without_vault(tmp_path):
+    key = _key(tmp_path)
+    with_key = credentials.resolve_device(_router(key_file=str(key)), environ={})
+    assert "Vault non consulté" not in credentials.describe_sources({"r1": with_key})
+    # sans clé : Vault est interrogé comme avant (test_vault.py), donc pas de ligne « non consulté »
+    assert "vault_skipped" not in credentials.resolve_device(_router(), environ={})["credential_sources"]
 
 
 # --- Contournement du bug paramiko 5.0.0 : une clé chiffrée de CHAQUE type se charge ------------------
