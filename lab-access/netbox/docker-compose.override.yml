@@ -1,0 +1,37 @@
+# Surcharge de LAB de netbox-docker 5.1.1 (phase C6) : images épinglées PAR DIGEST, écoute en 127.0.0.1 seulement,
+# AUCUNE valeur par défaut publique de netbox-docker (SECRET_KEY, pepper de jetons, mots de passe PostgreSQL et
+# Valkey, superutilisateur). Les valeurs viennent du fichier .env (0600, HORS dépôt, dans le clone de
+# netbox-docker), généré aléatoirement par lab-access/netbox/netbox_lab.sh et jamais affiché.
+# Utilisé par netbox_lab.sh : docker compose -f <clone>/docker-compose.yml -f ce fichier --env-file <clone>/.env
+services:
+  netbox:
+    image: docker.io/netboxcommunity/netbox@sha256:3cf9d3bd77aa186233b84d0ea1cf1755581d5e5678fa7d86ec3be62f79d0c643  # v4.7-5.1.1
+    ports:
+      - "127.0.0.1:8000:8080"
+    environment: &netbox_env
+      SECRET_KEY: ${NB_SECRET_KEY:?}
+      API_TOKEN_PEPPER_1: ${NB_TOKEN_PEPPER:?}
+      DB_PASSWORD: ${NB_DB_PASSWORD:?}
+      REDIS_PASSWORD: ${NB_REDIS_PASSWORD:?}
+      REDIS_CACHE_PASSWORD: ${NB_REDIS_CACHE_PASSWORD:?}
+      SKIP_SUPERUSER: "false"
+      SUPERUSER_NAME: ${NB_SUPERUSER_NAME:?}
+      SUPERUSER_EMAIL: ${NB_SUPERUSER_EMAIL:?}
+      SUPERUSER_PASSWORD: ${NB_SUPERUSER_PASSWORD:?}
+      CORS_ORIGIN_ALLOW_ALL: "false"
+      RELEASE_CHECK_URL: ""   # pas de requête sortante vers GitHub
+  netbox-worker:
+    image: docker.io/netboxcommunity/netbox@sha256:3cf9d3bd77aa186233b84d0ea1cf1755581d5e5678fa7d86ec3be62f79d0c643  # v4.7-5.1.1
+    environment: *netbox_env
+  postgres:
+    image: docker.io/library/postgres@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873  # 18-alpine
+    environment:
+      POSTGRES_PASSWORD: ${NB_DB_PASSWORD:?}
+  redis:
+    image: docker.io/valkey/valkey@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11  # 9.1-alpine
+    environment:
+      REDIS_PASSWORD: ${NB_REDIS_PASSWORD:?}
+  redis-cache:
+    image: docker.io/valkey/valkey@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11  # 9.1-alpine
+    environment:
+      REDIS_PASSWORD: ${NB_REDIS_CACHE_PASSWORD:?}

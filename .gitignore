@@ -35,3 +35,6 @@ reports/
 lab-access/.keys/
 lab-access/**/.env
 lab-access/**/.env.*
+
+# pynetbox du chargement du lab NetBox (phase C6) : installé localement, jamais versionné
+lab-access/netbox/.pylib/
