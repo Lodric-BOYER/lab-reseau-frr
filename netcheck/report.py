@@ -25,7 +25,14 @@ from netcheck import __version__
 from netcheck.assertions import AssertionResult, Status
 from netcheck.credentials import format_sources
 from netcheck.diff import Finding, Severity
-from netcheck.ruletypes import CAUSE_NO_MODEL, CAUSE_NOT_IMPLEMENTED, ConfigWarning, NotApplicable, Violation
+from netcheck.ruletypes import (
+    CAUSE_NO_MODEL,
+    CAUSE_NOT_IMPLEMENTED,
+    ConfigWarning,
+    NotApplicable,
+    Violation,
+    coverage_gaps,
+)
 from netcheck.secrets import mask_secrets
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
@@ -139,12 +146,16 @@ def _summary_counts(
     }
 
 
-def _status(violations: list[Violation], compliant: bool, warnings: list[ConfigWarning]) -> str:
+def _status(
+    violations: list[Violation], compliant: bool, warnings: list[ConfigWarning],
+    not_applicable: list[NotApplicable] | tuple = (),
+) -> str:
     """Libellé du verdict (voir compliance.status_label) : NON CONFORME seulement s'il y a une
-    violation réelle ; une ligne non lue sans violation donne ANALYSE INCOMPLÈTE."""
+    violation réelle ; une ligne non lue ou une règle NON ÉVALUABLE sans violation donne
+    ANALYSE INCOMPLÈTE."""
     if violations:
         return "NON CONFORME"
-    if any(w.blocks_verdict for w in warnings):
+    if any(w.blocks_verdict for w in warnings) or coverage_gaps(not_applicable):
         return "ANALYSE INCOMPLÈTE"
     return "CONFORME" if compliant else "NON CONFORME"
 
@@ -421,7 +432,7 @@ def print_compliance_terminal(
         console.print(na_table)
 
     counts = _summary_counts(violations, not_applicable, warnings)
-    label = _status(violations, compliant, warnings)
+    label = _status(violations, compliant, warnings, not_applicable)
     parts = [f"{counts['violations']} non-conformité(s)"]
     if derogations and derogations["derogated"]:
         parts.append(f"{len(derogations['derogated'])} dérogation(s)")
@@ -456,7 +467,7 @@ def compliance_to_dict(
     data = {
         "compliant": compliant,
         # CONFORME | NON CONFORME (violation réelle) | ANALYSE INCOMPLÈTE (ligne non lue, aucune violation)
-        "status": _status(violations, compliant, warnings),
+        "status": _status(violations, compliant, warnings, not_applicable),
         "violations": [
             {
                 "severity": v.rule.severity, "rule_id": v.rule.id, "device": v.device, "detail": v.detail,
@@ -537,7 +548,7 @@ def render_compliance_html(
     categories = sorted({v.rule.category or "(sans catégorie)" for v in violations})
     return template.render(
         compliant=compliant,
-        status=_status(violations, compliant, warnings),
+        status=_status(violations, compliant, warnings, not_applicable),
         violations=sorted(violations, key=lambda v: -_COMPLIANCE_ORDER[v.rule.severity]),
         not_applicable=sorted(not_applicable, key=lambda n: (n.device, n.rule.id)),
         not_implemented=CAUSE_NOT_IMPLEMENTED,
@@ -693,6 +704,9 @@ def guard_final_message(state: str, code: int, details: dict) -> tuple[str, list
     elif state == "ATTENTION":
         title = "⚠️  CHANGEMENT TERMINÉ AVEC ATTENTION"
         lines.append("aucun retour arrière déclenché (seuil non atteint, ou pas de --rollback)")
+        if details.get("unverified"):
+            lines.append("convergence NON vérifiée (--accept-unverified) pour : "
+                         + ", ".join(details["unverified"]) + " : un succès complet n'est pas possible")
     elif state == "FAILED_NO_ROLLBACK":
         title = "❌ CHANGEMENT ÉCHOUÉ — AUCUN RETOUR ARRIÈRE LANCÉ"
         lines += reasons

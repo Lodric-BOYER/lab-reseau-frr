@@ -204,12 +204,17 @@ def run(argv, tmp_path, capsys, rules="default"):
     (["configs", "configs-ceos"], "inventory-ceos.yml"),
 ], ids=["frr", "mixte", "ceos"])
 @pytest.mark.parametrize("rules", ["default", "security"])
-def test_the_three_labs_are_compliant_offline_and_the_report_says_what_it_could_not_evaluate(
+def test_the_three_labs_offline_are_conform_or_incomplete_and_the_report_says_what_it_could_not_evaluate(
         dirs, inventory, rules, tmp_path, capsys):
     argv = [x for d in dirs for x in ("--config-dir", str(REPO / d))]
     argv += ["-i", str(REPO / "automation" / inventory)]
     code, data, html, out = run(argv, tmp_path, capsys, rules)
-    assert code == 0 and data["status"] == "CONFORME" and data["violations"] == []
+    # Phase C6 : des règles NON ÉVALUABLES hors ligne (état requis) ne sortent jamais en code 0 : l'audit des
+    # fichiers dit « ANALYSE INCOMPLÈTE » (code 1) ; sans règle de ce type (sécurité), toujours CONFORME / 0.
+    incomplete = rules == "default"
+    assert code == (1 if incomplete else 0) and data["violations"] == []
+    assert data["status"] == ("ANALYSE INCOMPLÈTE" if incomplete else "CONFORME")
+    assert data["compliant"] is (not incomplete)
     assert sorted(data["source"]["devices"]) == ["r1", "r2", "r3", "r4", "r5"]
     no_model = {n["rule_id"] for n in data["not_applicable"] if n["cause"] == "no_model"}
     state_rules = {"lan-en-ospf-passif", "interface-avec-description"}
@@ -221,7 +226,7 @@ def test_the_three_labs_are_compliant_offline_and_the_report_says_what_it_could_
     assert not any(w["blocks_verdict"] for w in data["config_analysis"])
     # Les trois sorties disent « hors ligne » ; celles qui ont des règles non évaluables le disent aussi.
     assert "Mode hors ligne" in out.out and "Mode hors ligne" in html
-    assert "source" in data and "ANALYSE INCOMPLÈTE" not in out.out
+    assert "source" in data and ("ANALYSE INCOMPLÈTE" in out.out) is incomplete
     if no_model:
         assert "ÉTAT REQUIS (hors ligne)" in out.out and "ÉTAT REQUIS (hors ligne)" in html
         assert "non évaluable(s) hors ligne" in out.out and "non évaluable(s) hors ligne" in html

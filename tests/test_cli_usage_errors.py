@@ -53,7 +53,7 @@ def _valid_inventory(extra: str = "") -> str:
         f'defaults: {{device_type: linux, username: u, password: "{PASSWORD}"}}\n'
         "management_interfaces: [eth0]\n"
         f"{extra}"
-        "routers:\n  r1: {host: 127.0.0.1}\n"
+        "routers:\n  r1: {host: 127.0.0.1, ospf_neighbors: 1}\n"  # un attendu : guard refuse sinon (phase C6)
     )
 
 

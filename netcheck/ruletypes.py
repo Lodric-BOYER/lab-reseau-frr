@@ -59,6 +59,10 @@ CAUSE_NOT_IMPLEMENTED = "not_implemented"  # le driver n'implémente pas le kind
 # Hors ligne (`check --config-dir`), seule la configuration existe : une règle qui lit le MODÈLE collecté
 # (interfaces...) ne peut pas être évaluée. Ce n'est ni un choix ni un trou du driver : un manque de données.
 CAUSE_NO_MODEL = "no_model"
+# Règle de la phase C6 (« jamais de code 0 avec des parties NON ÉVALUABLES ») : seules les deux causes qui
+# sont un MANQUE (trou de couverture d'un driver, état collecté absent hors ligne) rendent l'audit
+# incomplet. La cause « driver » est un choix de périmètre de la règle, pas un manque.
+GAP_CAUSES = (CAUSE_NOT_IMPLEMENTED, CAUSE_NO_MODEL)
 
 
 @dataclass
@@ -69,6 +73,11 @@ class NotApplicable:
     device: str
     reason: str
     cause: str = CAUSE_DRIVER
+
+
+def coverage_gaps(not_applicable) -> list[NotApplicable]:
+    """Les règles NON ÉVALUABLES (trou de couverture ou état manquant), pas celles qui sont hors périmètre."""
+    return [n for n in not_applicable if n.cause in GAP_CAUSES]
 
 
 @dataclass(frozen=True)

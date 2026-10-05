@@ -44,6 +44,7 @@ from netcheck.ruletypes import (
     NotApplicable,
     Rule,
     Violation,
+    coverage_gaps,
 )
 from netcheck.secrets import mask_secrets
 from netcheck.usage import load_yaml
@@ -387,19 +388,24 @@ STATUS_NON_COMPLIANT = "NON CONFORME"
 STATUS_INCOMPLETE = "ANALYSE INCOMPLÈTE"
 
 
-def status_label(violations: list[Violation], config_warnings: list[ConfigWarning] | tuple = ()) -> str:
+def status_label(
+    violations: list[Violation], config_warnings: list[ConfigWarning] | tuple = (),
+    not_applicable: list[NotApplicable] | tuple = (),
+) -> str:
     """Le libellé du verdict. NON CONFORME est réservé aux violations RÉELLES : une ligne de
     configuration non lue ne prouve aucune violation, elle dit seulement que l'audit n'a pas tout lu
-    (ANALYSE INCOMPLÈTE). Avec les deux, c'est la violation prouvée qui s'affiche."""
+    (ANALYSE INCOMPLÈTE). Avec les deux, c'est la violation prouvée qui s'affiche. Une règle NON ÉVALUABLE
+    (`coverage_gaps` : trou de couverture, état absent hors ligne) donne aussi ANALYSE INCOMPLÈTE."""
     if violations:
         return STATUS_NON_COMPLIANT
-    if any(w.blocks_verdict for w in config_warnings):
+    if any(w.blocks_verdict for w in config_warnings) or coverage_gaps(not_applicable):
         return STATUS_INCOMPLETE
     return STATUS_COMPLIANT
 
 
 def verdict(
     violations: list[Violation], config_warnings: list[ConfigWarning] | tuple = (),
+    not_applicable: list[NotApplicable] | tuple = (),
 ) -> tuple[bool, int]:
     """Codes retour (§5.4) : 0 conforme, 1 moyenne/basse seulement, 2 critique/haute.
 
@@ -408,8 +414,12 @@ def verdict(
     qu'il n'a pas entièrement lue (le libellé est alors ANALYSE INCOMPLÈTE, voir `status_label`, pas
     NON CONFORME).
     Le code est celui de la plus grave des deux situations. Une ligne lue mais ambiguë
-    (`kept=True`) n'a aucun effet sur le code."""
-    unread = any(w.blocks_verdict for w in config_warnings)
+    (`kept=True`) n'a aucun effet sur le code.
+
+    Phase C6 : une règle NON ÉVALUABLE (`not_applicable` de cause `not_implemented` ou `no_model`) donne
+    elle aussi au minimum le code 1 : un résultat qui contient des parties non évaluables ne sort jamais en
+    code 0. Sans `not_applicable` (appel historique, gel des verdicts), rien ne change."""
+    unread = any(w.blocks_verdict for w in config_warnings) or bool(coverage_gaps(not_applicable))
     if not violations:
         return (not unread), (1 if unread else 0)
     if any(v.rule.severity in ("critique", "haute") for v in violations):

@@ -317,8 +317,11 @@ class GuardResult:
 
 def run_guard(
     *, change: Path, rollback: Path | None, rollback_on: str, wait: float, script_timeout: float,
-    io: GuardIO, ui: UI, journal: Journal, names: SnapshotNames,
+    io: GuardIO, ui: UI, journal: Journal, names: SnapshotNames, unverified: tuple[str, ...] = (),
 ) -> GuardResult:
+    """`unverified` : équipements acceptés NOMINATIVEMENT sans attendus de convergence (phase C6). Ils
+    restent dans les snapshots et le diff, hors du calcul de convergence (affaire de
+    `io.wait_convergence`), et le verdict final n'est JAMAIS un succès : un OK devient ATTENTION (code 1)."""
     diff_after: DiffResult | None = None
     diff_back: DiffResult | None = None
     change_started = False
@@ -362,7 +365,13 @@ def run_guard(
             state, code = outcome(diff_after.code, change_res.failed, False, False)
             # Sans --rollback, un échec reste un échec : on liste ce qui le constitue.
             failure = rollback_reasons(diff_after.code, change_res, "echec")
-            return _finish(ui, journal, state, code, {"reasons": failure}, diff_after, diff_back)
+            details: dict[str, Any] = {"reasons": failure}
+            if unverified:
+                details["unverified"] = list(unverified)
+                if code == EXIT_OK:
+                    # jamais un succès avec des équipements non vérifiés
+                    state, code = "ATTENTION", EXIT_ATTENTION
+            return _finish(ui, journal, state, code, details, diff_after, diff_back)
 
         ui.info("\nRetour arrière déclenché : " + " ; ".join(reasons))
         journal.set(rollback_triggered=True, rollback_reasons=reasons)

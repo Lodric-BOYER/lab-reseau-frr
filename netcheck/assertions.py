@@ -198,9 +198,12 @@ def evaluate(
 
 
 def verdict(results: list[AssertionResult]) -> tuple[str, int]:
-    """Codes retour (§6) : 0 tout OK (NON ÉVALUABLE n'y change rien), 2 au moins un ÉCHEC."""
+    """Codes retour : 0 tout OK, 1 ATTENTION (aucun échec, mais au moins une assertion NON ÉVALUABLE :
+    jamais un OK silencieux, phase C6), 2 au moins un ÉCHEC."""
     if any(r.status == Status.ECHEC for r in results):
         return "ÉCHEC", 2
+    if any(r.status == Status.NON_EVALUABLE for r in results):
+        return "ATTENTION", 1
     return "OK", 0
 
 

@@ -99,10 +99,11 @@ def compare(
                     f"({a.why_missing(s).split(' : ', 1)[-1]})")
             for s in lost
         ]
-        # L'inverse (un snapshot d'avant la phase B2 contre un récent) est une information : ce qui est
-        # nouveau n'a pas de « avant » à comparer.
+        # L'inverse (un snapshot d'avant la phase B2 contre un récent) : ce qui est nouveau n'a pas de
+        # « avant » à comparer. Phase C6 : une partie non comparable ne sort jamais en code 0, ATTENTION
+        # comme une perte.
         if gained:
-            findings.append(Finding(Severity.INFO, "section", name,
+            findings.append(Finding(Severity.ATTENTION, "section", name,
                 "sections non comparées (relevées seulement après : snapshot d'avant la phase B2 ou driver "
                 f"différent) : {', '.join(gained)}"))
         in_scope = _scope_to_comparable(b, a, comparable)

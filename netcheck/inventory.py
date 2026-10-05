@@ -169,6 +169,19 @@ def _check_router(router: dict, path: Path) -> None:
             raise UsageError(f"Inventaire {path} : routeur {name} : `port` doit être un entier de 1 à 65535")
 
 
+# Les attendus de convergence que `guard --wait` lit (collector._converged). Un équipement qui n'en porte
+# aucun n'a rien à vérifier : sa convergence est NON ÉVALUABLE (phase C6).
+EXPECTATION_KEYS = ("ospf_neighbors", "ospf6_neighbors", "bgp_peers", "bgp6_peers")
+
+
+def without_expectations(routers: dict) -> list[str]:
+    """Les équipements du périmètre sans AUCUN attendu local, triés. Une clé présente compte, même à 0 : c'est
+    un attendu écrit, pas une absence."""
+    return sorted(
+        name for name, router in routers.items() if not any(key in router for key in EXPECTATION_KEYS)
+    )
+
+
 def check_collectable(inv: Inventory) -> None:
     """Avant une collecte en direct : un routeur sans `host` ni `device_type`, ou dont le driver est inconnu,
     est une erreur d'usage (code 3), pas un équipement « injoignable » (code 1 ou 2). Séparé de `load` : les

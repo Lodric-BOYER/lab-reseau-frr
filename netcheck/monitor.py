@@ -137,6 +137,7 @@ def assert_outcome(results: list[assertions.AssertionResult]) -> tuple[str, list
 def check_outcome(
     violations: list[compliance.Violation],
     config_warnings: list[compliance.ConfigWarning] | tuple = (),
+    not_applicable: list[compliance.NotApplicable] | tuple = (),
 ) -> tuple[str, list[Contribution]]:
     contributions = [
         Contribution(ECHEC if v.rule.severity in ("critique", "haute") else ATTENTION, v.rule.severity,
@@ -155,6 +156,15 @@ def check_outcome(
                      f"analyse incomplète : {n} ligne(s) de configuration non lue(s) ou incertaine(s) "
                      f"(détail dans le rapport local)")
         for device, n in sorted(unread.items())
+    ]
+    # Phase C6 : une règle NON ÉVALUABLE (trou de couverture, état absent) est une ATTENTION, jamais un OK.
+    gaps: dict[str, int] = {}
+    for n in compliance.coverage_gaps(not_applicable):
+        gaps[n.device] = gaps.get(n.device, 0) + 1
+    contributions += [
+        Contribution(ATTENTION, "NON ÉVALUABLE", "check", device, "regles-non-evaluables",
+                     f"{n} règle(s) non évaluable(s) (trou de couverture du driver ou état absent)")
+        for device, n in sorted(gaps.items())
     ]
     return worst(OK, *(c.status for c in contributions)), contributions
 
@@ -213,8 +223,8 @@ def evaluate(
         ev.derogations = report.derogation_data(audit)
         ev.coverage = report.coverage_data(audit)
         ev.config_warnings = audit.config_warnings
-        ev.compliant = compliance.verdict(ev.violations, ev.config_warnings)[0]
-        components["check"], extra = check_outcome(ev.violations, ev.config_warnings)
+        ev.compliant = compliance.verdict(ev.violations, ev.config_warnings, ev.not_applicable)[0]
+        components["check"], extra = check_outcome(ev.violations, ev.config_warnings, ev.not_applicable)
         contributions += extra
 
     ev.status = worst(OK, *(s for s in components.values() if s is not None))

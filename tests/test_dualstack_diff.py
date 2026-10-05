@@ -168,10 +168,12 @@ def test_a_section_collected_on_one_side_only_is_never_compared_as_no_change():
     before["r1"].collected = None                       # relevé d'avant la phase B2 : sections de la v0.3.0
     before["r1"].ospf6_neighbors, before["r1"].section_errors = [], {}
     fs = findings(before, after)
-    assert [(f.severity.name, f.category, f.device) for f in fs] == [("INFO", "section", "r1")]
+    # phase C6 : une section non comparable n'est plus une simple information
+    assert [(f.severity.name, f.category, f.device) for f in fs] == [("ATTENTION", "section", "r1")]
     assert "routes_v6, ospf_v3, bgp_v6, vrf" in fs[0].message
-    # Aucune route IPv6 « nouvelle », aucun voisin OSPFv3 « nouveau », aucune route de VRF « nouvelle ».
-    assert diff.verdict(fs) == ("OK", 0)
+    # Aucune route IPv6 « nouvelle », aucun voisin OSPFv3 « nouveau », aucune route de VRF « nouvelle » : le
+    # seul constat est la section non comparée, et il n'est plus un OK (phase C6).
+    assert diff.verdict(fs) == ("ATTENTION", 1)
 
 
 def test_a_section_seen_before_and_lost_after_is_attention_per_section_and_per_device():
@@ -232,7 +234,7 @@ def test_a_v030_snapshot_against_a_new_one_compares_ipv4_and_says_what_it_skippe
     fs = diff.compare(old, new, MGMT)
     sections = [f for f in fs if f.category == "section"]
     assert {f.device for f in sections} == {"r1", "r2", "r3", "r4", "r5"}
-    assert all(f.severity == Severity.INFO for f in sections)
+    assert all(f.severity == Severity.ATTENTION for f in sections)  # phase C6 : pas de code 0
     # Rien de ce qui est IPv6 ou VRF n'est dit « nouveau » : ce n'était pas comparable. (Le diff TEXTUEL des
     # configurations, lui, dit bien que les fichiers ont changé : la double pile y a ajouté des lignes.)
     mentions = [f for f in fs if f.category not in ("section", "config")

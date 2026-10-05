@@ -7,6 +7,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import os
+import re
 import sys
 import traceback
 from datetime import date, datetime
@@ -95,6 +96,51 @@ def _refuse_host_key_options_offline(args: argparse.Namespace, offline: bool, wh
     if offline and getattr(args, "netbox_cacert", None):
         raise usage.UsageError(f"--netbox-cacert n'a de sens qu'avec une collecte en direct (pas avec "
                                f"{why}) : hors ligne, NetBox n'est jamais contacté")
+
+
+_NAME_ARGUMENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
+_ACCEPT_ALL_WORDS = {"all", "tous", "tout", "*", "any"}
+
+
+def _accepted_unverified(raw: str | None, inv: inventory.Inventory) -> tuple[str, ...]:
+    """Phase C6 : `guard` refuse, AVANT d'exécuter quoi que ce soit, un périmètre dont des équipements n'ont
+    aucun attendu local (leur convergence est NON ÉVALUABLE). Seule sortie : `--accept-unverified r6,r7`, des
+    NOMS, jamais un joker ni « all » ; un nom inconnu, absent du périmètre ou qui a déjà des attendus est une
+    erreur."""
+    gaps = inventory.without_expectations(inv.routers)
+    accepted: tuple[str, ...] = ()
+    if raw is not None:
+        names = raw.split(",")
+        for name in names:
+            if name.lower() in _ACCEPT_ALL_WORDS or not _NAME_ARGUMENT.fullmatch(name):
+                raise usage.UsageError(
+                    "--accept-unverified : des noms d'équipements explicites séparés par des virgules "
+                    "(pas de joker, pas de « all », pas de nom vide) ; "
+                    f"« {name} » est refusé")
+        duplicated = sorted({n for n in names if names.count(n) > 1})
+        if duplicated:
+            raise usage.UsageError(f"--accept-unverified : nom(s) en double : {', '.join(duplicated)}")
+        unknown = [n for n in names if n not in inv.routers]
+        if unknown:
+            raise usage.UsageError(
+                "--accept-unverified : équipement(s) inconnu(s) ou absent(s) du périmètre de l'inventaire : "
+                f"{', '.join(unknown)}")
+        verified = [n for n in names if n not in gaps]
+        if verified:
+            raise usage.UsageError(
+                f"--accept-unverified : {', '.join(verified)} a(ont) déjà des attendus locaux : "
+                "seuls les équipements sans attendus s'acceptent")
+        accepted = tuple(names)
+    missing = [n for n in gaps if n not in accepted]
+    if missing:
+        raise usage.UsageError(
+            f"{len(missing)} équipement(s) du périmètre sans attendus locaux "
+            f"({', '.join(inventory.EXPECTATION_KEYS)}) : {', '.join(missing)}. "
+            "guard ne peut pas vérifier leur convergence après le changement et refuse donc de l'exécuter : "
+            "ajoutez leurs attendus à l'inventaire, ou "
+            f"acceptez-les NOMINATIVEMENT avec --accept-unverified {','.join(missing)} "
+            "(le verdict final ne sera alors jamais OK). Aucun script n'a été exécuté.")
+    return accepted
 
 
 def _announce_inventory(inv: inventory.Inventory) -> None:
@@ -270,7 +316,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     # Une ligne de configuration non lue (ou un fichier non audité) donne au minimum le code 1 : jamais
     # « conforme » sur une configuration que l'audit n'a pas entièrement lue.
     warnings = result.config_warnings + file_warnings
-    compliant, code = compliance.verdict(result.violations, warnings)
+    compliant, code = compliance.verdict(result.violations, warnings, result.not_applicable)
 
     report.print_compliance_terminal(result.violations, compliant, result.not_applicable,
                                      config_warnings=warnings, source=source, derogations=derogation_info,
@@ -325,7 +371,13 @@ def cmd_guard(args: argparse.Namespace) -> int:
     inv = inventory.load(path=args.inventory, netbox_cacert=getattr(args, "netbox_cacert", None))
     if not _setup_host_keys(args, inv):
         return guard.EXIT_USAGE
+    accepted = _accepted_unverified(args.accept_unverified, inv)   # refus AVANT tout script, tout snapshot
     credential_info = credentials.describe_sources(inv.routers)
+    if accepted:
+        print("Équipements acceptés SANS vérification de convergence (--accept-unverified) : "
+              f"{', '.join(accepted)}. Ils restent dans les snapshots et le diff, hors du calcul de "
+              "convergence ; le verdict final de guard ne sera jamais OK (code 1 au mieux).")
+    verified_routers = {n: r for n, r in inv.routers.items() if n not in accepted}
 
     # --- Les deux scripts sont affichés ENSEMBLE, une seule confirmation, rien d'exécuté avant.
     print("Scripts qui vont être exécutés (contenu affiché en clair : c'est votre fichier local) :")
@@ -370,7 +422,7 @@ def cmd_guard(args: argparse.Namespace) -> int:
     ui = guard.UI()
     io = guard.GuardIO(
         snapshot=lambda name: snapshot.save(name, collector.collect_all(inv.routers), force=True),
-        wait_convergence=lambda t: collector.wait_for_convergence(inv.routers, timeout=t),
+        wait_convergence=lambda t: collector.wait_for_convergence(verified_routers, timeout=t),
         diff=do_diff,
         run_script=lambda path, timeout: guard.run_script(path, timeout, echo=ui.script_output),
     )
@@ -380,7 +432,8 @@ def cmd_guard(args: argparse.Namespace) -> int:
             "change_script": guard.script_record(change_script),
             "rollback_script": guard.script_record(rollback_script) if rollback_script else None,
             "options": {"rollback_on": rollback_on, "script_timeout": args.script_timeout,
-                        "wait": args.wait, "expect": args.expect, "inventory": args.inventory},
+                        "wait": args.wait, "expect": args.expect, "inventory": args.inventory,
+                        "accept_unverified": list(accepted)},
             "snapshots": {"avant": names.before, "apres": names.after,
                           "retour": names.back if rollback_script else None},
             "credential_sources": credential_info,
@@ -392,6 +445,7 @@ def cmd_guard(args: argparse.Namespace) -> int:
         result = guard.run_guard(
             change=change_script, rollback=rollback_script, rollback_on=rollback_on,
             wait=args.wait, script_timeout=args.script_timeout, io=io, ui=ui, journal=journal, names=names,
+            unverified=accepted,
         )
 
     # Rapports --json/--html : le diff après changement (avec --expect), comme avant la phase D2.
@@ -667,6 +721,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_guard.add_argument(
         "--wait", type=int, default=30,
         help="délai maximum de convergence, en secondes (défaut : 30)",
+    )
+    p_guard.add_argument(
+        "--accept-unverified", metavar="NOMS", default=None,
+        help="équipements sans attendus locaux (ospf_neighbors, bgp_peers...) que guard ne peut pas "
+             "vérifier : NOMS EXPLICITES séparés par des virgules (jamais de joker ni « all »). Sans cette "
+             "option, guard refuse d'exécuter le changement (code 3) ; avec elle, ces équipements sont hors "
+             "du calcul de convergence et le verdict final n'est jamais OK",
     )
     p_guard.add_argument(
         "--yes", action="store_true",

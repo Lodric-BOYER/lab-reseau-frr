@@ -431,7 +431,7 @@ def _result(status: Status) -> assertions.AssertionResult:
 @pytest.mark.parametrize("statuses,expected", [
     ([], ("OK", 0)),
     ([Status.OK], ("OK", 0)),
-    ([Status.OK, Status.NON_EVALUABLE], ("OK", 0)),   # NON EVALUABLE seul ne change pas le code
+    ([Status.OK, Status.NON_EVALUABLE], ("ATTENTION", 1)),   # phase C6 : jamais OK, partie non évaluable
     ([Status.ECHEC], ("ÉCHEC", 2)),
     ([Status.OK, Status.ECHEC, Status.NON_EVALUABLE], ("ÉCHEC", 2)),
 ])
