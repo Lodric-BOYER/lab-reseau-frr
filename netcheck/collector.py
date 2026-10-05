@@ -164,7 +164,7 @@ def collect(router: dict, driver: Driver | None = None) -> DeviceState:
     contournée par un futur appelant qui construirait sa propre liste de commandes sans
     repasser par ce premier contrôle.
     """
-    driver = driver or _resolve_driver(router)
+    driver = (driver or _resolve_driver(router)).for_router(router)
     _ensure_allowed(driver.REQUIRED_COMMANDS)
     # Phase F : second contrôle, sur la commande CLI RÉELLE que le driver fabrique (la liste
     # blanche logique ci-dessus ne voit pas le résultat de translate()). Un driver qui déclare

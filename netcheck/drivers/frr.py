@@ -33,6 +33,25 @@ _TRANSLATION = {
 }
 
 
+# Phase C5 : compte en lecture seule. `privilege_wrapper: doas` (option d'inventaire) fait lancer chaque
+# commande par `doas -u frr /usr/bin/vtysh` : le compte n'est pas dans le groupe `frrvty`, c'est `doas`
+# (règles à arguments EXACTS, /etc/doas.conf) qui lui donne, une commande à la fois, l'identité `frr`.
+# `-u` (vue native de vtysh) en seconde couche pour toutes les commandes qui l'acceptent : `show
+# running-config` n'existe pas en vue.
+WRAPPER_DOAS = "doas"
+_DOAS = "doas -u frr /usr/bin/vtysh"
+_NO_VIEW_MODE = frozenset({"show running-config"})
+
+
+def _cli(command: str, wrapper: str | None) -> str:
+    """La commande CLI RÉELLE d'une commande logique : la seule fonction qui fabrique ce qui part vers FRR."""
+    text = shlex.quote(_TRANSLATION.get(command, command))
+    if wrapper is None:
+        return f"vtysh -c {text}"
+    view = "" if _TRANSLATION.get(command, command) in _NO_VIEW_MODE else " -u"
+    return f"{_DOAS}{view} -c {text}"
+
+
 class FrrDriver(Driver):
     REQUIRED_COMMANDS = [
         "show interface json",
@@ -46,6 +65,22 @@ class FrrDriver(Driver):
         "show bgp ipv6 unicast json",
         "show running-config",
     ]
+
+    # Phase C5 : liste blanche EXACTE des dix commandes CLI réelles (même modèle qu'EOS). Un pipe, un `;`,
+    # un second `-c`, un espace de trop ou une autre commande est refusé AVANT la connexion et avant chaque
+    # envoi.
+    ALLOWED_CLI = frozenset(_cli(c, None) for c in REQUIRED_COMMANDS)
+
+    def __init__(self, wrapper: str | None = None):
+        if wrapper not in (None, WRAPPER_DOAS):
+            raise ValueError(f"privilege_wrapper inconnu : {wrapper!r} (seule valeur : {WRAPPER_DOAS!r})")
+        self.wrapper = wrapper
+        if wrapper is not None:       # l'instance « doas » n'accepte QUE ses dix chaînes doas
+            self.ALLOWED_CLI = frozenset(_cli(c, wrapper) for c in self.REQUIRED_COMMANDS)
+
+    def for_router(self, router: dict) -> "Driver":
+        wrapper = router.get("privilege_wrapper")
+        return FrrDriver(wrapper) if wrapper and wrapper != self.wrapper else self
 
     # Phase A (v4) : les règles qui lisent la syntaxe de FRR vivent dans drivers/frr_rules.py.
     CONFIG_CHECKS = frr_rules.CHECKS
@@ -69,7 +104,7 @@ class FrrDriver(Driver):
         return cfg
 
     def translate(self, command: str) -> str:
-        return f"vtysh -c {shlex.quote(_TRANSLATION.get(command, command))}"
+        return _cli(command, self.wrapper)
 
     def clean_output(self, raw: str) -> str:
         # vtysh non-root avertit qu'il ne lit pas vtysh.conf : bruit sans conséquence (cf.
@@ -78,7 +113,7 @@ class FrrDriver(Driver):
             line for line in raw.splitlines()
             if not line.startswith("% Can't open configuration file")
         )
-        for marker in ("command not found", "failed to connect to any daemons"):
+        for marker in ("command not found", "failed to connect to any daemons", "doas: "):
             if marker in out.lower():
                 raise RuntimeError(f"vtysh inutilisable : {out.strip()[:120]}")
         return out

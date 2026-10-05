@@ -112,6 +112,12 @@ class Driver(ABC):
         """Traduit une commande logique (ex. 'show ip route json') en commande CLI réelle."""
         return command
 
+    def for_router(self, router: dict) -> "Driver":
+        """Le driver à utiliser pour CE routeur : `self` par défaut ; un driver qui a des options d'inventaire
+        (FRR : `privilege_wrapper`) en renvoie une instance configurée, sans modifier celle-ci (le registre
+        et les appelants partagent leurs instances)."""
+        return self
+
     def check_cli(self, cli: str) -> None:
         """Refuse (PermissionError) toute commande CLI réelle hors de ALLOWED_CLI quand ce
         driver en déclare une. Appelé par le collecteur avant la connexion, puis avant chaque

@@ -128,6 +128,13 @@ def _check_router(router: dict, path: Path) -> None:
                          "l'inventaire, pas par routeur")
     if "key_file" in router and (not isinstance(router["key_file"], str) or not router["key_file"].strip()):
         raise UsageError(f"Inventaire {path} : routeur {name} : `key_file` doit être un chemin (texte)")
+    if "privilege_wrapper" in router:
+        if router["privilege_wrapper"] != "doas":
+            raise UsageError(f"Inventaire {path} : routeur {name} : `privilege_wrapper` : seule la valeur "
+                             "« doas » existe (compte en lecture seule FRR)")
+        if router.get("driver", "frr") != "frr":
+            raise UsageError(f"Inventaire {path} : routeur {name} : `privilege_wrapper` ne concerne que le "
+                             "driver frr")
     for key in ("username", "password"):
         if key in router and not isinstance(router[key], str):
             raise UsageError(f"Inventaire {path} : routeur {name} : `{key}` doit être du texte "

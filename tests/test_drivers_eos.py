@@ -464,7 +464,7 @@ def test_collect_calls_netmiko_enable_before_any_command_and_never_sends_it(monk
 @pytest.mark.parametrize("driver_cls", [FrrDriver, SrlinuxDriver])
 def test_frr_and_srlinux_never_call_enable(driver_cls):
     assert driver_cls.NEEDS_ENABLE is False
-    assert driver_cls.ALLOWED_CLI is None   # comportement historique inchangé
+    assert (driver_cls.ALLOWED_CLI is None) == (driver_cls is SrlinuxDriver)   # FRR : liste exacte depuis C5
 
 
 def test_privileged_mode_refusal_is_reported_clearly():
