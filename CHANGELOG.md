@@ -208,6 +208,22 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
   « aucun commentaire dans `configs-multivendor/*/config.cli` ».
 - **`golden.py reference compare`** : une référence locale absente (hors Git) donne « référence locale absente : … ; générer avec : … » et le code 3, sans comparaison partielle. `reference record` n'écrase plus les références existantes sans `--overwrite`.
 
+- **Phase C6.1, inventaire NetBox en lecture seule** (`netcheck/netbox.py`, bloc `netbox:` de l'inventaire, `--netbox-cacert`).
+  La LISTE des équipements (nom, IP primaire, plateforme -> driver) vient de NetBox ; `lab`, identifiants, bastion, clés d'hôte et
+  attendus restent dans le fichier local. Client `urllib`, **aucune dépendance nouvelle** ; liste blanche exacte de deux appels
+  (`GET /api/status/`, `GET /api/dcim/devices/` avec `site`, `role`, `tag`, `status`, `limit`, `offset` validés), tout le reste refusé
+  avant d'ouvrir une connexion ; aucune redirection, proxys d'environnement ignorés ; pagination contrôlée (`next` du même hôte, mêmes
+  filtres, décalage croissant, plafond de pages, `count` égal aux objets reçus) ; jeton v2 en `Bearer`, variable ou fichier 0600,
+  `SecretStr` inscrit en entier et par morceaux ; TLS vérifié par défaut, `http://` seulement en bouclage sur un inventaire
+  `lab: true`, annoncé. Fusion avec le fichier local sans priorité silencieuse (équipement de NetBox seul : `defaults` et convergence
+  NON ÉVALUABLE ; équipement local absent de NetBox, conflit d'IP ou de driver, plateforme inconnue ou IP absente : erreur, code 3, tout
+  listé d'un coup). NetBox indisponible : code 3, « inventaire NetBox indisponible (cause) », aucun repli, zéro équipement = erreur ;
+  hors ligne, NetBox n'est jamais contacté. Prouvé contre un faux NetBox (`tests/tools/fake_netbox.py`, faux serveur HTTPS auto-signé
+  compris), pas encore contre un vrai (C6.2).
+- **Écart avec SPEC C26 : pas de `pynetbox` côté netcheck.** La SPEC prévoyait `pynetbox` en extra `[netbox]` ; netcheck n'en dépend pas
+  (le client `urllib` suffit à deux GET et évite une bibliothèque dont la surface d'écriture est large). `pynetbox` ne sera utilisé que
+  par le chargement du lab (`lab-access/netbox/`, C6.2), jamais importé par `netcheck/`. Un test statique le garde.
+
 ### Modifié
 
 - **Phase C5 : l'image `frr-ssh` embarque `doas` et le compte `netcheck-ro`.** Surface ajoutée : un binaire setuid (`doas` 6.8.2,

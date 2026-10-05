@@ -79,6 +79,7 @@ lab-cEOS.clab.yml               topologie containerlab (lab v3 : FRR + Arista cE
 configs-ceos/r4/startup-config  configuration de démarrage de r4 (cEOS, syntaxe EOS)
 automation/monitor.sh               enveloppe à planifier (cron/systemd) pour `netcheck monitor`
 netcheck/                       validation de changement et conformité (snapshot/diff/check/assert/guard/monitor)
+netcheck/netbox.py              inventaire NetBox en lecture seule (urllib, liste blanche de deux appels, jeton v2, TLS vérifié)
 netcheck/rules/                 règles de conformité (default.yml) et d'audit de sécurité (security.yml + security-ipv6.yml)
 intents/                        états attendus du réseau, pour `netcheck assert` (lab FRR, lab v2, lab cEOS)
 docs/audit/                     rapports d'audit de sécurité avant/après durcissement (v3)
@@ -93,6 +94,7 @@ tests/lib_lab.sh                    barrière « lab prêt » (port 22 + banniè
 tests/lib_ro.sh                     scénarios C5 des comptes en lecture seule : collecte, diff à zéro, preuves négatives (trois constructeurs)
 tests/tools/ro_probe.py         sondes de lab de netcheck-ro (EOS, SR Linux, gNMI et JSON-RPC) ; ptyrun.py : terminal pour VTYSH_PAGER
 tests/tools/srl_role_check.py   compare les lignes de rôle de r5/config.cli à la configuration courante de r5 (après chaque déploiement)
+tests/tools/fake_netbox.py      faux NetBox local (deux GET, requêtes enregistrées, pannes réglables) pour les tests de la phase C6
 tests/tools/bastion_probe.py    sonde du lab : ce que le bastion refuse (paramiko écrit à la main, pas netcheck)
 tests/integration_vault.sh          Vault puis OpenBao : identifiants lus dans Vault sur le lab FRR, deux appels, rôle en lecture seule, priorité, pannes
 test_lab.sh                     scénario de bout en bout du lab FRR (phases 1 et 2), 28 contrôles
@@ -826,6 +828,72 @@ déclarés ils répondent), gNMI Set refusé par Pathz même avec le service, et
 L'utilisateur et la clé publique ne sont **pas** dans les configurations (clé propre à la machine, aucun secret dans le dépôt) :
 `accounts_lab.sh` les pose dans la configuration courante, jamais avec `write` ni `save`. `netcheck/drivers/eos.py` connaît le
 mot-clé `role` (sinon `check --config-dir` le signalerait).
+
+### Inventaire NetBox (v4, phase C6)
+
+netcheck peut lire la **liste** de ses équipements dans NetBox : en lecture seule, avec `urllib`, **sans dépendance de plus**.
+Cette étape (C6.1) est prouvée contre un **faux NetBox local** (`tests/tools/fake_netbox.py`), pas encore contre un vrai :
+le démarrage de NetBox, le chargement du lab et les scénarios sont l'étape C6.2.
+
+```yaml
+lab: true
+netbox:
+  url: http://127.0.0.1:8000          # https://hôte:port ailleurs que dans un lab
+  site: lab                           # filtres facultatifs, un nom ou une liste : site, role, tag
+  role: router                        # status : « active » par défaut
+  tag: netcheck
+  platforms: {frr: frr, eos: eos, srlinux: srlinux}   # plateforme NetBox -> driver netcheck (obligatoire)
+  # cacert: /chemin/ca.pem            # ou --netbox-cacert FICHIER
+defaults: {device_type: linux, username: netops, password: "…", vtysh: vtysh}
+routers:                              # facultatif : les attributs PROPRES à un équipement
+  r1: {ospf_neighbors: 2}
+```
+
+```bash
+export NETCHECK_NETBOX_TOKEN_FILE=~/.config/netcheck/netbox.token     # fichier 0600 ; ou NETCHECK_NETBOX_TOKEN
+netcheck snapshot avant -i automation/inventory-netbox.yml
+```
+
+**Ce que NetBox fournit : le nom, l'IP primaire (`host`) et la plateforme (`driver`).** Il ne fournit jamais `lab`, les
+identifiants, le bastion, les clés d'hôte, `privilege_wrapper` ni les attendus (`ospf_neighbors`, `bgp_peers`) : tout cela reste
+dans le fichier local. Le `device_type` Netmiko se déduit du driver (`frr` : `linux`, `eos` : `arista_eos`, `srlinux` : `nokia_srl`).
+
+**Fusion avec le fichier local, par nom d'équipement, sans priorité silencieuse :**
+
+| Cas | Résultat |
+|---|---|
+| dans NetBox **et** dans `routers:` | l'entrée locale est gardée ; `host` et `driver` absents viennent de NetBox |
+| dans NetBox **seulement** | audité avec les `defaults` ; ses attendus locaux manquent : **convergence `guard --wait` NON ÉVALUABLE**, dit à chaque usage |
+| dans `routers:` **seulement** | **erreur** (code 3) : absent de NetBox, ou écarté par les filtres |
+| IP primaire ou driver locaux **différents** de NetBox | **erreur** (code 3), tous les conflits listés ensemble |
+| IP primaire ou plateforme absente, plateforme sans correspondance, nom inutilisable ou en double | **erreur** (code 3) qui liste **tous** les équipements fautifs en une fois |
+
+**Liste blanche exacte : deux appels, `GET /api/status/` et `GET /api/dcim/devices/`** (paramètres `site`, `role`, `tag`, `status`,
+`limit`, `offset`, valeurs validées). Tout autre appel est refusé **avant** d'ouvrir une connexion (défaut de netcheck, code 70).
+Aucune redirection n'est suivie, les variables de proxy sont ignorées. Le lien `next` d'une page n'est jamais suivi tel quel : il doit
+avoir le même schéma, hôte, port et chemin, les mêmes filtres et un décalage qui avance ; la requête est reconstruite à partir de
+paramètres validés, donc le jeton ne peut partir que vers l'adresse configurée. Plafond de 50 pages ; `count` doit égaler le nombre
+d'objets reçus.
+
+**Jeton :** v2 seulement (`nbt_<clé>.<secret>`, en-tête `Authorization: Bearer`) ; un jeton v1 est refusé. Par `NETCHECK_NETBOX_TOKEN`
+(prioritaire) ou `NETCHECK_NETBOX_TOKEN_FILE` (mêmes règles que les mots de passe : 0600, propriétaire courant, une ligne). Jamais en
+option de commande (visible dans `ps`), jamais dans l'inventaire. `SecretStr`, inscrit en entier **et par morceaux** dans le registre
+d'expurgation ; la source (« variable … » ou « fichier … (droits 0600 vérifiés) ») est affichée avec l'inventaire. **Un jeton en lecture
+seule se crée côté NetBox** (`write_enabled` désactivé) ; la preuve qu'il ne peut pas écrire se fait par un script de lab, jamais par netcheck.
+
+**TLS :** vérifié par défaut, nom d'hôte compris ; `cacert:` ou `--netbox-cacert` **ajoute** une autorité, aucune clé ne désactive la
+vérification. `http://` n'est accepté que pour le bouclage (`127.0.0.1`, `::1`, `localhost`) **et** sur un inventaire `lab: true`, et il est
+annoncé à chaque usage (le jeton circule en clair sur la boucle locale).
+
+**Si NetBox ne répond pas : code 3, « inventaire NetBox indisponible (cause) », sans repli.** Injoignable, délai de 10 s dépassé, certificat
+refusé, jeton refusé (401/403), redirection, HTTP 5xx, réponse illisible, pagination incohérente, **zéro équipement** : jamais de repli
+sur le fichier local, jamais de résultat partiel, aucun texte de bibliothèque dans le message (un jeton pourrait y être recopié).
+
+**Hors ligne (`diff`, `check --snapshot`, `check --config-dir`, `assert --snapshot`), NetBox n'est jamais contacté** : seul le fichier
+local compte, le bloc `netbox:` est seulement vérifié dans sa structure, et `--netbox-cacert` y est refusé.
+
+**Écart avec la SPEC (C26) :** elle prévoyait `pynetbox` en extra `[netbox]`. Il n'est pas utilisé côté netcheck (deux GET ne justifient
+pas une bibliothèque dont la surface d'écriture est large) ; `pynetbox` ne servira que dans le chargement du lab, hors du paquet.
 
 ### Codes retour
 
