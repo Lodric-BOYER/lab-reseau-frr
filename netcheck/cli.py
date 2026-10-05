@@ -92,6 +92,17 @@ def _refuse_host_key_options_offline(args: argparse.Namespace, offline: bool, wh
     if offline and (getattr(args, "host_keys", None) or getattr(args, "known_hosts", None)):
         raise usage.UsageError(f"--host-keys et --known-hosts n'ont de sens qu'avec une collecte en direct "
                                f"(pas avec {why})")
+    if offline and getattr(args, "netbox_cacert", None):
+        raise usage.UsageError(f"--netbox-cacert n'a de sens qu'avec une collecte en direct (pas avec "
+                               f"{why}) : hors ligne, NetBox n'est jamais contacté")
+
+
+def _announce_inventory(inv: inventory.Inventory) -> None:
+    """Phase C6 : dit d'où vient la liste des équipements (NetBox : adresse, version, filtres, source du
+    jeton, équipements des deux sources) ; jamais une valeur secrète. Sur stderr, comme les avertissements."""
+    if inv.netbox_info is not None:
+        for line in inv.netbox_info.lines():
+            print(line, file=sys.stderr)
 
 
 def _setup_host_keys(args: argparse.Namespace, inv: inventory.Inventory) -> bool:
@@ -101,6 +112,7 @@ def _setup_host_keys(args: argparse.Namespace, inv: inventory.Inventory) -> bool
     larges). accept-new prévient à chaque usage. Appelée avant chaque collecte en direct : c'est aussi là que
     l'inventaire est vérifié « collectable » (hôte, device_type, driver connu)."""
     inventory.check_collectable(inv)
+    _announce_inventory(inv)
     try:
         policy = hostkeys.configure(getattr(args, "host_keys", None), getattr(args, "known_hosts", None),
                                     inv.lab)
@@ -117,7 +129,8 @@ def _setup_host_keys(args: argparse.Namespace, inv: inventory.Inventory) -> bool
 
 def cmd_snapshot(args: argparse.Namespace) -> int:
     snapshot.snapshot_dir(args.name)   # nom invalide refusé avant toute connexion
-    inv = inventory.load(args.devices, path=args.inventory)
+    inv = inventory.load(args.devices, path=args.inventory,
+                         netbox_cacert=getattr(args, "netbox_cacert", None))
     if not _setup_host_keys(args, inv):
         return 3
     results = collector.collect_all(inv.routers)
@@ -233,7 +246,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         inv = inventory.load(path=args.inventory, resolve_credentials=False)
         devices = _load_snapshot(args.snapshot)
     else:
-        inv = inventory.load(path=args.inventory)
+        inv = inventory.load(path=args.inventory, netbox_cacert=getattr(args, "netbox_cacert", None))
         if not _setup_host_keys(args, inv):
             return 3
         results = collector.collect_all(inv.routers)
@@ -309,7 +322,7 @@ def cmd_guard(args: argparse.Namespace) -> int:
     except (ValueError, OSError) as e:
         print(f"Erreur : {e}", file=sys.stderr)
         return guard.EXIT_USAGE
-    inv = inventory.load(path=args.inventory)
+    inv = inventory.load(path=args.inventory, netbox_cacert=getattr(args, "netbox_cacert", None))
     if not _setup_host_keys(args, inv):
         return guard.EXIT_USAGE
     credential_info = credentials.describe_sources(inv.routers)
@@ -404,7 +417,8 @@ def cmd_assert(args: argparse.Namespace) -> int:
         if not intent:
             raise usage.UsageError(f"aucune assertion dans {args.intent} : rien ne serait vérifié")
 
-    inv = inventory.load(path=args.inventory, resolve_credentials=not args.snapshot)
+    inv = inventory.load(path=args.inventory, resolve_credentials=not args.snapshot,
+                         netbox_cacert=getattr(args, "netbox_cacert", None))
     credential_info = None
     if args.snapshot:
         devices = _load_snapshot(args.snapshot)
@@ -496,7 +510,7 @@ def _cmd_monitor(args: argparse.Namespace) -> int:
             if rules is None:
                 raise ValueError("--derogations n'a de sens qu'avec --rules")
             derogation_set = derogations.load(args.derogations, rules, date.today())
-        inv = inventory.load(path=args.inventory)
+        inv = inventory.load(path=args.inventory, netbox_cacert=getattr(args, "netbox_cacert", None))
     except (ValueError, OSError, credentials.CredentialError) as e:   # erreur de chargement = refus, code 3
         print(f"Erreur : {webhook.redact(str(e), url)}", file=sys.stderr)
         return monitor.EXIT_USAGE
@@ -558,6 +572,17 @@ def _add_host_keys_args(sub_parser: argparse.ArgumentParser) -> None:
              "~/.netcheck/known_hosts) ; le ~/.ssh/known_hosts de l'utilisateur n'est jamais lu")
 
 
+def _add_netbox_args(sub_parser: argparse.ArgumentParser) -> None:
+    """--netbox-cacert (phase C6) : autorité de certification de NetBox (bloc `netbox:` de l'inventaire). Elle
+    s'ajoute à la vérification TLS, qui ne se désactive pas. Aucun jeton ici : NETCHECK_NETBOX_TOKEN(_FILE).
+    """
+    sub_parser.add_argument(
+        "--netbox-cacert", metavar="FICHIER", default=None,
+        help="autorité de certification de NetBox (PEM) ; sans elle, le certificat doit être reconnu par le "
+             "système. Réservé aux inventaires qui ont un bloc `netbox:` ; jamais hors ligne",
+    )
+
+
 def _add_expect_arg(sub_parser: argparse.ArgumentParser) -> None:
     """--expect : changements prévus (Phase D1) -- un constat prévu n'est plus une alerte, un
     changement prévu mais absent en devient une. Voir netcheck/expect.py pour le format."""
@@ -576,6 +601,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_snap.add_argument("--force", action="store_true", help="écraser un snapshot existant")
     _add_inventory_arg(p_snap)
     _add_host_keys_args(p_snap)
+    _add_netbox_args(p_snap)
     p_snap.set_defaults(func=cmd_snapshot)
 
     p_list = sub.add_parser("list", help="liste les snapshots existants")
@@ -616,6 +642,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_check.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
     _add_inventory_arg(p_check)
     _add_host_keys_args(p_check)
+    _add_netbox_args(p_check)
     p_check.set_defaults(func=cmd_check)
 
     p_guard = sub.add_parser(
@@ -650,6 +677,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_expect_arg(p_guard)
     _add_inventory_arg(p_guard)
     _add_host_keys_args(p_guard)
+    _add_netbox_args(p_guard)
     p_guard.set_defaults(func=cmd_guard)
 
     p_assert = sub.add_parser("assert", help="vérifie l'état attendu (Phase C, --intent)")
@@ -659,6 +687,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_assert.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
     _add_inventory_arg(p_assert)
     _add_host_keys_args(p_assert)
+    _add_netbox_args(p_assert)
     p_assert.set_defaults(func=cmd_assert)
 
     p_monitor = sub.add_parser(
@@ -686,6 +715,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="affiche le message qui serait envoyé ; n'envoie rien, n'écrit ni état ni rapport")
     _add_inventory_arg(p_monitor)
     _add_host_keys_args(p_monitor)
+    _add_netbox_args(p_monitor)
     p_monitor.set_defaults(func=cmd_monitor)
 
     return p

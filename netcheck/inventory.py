@@ -16,7 +16,7 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from netcheck import credentials, sshkeys
+from netcheck import credentials, netbox, sshkeys
 from netcheck.drivers.registry import DRIVER_REGISTRY
 from netcheck.usage import UsageError, load_yaml
 
@@ -35,10 +35,13 @@ class Inventory:
     source: str = ""   # fichier d'origine, pour les messages
     # Phase C4 : bastion résolu (clé contrôlée et chargée), ou None (hors ligne, ou pas de bloc `bastion:`).
     bastion: sshkeys.Bastion | None = None
+    # Phase C6 : lecture NetBox effectuée (version, filtres, jeton, équipements des deux sources), ou None
+    # (pas de bloc `netbox:`, ou commande hors ligne : NetBox n'est alors jamais contacté).
+    netbox_info: netbox.NetboxInfo | None = None
 
 
 def load(only: list[str] | None = None, path: Path | str | None = None,
-         resolve_credentials: bool = True) -> Inventory:
+         resolve_credentials: bool = True, netbox_cacert: str | None = None) -> Inventory:
     """Fusionne defaults + attributs de chaque routeur ; filtre éventuel sur une liste de noms.
 
     `path` omis = automation/inventory.yml (lab mono-constructeur). Un autre fichier (ex.
@@ -47,7 +50,11 @@ def load(only: list[str] | None = None, path: Path | str | None = None,
 
     `resolve_credentials=False` (hors ligne : diff, check --config-dir/--snapshot, assert --snapshot) :
     aucun identifiant n'est résolu, aucun fichier de secret n'est lu, un fichier de secret absent n'y est
-    donc jamais une erreur."""
+    donc jamais une erreur, et NetBox n'est JAMAIS contacté (un bloc `netbox:` y est seulement vérifié dans sa
+    structure ; les routeurs sont alors ceux du fichier local).
+
+    Phase C6 : avec un bloc `netbox:`, la liste des équipements vient de NetBox (voir netcheck/netbox.py) et
+    est fusionnée avec le fichier local ; `routers:` peut alors manquer. `netbox_cacert` = --netbox-cacert."""
     path = Path(path) if path else INVENTORY_PATH
     data = load_yaml(path, "inventaire")
     if not isinstance(data, dict):
@@ -55,9 +62,28 @@ def load(only: list[str] | None = None, path: Path | str | None = None,
     defaults = data.get("defaults") or {}
     if not isinstance(defaults, dict):
         raise UsageError(f"Inventaire {path} : `defaults` doit être un objet (clé: valeur)")
+    lab = data.get("lab", False)
+    if not isinstance(lab, bool):
+        raise UsageError(f"Inventaire {path} : « lab » doit valoir true ou false (reçu : {lab!r})")
+    netbox_spec = data.get("netbox")
+    netbox_config = netbox.parse_block(netbox_spec, path, lab) if netbox_spec is not None else None
     declared = data.get("routers")
-    if not isinstance(declared, dict) or not declared:
+    if declared is None and netbox_config is not None:
+        declared = {}   # NetBox fournit la liste ; le fichier local ne porte alors que les attributs propres
+    if not isinstance(declared, dict) or (not declared and netbox_config is None):
         raise UsageError(f"Inventaire {path} : `routers` doit être un objet non vide (un routeur par clé)")
+    netbox_info = None
+    if netbox_config is not None and resolve_credentials:
+        for name, attrs in declared.items():
+            if not isinstance(name, str):
+                raise UsageError(f"Inventaire {path} : nom de routeur {name!r} invalide "
+                                 "(mettez-le entre guillemets)")
+            if attrs is not None and not isinstance(attrs, dict):
+                raise UsageError(f"Inventaire {path} : routeur {name} : un objet (clé: valeur) est attendu")
+        token = netbox.read_token(os.environ)
+        resolved = netbox.with_cacert(netbox_config, netbox_cacert)
+        fetched = netbox.fetch(resolved, token)
+        declared, netbox_info = netbox.merge(declared, defaults, fetched, resolved, token.source)
 
     # Phase C4 : bloc `bastion:` au niveau de l'inventaire. Sa structure est toujours validée ; sa clé n'est
     # lue (et contrôlée) qu'en mode direct : les commandes hors ligne n'ont besoin d'aucun fichier de clé.
@@ -86,9 +112,6 @@ def load(only: list[str] | None = None, path: Path | str | None = None,
         raise UsageError(f"Routeur(s) inconnu(s) : {', '.join(sorted(set(only) - set(routers)))} "
                          f"(inventaire {path} : {', '.join(declared)})")
 
-    lab = data.get("lab", False)
-    if not isinstance(lab, bool):
-        raise UsageError(f"Inventaire {path} : « lab » doit valoir true ou false (reçu : {lab!r})")
     lists = {}
     for key in ("management_interfaces", "management_vrfs"):
         value = data.get(key) or []
@@ -97,7 +120,8 @@ def load(only: list[str] | None = None, path: Path | str | None = None,
         lists[key] = value
 
     return Inventory(routers=routers, management_interfaces=lists["management_interfaces"],
-                     management_vrfs=lists["management_vrfs"], lab=lab, source=str(path), bastion=bastion)
+                     management_vrfs=lists["management_vrfs"], lab=lab, source=str(path), bastion=bastion,
+                     netbox_info=netbox_info)
 
 
 def _check_bastion(spec, path: Path) -> None:
