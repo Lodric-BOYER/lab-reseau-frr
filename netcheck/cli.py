@@ -29,6 +29,7 @@ from netcheck import (
     report,
     secrets,
     snapshot,
+    snapshotscope,
     usage,
     webhook,
 )
@@ -184,7 +185,8 @@ def cmd_snapshot(args: argparse.Namespace) -> int:
     credential_info = credentials.describe_sources(inv.routers)
 
     try:
-        out_dir = snapshot.save(args.name, results, force=args.force, credentials=credential_info)
+        out_dir = snapshot.save(args.name, results, force=args.force, credentials=credential_info,
+                                scope=snapshotscope.scope_record(inv.all_names, args.devices))
     except FileExistsError as e:
         print(f"Erreur : {e}", file=sys.stderr)
         return 3
@@ -241,6 +243,28 @@ def _today(value: str | None) -> date:
         raise usage.UsageError(f"--today : date AAAA-MM-JJ attendue (reçu : {value!r})") from None
 
 
+def _max_age(args: argparse.Namespace) -> float | None:
+    """`--max-age JOURS` : sans valeur par défaut ; invalide, ou sans `--snapshot` (rien à dater) : code 3."""
+    raw = getattr(args, "max_age", None)
+    if raw is None:
+        return None
+    value = snapshotscope.parse_max_age(raw)
+    if not args.snapshot:
+        raise usage.UsageError("--max-age n'a de sens qu'avec --snapshot (il date un snapshot)")
+    return value
+
+
+def _snapshot_scope(name: str, devices: dict, inv: inventory.Inventory,
+                    max_age: float | None) -> snapshotscope.Coverage:
+    """Couverture et fraîcheur du snapshot lu : jamais ignorées. Sans `meta.json` : périmètre inconnu."""
+    try:
+        meta = snapshot.load_meta(name)
+    except FileNotFoundError:
+        meta = None
+    return snapshotscope.assess(name, meta, devices, inv.all_names or tuple(inv.routers), max_age,
+                                snapshotscope.now())
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     if getattr(args, "today", None) and not getattr(args, "derogations", None):
         raise usage.UsageError("--today n'a de sens qu'avec --derogations")
@@ -251,6 +275,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     _refuse_host_key_options_offline(args, bool(args.config_dir or args.snapshot),
                                      "--config-dir ni --snapshot")
     _check_outputs(args)
+    max_age = _max_age(args)
 
     rule_files = [args.rules] if isinstance(args.rules, str) else (args.rules or [DEFAULT_RULES_PATH])
     rules_path = ", ".join(str(p) for p in rule_files)
@@ -263,6 +288,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         derogation_set = derogations.load(derogation_file, rules, today) if derogation_file else None
 
     source = None
+    scope = None
     credential_info = None
     file_warnings: list[compliance.ConfigWarning] = []
     if args.config_dir:
@@ -292,6 +318,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     elif args.snapshot:
         inv = inventory.load(path=args.inventory, resolve_credentials=False)
         devices = _load_snapshot(args.snapshot)
+        scope = _snapshot_scope(args.snapshot, devices, inv, max_age)
     else:
         inv = inventory.load(path=args.inventory, netbox_cacert=getattr(args, "netbox_cacert", None))
         if not _setup_host_keys(args, inv):
@@ -326,20 +353,24 @@ def cmd_check(args: argparse.Namespace) -> int:
     # « conforme » sur une configuration que l'audit n'a pas entièrement lue.
     warnings = result.config_warnings + file_warnings
     compliant, code = compliance.verdict(result.violations, warnings, result.not_applicable)
+    if scope is not None and scope.attention and code == 0:
+        # Snapshot qui ne couvre pas l'inventaire, injoignable ou périmé : jamais « conforme ».
+        compliant, code = False, 1
 
     report.print_compliance_terminal(result.violations, compliant, result.not_applicable,
                                      config_warnings=warnings, source=source, derogations=derogation_info,
-                                     coverage=coverage, credentials=credential_info)
+                                     coverage=coverage, credentials=credential_info, snapshot_scope=scope)
     if args.json:
         report.write_compliance_json(result.violations, compliant, args.json, result.not_applicable,
                                      warnings, source=source, derogations=derogation_info,
-                                     coverage=coverage, credentials=credential_info)
+                                     coverage=coverage, credentials=credential_info,
+                                     snapshot_scope=scope)
         print(f"Constats écrits (JSON) : {args.json}")
     if args.html:
         report.write_compliance_html(result.violations, compliant, rules_path, args.html,
                                      result.not_applicable, warnings, source=source,
                                      derogations=derogation_info, coverage=coverage,
-                                     credentials=credential_info)
+                                     credentials=credential_info, snapshot_scope=scope)
         print(f"Rapport HTML écrit : {args.html}")
     return code
 
@@ -430,7 +461,8 @@ def cmd_guard(args: argparse.Namespace) -> int:
 
     ui = guard.UI()
     io = guard.GuardIO(
-        snapshot=lambda name: snapshot.save(name, collector.collect_all(inv.routers), force=True),
+        snapshot=lambda name: snapshot.save(name, collector.collect_all(inv.routers), force=True,
+                                            scope=snapshotscope.scope_record(inv.all_names, None)),
         wait_convergence=lambda t: collector.wait_for_convergence(verified_routers, timeout=t),
         diff=do_diff,
         run_script=lambda path, timeout: guard.run_script(path, timeout, echo=ui.script_output),
@@ -475,6 +507,7 @@ def cmd_assert(args: argparse.Namespace) -> int:
     identique aux autres sous-commandes de collecte/lecture."""
     _refuse_host_key_options_offline(args, bool(args.snapshot), "--snapshot")
     _check_outputs(args)
+    max_age = _max_age(args)
     with _loading():
         intent = assertions.load_intent(args.intent)
         if not intent:
@@ -483,8 +516,10 @@ def cmd_assert(args: argparse.Namespace) -> int:
     inv = inventory.load(path=args.inventory, resolve_credentials=not args.snapshot,
                          netbox_cacert=getattr(args, "netbox_cacert", None))
     credential_info = None
+    scope = None
     if args.snapshot:
         devices = _load_snapshot(args.snapshot)
+        scope = _snapshot_scope(args.snapshot, devices, inv, max_age)
     else:
         if not _setup_host_keys(args, inv):
             return 3
@@ -503,13 +538,16 @@ def cmd_assert(args: argparse.Namespace) -> int:
     except ValueError as e:   # paramètre manquant dans une assertion de l'opérateur
         raise usage.UsageError(str(e)) from None
     verdict_label, code = assertions.verdict(results)
+    if scope is not None and scope.attention and code == 0:
+        # Snapshot qui ne couvre pas l'inventaire, injoignable ou périmé : jamais OK.
+        verdict_label, code = "ATTENTION", 1
 
-    report.print_assert_terminal(results, verdict_label, credentials=credential_info)
+    report.print_assert_terminal(results, verdict_label, credentials=credential_info, snapshot_scope=scope)
     if args.json:
-        report.write_assert_json(results, verdict_label, args.json, credential_info)
+        report.write_assert_json(results, verdict_label, args.json, credential_info, scope)
         print(f"Constats écrits (JSON) : {args.json}")
     if args.html:
-        report.write_assert_html(results, verdict_label, args.intent, args.html, credential_info)
+        report.write_assert_html(results, verdict_label, args.intent, args.html, credential_info, scope)
         print(f"Rapport HTML écrit : {args.html}")
     return code
 
@@ -681,6 +719,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_check = sub.add_parser("check", help="audite la conformité des configurations")
     p_check.add_argument("--snapshot", help="auditer un snapshot existant (hors ligne, sans connexion)")
+    p_check.add_argument("--max-age", metavar="JOURS",
+                         help="avec --snapshot : ATTENTION si le snapshot a plus de JOURS jours "
+                              "(aucune valeur par défaut ; sans cette option l'âge est affiché, sans effet)")
     p_check.add_argument(
         "--config-dir", action="append", metavar="DOSSIER",
         help="auditer des fichiers de configuration, sans aucun équipement : `DOSSIER/<équipement>.<ext>` ou "
@@ -753,6 +794,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_assert = sub.add_parser("assert", help="vérifie l'état attendu (Phase C, --intent)")
     p_assert.add_argument("--intent", required=True, help="fichier d'intent YAML (intents/*.yml)")
     p_assert.add_argument("--snapshot", help="vérifier un snapshot existant (hors ligne, sans connexion)")
+    p_assert.add_argument("--max-age", metavar="JOURS",
+                          help="avec --snapshot : ATTENTION si le snapshot a plus de JOURS jours "
+                               "(aucune valeur par défaut ; sans cette option l'âge est affiché, sans effet)")
     p_assert.add_argument("--json", help="écrire les résultats au format JSON dans ce fichier")
     p_assert.add_argument("--html", help="écrire un rapport HTML autonome dans ce fichier")
     _add_inventory_arg(p_assert)

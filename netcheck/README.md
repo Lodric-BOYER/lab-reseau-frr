@@ -44,6 +44,7 @@ netcheck/
 │   ├── eos_rules.py         # ... et ses évaluateurs
 │   └── bgp_neighbors.py     # vue « voisin BGP effectif » (peer groups, plages dynamiques), FRR et EOS
 ├── snapshot.py             # sauvegarde/chargement JSON (snapshots/<nom>/*.json + meta.json)
+├── snapshotscope.py        # couverture et fraîcheur d'un snapshot lu hors ligne (scope, date, --max-age)
 ├── diff.py                  # compare deux DeviceState -> Finding (CRITIQUE/ATTENTION/INFO)
 ├── compliance.py           # le MOTEUR : charge les règles YAML (yaml.safe_load), résout l'évaluateur chez
 │                           # le driver de chaque équipement, verdict ; plus aucune syntaxe de constructeur

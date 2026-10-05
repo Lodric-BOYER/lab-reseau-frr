@@ -80,6 +80,7 @@ configs-ceos/r4/startup-config  configuration de démarrage de r4 (cEOS, syntaxe
 automation/monitor.sh               enveloppe à planifier (cron/systemd) pour `netcheck monitor`
 netcheck/                       validation de changement et conformité (snapshot/diff/check/assert/guard/monitor)
 netcheck/netbox.py              inventaire NetBox en lecture seule (urllib, liste blanche de deux appels, jeton v2, TLS vérifié)
+netcheck/snapshotscope.py       couverture et fraîcheur d'un snapshot lu hors ligne (périmètre, date, version, `--max-age`)
 netcheck/rules/                 règles de conformité (default.yml) et d'audit de sécurité (security.yml + security-ipv6.yml)
 intents/                        états attendus du réseau, pour `netcheck assert` (lab FRR, lab v2, lab cEOS)
 docs/audit/                     rapports d'audit de sécurité avant/après durcissement (v3)
@@ -997,6 +998,36 @@ Des noms explicites, séparés par des virgules : jamais de joker, jamais « all
 en double ou qui a déjà des attendus est une erreur. Avec l'acceptation, ces équipements restent dans les snapshots et le diff mais sortent du
 calcul de convergence ; ils sont annoncés **avant** la confirmation puis dans le message final et le journal, et **le verdict final n'est
 jamais 0** : un succès devient ATTENTION (code 1), un échec reste un échec.
+
+### Couverture et fraîcheur d'un snapshot lu hors ligne (v4, phase C6)
+
+`check --snapshot` et `assert --snapshot` ne valent que pour ce que le snapshot contient. Trois pièges ont été rencontrés : un snapshot **partiel**
+audité contre tout l'inventaire, un équipement **injoignable** dont le relevé est vide, un snapshot complet mais **périmé**. Ces deux commandes
+affichent donc **toujours**, dans le terminal, le JSON (clé `snapshot_scope`) et le HTML :
+
+```
+Snapshot 's' : pris le 2026-10-04 01:03 UTC avec netcheck 0.4.0, âge 1.2 jour(s)
+périmètre du snapshot : r5 (1/5 de l'inventaire)
+ATTENTION : équipement(s) de l'inventaire absents du snapshot sans avoir été exclus volontairement (-d) : r1, r2, r3, r4
+```
+
+`snapshot` écrit désormais dans `meta.json` un `scope` = `{inventory: [tous les noms de l'inventaire au moment de la prise], requested: [noms de -d]
+ou null}`. Les règles, une seule par cas :
+
+| Cas | Effet |
+|---|---|
+| tout l'inventaire est présent et joignable | information : « périmètre du snapshot : r1, …, r5 (5/5 de l'inventaire) » |
+| périmètre **demandé** par `-d` | information (« périmètre demandé (-d) : r5 »), **sans effet sur le code** |
+| équipement de l'inventaire absent **sans avoir été demandé**, ou présent mais **injoignable** (`reachable: false`) | **ATTENTION** : `check` « ANALYSE INCOMPLÈTE » (code 1), `assert` ATTENTION (code 1) ; une violation ou un échec garde son code 2 |
+| équipement ajouté à l'inventaire depuis le snapshot | ATTENTION (il manque) |
+| snapshot **sans `scope`** (pris avant la v0.4), tout l'inventaire courant présent | information seulement : « périmètre inconnu (snapshot sans métadonnée de périmètre), 5/5 présents » |
+| snapshot **sans `scope`** auquel il manque des équipements | ATTENTION : « périmètre inconnu … » |
+| équipement du snapshot absent de l'inventaire | information listée, sans effet |
+
+Hors ligne, NetBox n'est jamais contacté : la couverture est comparée à l'inventaire **local** et à l'inventaire **enregistré** dans `scope` (c'est lui
+qui connaît les équipements venus de NetBox). **`--max-age JOURS`** (aucune valeur par défaut ; un nombre strictement positif, « 7 » ou « 0.5 ») :
+un snapshot plus ancien est ATTENTION, avec son âge ; une date illisible ou dans le futur (plus d'une heure) ne prouve pas la fraîcheur : ATTENTION.
+Une valeur invalide, ou `--max-age` sans `--snapshot`, sort en code 3. Sans cette option l'âge est affiché, sans effet sur le code.
 
 ### Codes retour
 

@@ -35,6 +35,9 @@ from netcheck.ruletypes import (
     coverage_gaps,
 )
 from netcheck.secrets import mask_secrets
+from netcheck.snapshotscope import Coverage
+from netcheck.snapshotscope import as_dict as scope_as_dict
+from netcheck.snapshotscope import describe as scope_describe
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 
@@ -151,14 +154,14 @@ def _summary_counts(
 
 def _status(
     violations: list[Violation], compliant: bool, warnings: list[ConfigWarning],
-    not_applicable: list[NotApplicable] | tuple = (),
+    not_applicable: list[NotApplicable] | tuple = (), incomplete: bool = False,
 ) -> str:
     """Libellé du verdict (voir compliance.status_label) : NON CONFORME seulement s'il y a une
     violation réelle ; une ligne non lue ou une règle NON ÉVALUABLE sans violation donne
     ANALYSE INCOMPLÈTE."""
     if violations:
         return "NON CONFORME"
-    if any(w.blocks_verdict for w in warnings) or coverage_gaps(not_applicable):
+    if any(w.blocks_verdict for w in warnings) or coverage_gaps(not_applicable) or incomplete:
         return "ANALYSE INCOMPLÈTE"
     return "CONFORME" if compliant else "NON CONFORME"
 
@@ -374,6 +377,16 @@ def write_html(
 # Conformité (netcheck check) : mêmes principes, vocabulaire de gravité différent (§5.4)
 # ------------------------------------------------------------------------------------------
 
+def _print_scope(console: Console, scope: Coverage | None) -> None:
+    """La date, la version, le périmètre et les raisons d'ATTENTION d'un snapshot lu hors ligne."""
+    if scope is None:
+        return
+    lines = scope_describe(scope)
+    for line in lines:
+        style = "bold yellow" if line.startswith("ATTENTION") else "dim"
+        console.print(f"[{style}]{escape(line)}[/]")
+
+
 def _print_credentials(console: Console, credentials: dict | None) -> None:
     """Phase C2 : d'où vient chaque identifiant (variable, fichier, inventaire) ; jamais une valeur."""
     for line in format_sources(credentials or {}):
@@ -389,6 +402,7 @@ def print_compliance_terminal(
     derogations: dict | None = None,
     coverage: list[dict] | None = None,
     credentials: dict | None = None,
+    snapshot_scope: Coverage | None = None,
 ) -> None:
     console = console or Console()
     violations = _masked_violations(violations)
@@ -396,6 +410,7 @@ def print_compliance_terminal(
     warnings = _masked_warnings(config_warnings)
 
     _print_credentials(console, credentials)
+    _print_scope(console, snapshot_scope)
     if source:
         # Mode hors ligne (check --config-dir) : dire d'où vient chaque équipement et ce que cela change.
         devices = source["devices"]
@@ -499,7 +514,8 @@ def print_compliance_terminal(
         console.print(scope_table)
 
     counts = _summary_counts(violations, not_applicable, warnings)
-    label = _status(violations, compliant, warnings, not_applicable)
+    label = _status(violations, compliant, warnings, not_applicable,
+                    bool(snapshot_scope and snapshot_scope.attention))
     parts = [f"{counts['violations']} non-conformité(s)"]
     if derogations and derogations["derogated"]:
         parts.append(f"{len(derogations['derogated'])} dérogation(s)")
@@ -530,7 +546,7 @@ def compliance_to_dict(
     violations: list[Violation], compliant: bool, not_applicable: list[NotApplicable] | None = None,
     config_warnings: list[ConfigWarning] | None = None, source: dict | None = None,
     derogations: dict | None = None, coverage: list[dict] | None = None,
-    credentials: dict | None = None,
+    credentials: dict | None = None, snapshot_scope: Coverage | None = None,
 ) -> dict:
     violations = _masked_violations(violations)
     not_applicable = _masked_not_applicable(not_applicable or [])
@@ -538,7 +554,8 @@ def compliance_to_dict(
     data = {
         "compliant": compliant,
         # CONFORME | NON CONFORME (violation réelle) | ANALYSE INCOMPLÈTE (ligne non lue, aucune violation)
-        "status": _status(violations, compliant, warnings, not_applicable),
+        "status": _status(violations, compliant, warnings, not_applicable,
+                           bool(snapshot_scope and snapshot_scope.attention)),
         "violations": [
             {
                 "severity": v.rule.severity, "rule_id": v.rule.id, "device": v.device, "detail": v.detail,
@@ -582,6 +599,9 @@ def compliance_to_dict(
     if credentials:
         # Présent seulement en direct : la source de chaque identifiant (variable, fichier, inventaire).
         data["credential_sources"] = credentials
+    if snapshot_scope is not None:
+        # Présent seulement avec `--snapshot` : date, version, périmètre, raisons d'ATTENTION.
+        data["snapshot_scope"] = scope_as_dict(snapshot_scope)
     return data
 
 
@@ -590,11 +610,11 @@ def write_compliance_json(
     not_applicable: list[NotApplicable] | None = None,
     config_warnings: list[ConfigWarning] | None = None, source: dict | None = None,
     derogations: dict | None = None, coverage: list[dict] | None = None,
-    credentials: dict | None = None,
+    credentials: dict | None = None, snapshot_scope: Coverage | None = None,
 ) -> None:
     Path(path).write_text(
         json.dumps(compliance_to_dict(violations, compliant, not_applicable, config_warnings, source,
-                                      derogations, coverage, credentials),
+                                      derogations, coverage, credentials, snapshot_scope),
                    indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
@@ -608,6 +628,7 @@ def render_compliance_html(
     derogations: dict | None = None,
     coverage: list[dict] | None = None,
     credentials: dict | None = None,
+    snapshot_scope: Coverage | None = None,
 ) -> str:
     """Rend le rapport HTML de conformité, autonome (aucune ressource externe)."""
     template = _ENV.get_template("compliance.html.j2")
@@ -622,7 +643,9 @@ def render_compliance_html(
     categories = sorted({v.rule.category or "(sans catégorie)" for v in violations})
     return template.render(
         compliant=compliant,
-        status=_status(violations, compliant, warnings, not_applicable),
+        status=_status(violations, compliant, warnings, not_applicable,
+                       bool(snapshot_scope and snapshot_scope.attention)),
+        scope_lines=scope_describe(snapshot_scope) if snapshot_scope else [],
         violations=sorted(violations, key=lambda v: -_COMPLIANCE_ORDER[v.rule.severity]),
         not_applicable=sorted(not_applicable, key=lambda n: (n.device, n.rule.id)),
         gaps=sorted(coverage_gaps(not_applicable), key=lambda n: (n.device, n.rule.id)),
@@ -652,11 +675,11 @@ def write_compliance_html(
     not_applicable: list[NotApplicable] | None = None,
     config_warnings: list[ConfigWarning] | None = None, source: dict | None = None,
     derogations: dict | None = None, coverage: list[dict] | None = None,
-    credentials: dict | None = None,
+    credentials: dict | None = None, snapshot_scope: Coverage | None = None,
 ) -> None:
     Path(path).write_text(
         render_compliance_html(violations, compliant, rules_path, not_applicable, config_warnings, source,
-                               derogations, coverage, credentials),
+                               derogations, coverage, credentials, snapshot_scope),
         encoding="utf-8",
     )
 
@@ -674,10 +697,11 @@ _ASSERT_ORDER = {Status.ECHEC: 3, Status.NON_EVALUABLE: 2, Status.OK: 1}
 
 def print_assert_terminal(
     results: list[AssertionResult], verdict_label: str, console: Console | None = None,
-    credentials: dict | None = None,
+    credentials: dict | None = None, snapshot_scope: Coverage | None = None,
 ) -> None:
     console = console or Console()
     _print_credentials(console, credentials)
+    _print_scope(console, snapshot_scope)
 
     if results:
         table = Table(show_lines=False)
@@ -702,7 +726,7 @@ def print_assert_terminal(
 
 
 def assert_to_dict(results: list[AssertionResult], verdict_label: str,
-                   credentials: dict | None = None) -> dict:
+                   credentials: dict | None = None, snapshot_scope: Coverage | None = None) -> dict:
     data = {
         "verdict": verdict_label,
         "results": [
@@ -715,19 +739,22 @@ def assert_to_dict(results: list[AssertionResult], verdict_label: str,
     }
     if credentials:
         data["credential_sources"] = credentials   # présent seulement en direct ; jamais une valeur
+    if snapshot_scope is not None:
+        data["snapshot_scope"] = scope_as_dict(snapshot_scope)   # seulement avec --snapshot
     return data
 
 
 def write_assert_json(results: list[AssertionResult], verdict_label: str, path: str,
-                      credentials: dict | None = None) -> None:
+                      credentials: dict | None = None, snapshot_scope: Coverage | None = None) -> None:
     Path(path).write_text(
-        json.dumps(assert_to_dict(results, verdict_label, credentials), indent=2, ensure_ascii=False),
+        json.dumps(assert_to_dict(results, verdict_label, credentials, snapshot_scope), indent=2,
+                   ensure_ascii=False),
         encoding="utf-8",
     )
 
 
 def render_assert_html(results: list[AssertionResult], verdict_label: str, intent_path: str,
-                       credentials: dict | None = None) -> str:
+                       credentials: dict | None = None, snapshot_scope: Coverage | None = None) -> str:
     """Rend le rapport HTML autonome (aucune ressource externe)."""
     template = _ENV.get_template("assert.html.j2")
     counts = {s.value: sum(1 for r in results if r.status == s) for s in Status}
@@ -739,6 +766,7 @@ def render_assert_html(results: list[AssertionResult], verdict_label: str, inten
         devices=devices,
         intent_path=str(intent_path),
         credentials=credentials,
+        scope_lines=scope_describe(snapshot_scope) if snapshot_scope else [],
         generated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
         netcheck_version=__version__,
     )
@@ -746,10 +774,10 @@ def render_assert_html(results: list[AssertionResult], verdict_label: str, inten
 
 def write_assert_html(
     results: list[AssertionResult], verdict_label: str, intent_path: str, path: str,
-    credentials: dict | None = None,
+    credentials: dict | None = None, snapshot_scope: Coverage | None = None,
 ) -> None:
-    Path(path).write_text(render_assert_html(results, verdict_label, intent_path, credentials),
-                          encoding="utf-8")
+    html = render_assert_html(results, verdict_label, intent_path, credentials, snapshot_scope)
+    Path(path).write_text(html, encoding="utf-8")
 
 
 # ------------------------------------------------------------------------------------------

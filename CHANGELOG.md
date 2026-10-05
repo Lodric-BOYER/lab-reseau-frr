@@ -237,6 +237,16 @@ Quatrième version de netcheck. Cette entrée suit la construction phase par pha
 
 ### Modifié (incompatible)
 
+- **`check --snapshot` et `assert --snapshot` disent ce que le snapshot couvre et de quand il date.** Terminal, JSON (`snapshot_scope`) et HTML
+  affichent toujours la date, la version de netcheck du snapshot, son âge et son périmètre (« r5 (1/5 de l'inventaire) »). Un équipement de
+  l'inventaire absent du snapshot sans avoir été demandé (`snapshot -d`), ou présent mais injoignable, est une **ATTENTION** (`check` : ANALYSE
+  INCOMPLÈTE, code 1 ; `assert` : ATTENTION, code 1) ; un périmètre demandé est une information ; un ancien snapshot sans `scope` est « périmètre
+  inconnu » (information s'il couvre tout l'inventaire courant, ATTENTION sinon) ; un équipement du snapshot hors inventaire est listé.
+  **`--max-age JOURS`** (aucune valeur par défaut) : un snapshot plus vieux, à la date illisible ou dans le futur est ATTENTION ; valeur invalide ou
+  sans `--snapshot` = code 3. `meta.json` gagne `scope` = `{inventory, requested}`. **Conséquence :** un pipeline qui auditait un snapshot partiel
+  (par exemple `snapshot -d r5`) contre l'inventaire complet obtenait 0 ; il obtient 1 s'il n'a pas pris le snapshot avec `-d`, et 0 si le snapshot
+  l'a été avec `-d` (nouveaux snapshots). Les snapshots d'avant la v0.4 sans `scope` et incomplets donnent 1. Gel : 0 écart.
+
 - **Phase C6 : un résultat avec des parties NON ÉVALUABLES ne sort plus jamais en code 0** (décision de la revue). État des lieux mesuré puis
   corrigé : `assert` (NON ÉVALUABLE : code 0 -> **ATTENTION, code 1**), `check` (règle `not_implemented` ou `no_model` : CONFORME / 0 ->
   **ANALYSE INCOMPLÈTE / 1**, dans le terminal, le JSON et le HTML), `diff` (section relevée d'un seul côté : information -> **ATTENTION**),

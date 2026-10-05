@@ -31,6 +31,9 @@
 <p class="verdict-{{ 'ok' if verdict == 'OK' else 'echec' }}">
   <strong>{{ verdict }}</strong>
 </p>
+{% for line in scope_lines %}
+<p class="meta snapshot-scope{% if line.startswith('ATTENTION') %} cause-gap{% endif %}">{{ line }}</p>
+{% endfor %}
 
 <div class="counters">
   <span class="badge badge-ok">{{ counts.get("OK", 0) }} OK</span>

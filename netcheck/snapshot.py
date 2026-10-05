@@ -30,11 +30,15 @@ def snapshot_dir(name: str) -> Path:
     return SNAPSHOTS_DIR / name
 
 
-def save(name: str, results: dict, force: bool = False, credentials: dict | None = None) -> Path:
+def save(name: str, results: dict, force: bool = False, credentials: dict | None = None,
+         scope: dict | None = None) -> Path:
     """Écrit un snapshot à partir du résultat de collector.collect_all().
 
     results : {équipement: (True, DeviceState) ou (False, message d'erreur)}.
     Un équipement injoignable est quand même écrit, avec reachable=False (§5.1).
+    scope : `snapshotscope.scope_record(...)`, le périmètre du snapshot (v0.4) : l'inventaire au moment de
+    la prise et les équipements demandés par `-d`. Sans lui, `check --snapshot` ne peut pas dire ce qui
+    manque.
     """
     out_dir = snapshot_dir(name)
     if out_dir.exists() and not force:
@@ -61,6 +65,8 @@ def save(name: str, results: dict, force: bool = False, credentials: dict | None
         "errors": errors,
         "netcheck_version": __version__,
     }
+    if scope is not None:
+        meta["scope"] = scope
     if credentials:
         meta["credential_sources"] = credentials   # d'où viennent les identifiants (jamais une valeur)
     (out_dir / "meta.json").write_text(

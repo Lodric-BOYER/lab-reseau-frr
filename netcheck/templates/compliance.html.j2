@@ -37,6 +37,9 @@
 <p class="verdict-{{ {'CONFORME': 'conforme', 'NON CONFORME': 'non-conforme'}.get(status, 'analyse-incomplete') }}">
   <strong>{{ status }}</strong>
 </p>
+{% for line in scope_lines %}
+<p class="meta snapshot-scope{% if line.startswith('ATTENTION') %} cause-gap{% endif %}">{{ line }}</p>
+{% endfor %}
 
 {% if derogations %}
 <p class="meta"><strong>Dérogations</strong> : fichier <code>{{ derogations.file.path }}</code>, empreinte

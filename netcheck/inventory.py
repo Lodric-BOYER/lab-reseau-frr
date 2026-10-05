@@ -38,6 +38,9 @@ class Inventory:
     # Phase C6 : lecture NetBox effectuée (version, filtres, jeton, équipements des deux sources), ou None
     # (pas de bloc `netbox:`, ou commande hors ligne : NetBox n'est alors jamais contacté).
     netbox_info: netbox.NetboxInfo | None = None
+    # Phase C6 : les noms de TOUS les équipements de l'inventaire, avant le filtre `-d` (le périmètre
+    # d'un snapshot).
+    all_names: tuple[str, ...] = ()
 
 
 def load(only: list[str] | None = None, path: Path | str | None = None,
@@ -121,7 +124,7 @@ def load(only: list[str] | None = None, path: Path | str | None = None,
 
     return Inventory(routers=routers, management_interfaces=lists["management_interfaces"],
                      management_vrfs=lists["management_vrfs"], lab=lab, source=str(path), bastion=bastion,
-                     netbox_info=netbox_info)
+                     netbox_info=netbox_info, all_names=tuple(declared))
 
 
 def _check_bastion(spec, path: Path) -> None:

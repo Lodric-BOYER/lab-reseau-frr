@@ -272,7 +272,15 @@ def test_assert_cli_is_still_code_0_when_everything_is_evaluable_and_ok(tmp_path
     _snapshot_with_one_unreachable(tmp_path, monkeypatch)
     intent = tmp_path / "i.yml"
     intent.write_text(INTENT % "", encoding="utf-8")
-    assert cli.main(["assert", "--intent", str(intent), "--snapshot", "base"]) == 0
+    # L'inventaire n'a QUE r1 : le snapshot le couvre en entier (r2, en plus, n'est pas de l'inventaire).
+    inventory_file = tmp_path / "inv.yml"
+    inventory_file.write_text(
+        yaml.safe_dump({"lab": True, "defaults": {"device_type": "linux", "username": "u",
+                                                    "password": "mot-de-passe-1"},
+                        "routers": {"r1": {"host": "127.0.0.1"}}}),
+        encoding="utf-8")
+    argv = ["assert", "--intent", str(intent), "--snapshot", "base", "-i", str(inventory_file)]
+    assert cli.main(argv) == 0
 
 
 # === 3. diff ======================================================================================
